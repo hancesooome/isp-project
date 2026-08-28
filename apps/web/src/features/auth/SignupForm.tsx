@@ -156,6 +156,13 @@ export function SignupForm() {
         >
           {isSubmitting ? 'Creating account…' : 'Create account'}
         </button>
+
+        <p className="text-center text-sm text-slate-400">
+          Already have an account?{' '}
+          <a className="font-medium text-sky-400 hover:text-sky-300" href="/login">
+            Sign in
+          </a>
+        </p>
       </form>
     </section>
   )
