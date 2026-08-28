@@ -52,6 +52,21 @@ must not be used against a linked production project.
 The web application is served at `http://localhost:5173`. The API is served at
 `http://localhost:3000`, with a health check at `GET /health`.
 
+## Customer signup
+
+Before testing signup against hosted Supabase:
+
+1. Apply `supabase/migrations/202608280001_create_signup_profile_trigger.sql`
+   through the Supabase SQL Editor or the linked CLI.
+2. In **Authentication > URL Configuration**, set the development Site URL to
+   `http://localhost:5173` and allow that exact redirect URL.
+3. Enable email confirmation in the hosted project's authentication settings
+   if customers must verify their email before receiving a session.
+
+The profile trigger copies only `full_name` from user metadata. It deliberately
+omits `role`, allowing the database to assign the `customer` default and
+preventing browser-controlled role escalation.
+
 ## Structure
 
 - `apps/web` — React, TypeScript, Vite, and Tailwind CSS frontend

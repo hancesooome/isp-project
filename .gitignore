@@ -13,3 +13,4 @@ dist/
 
 AGENTS.md
 AI_ASSISTED_DEVELOPMENT_WORKFLOW.md
+supabase/migrations/202608280001_create_signup_profile_trigger.sql
