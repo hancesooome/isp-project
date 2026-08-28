@@ -2,13 +2,14 @@ import type { ReactNode } from 'react'
 import { SignupForm } from './features/auth/SignupForm'
 import { useAuth } from './features/auth/auth-context'
 import { LoginForm } from './features/auth/LoginForm'
+import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import {
   DEFAULT_AUTHENTICATED_PATH,
   getSafeRedirect,
 } from './features/auth/redirect'
 
 export function App() {
-  const { isLoading, session, user } = useAuth()
+  const { user } = useAuth()
   const path = window.location.pathname
 
   function goTo(destination: string) {
@@ -17,22 +18,21 @@ export function App() {
 
   let content: ReactNode
 
-  if (isLoading) {
-    content = <p role="status">Loading session…</p>
-  } else if (path === '/signup') {
+  if (path === '/signup') {
     content = <SignupForm />
   } else if (path === '/forgot-password') {
     content = <PasswordResetPlaceholder />
-  } else if (path === DEFAULT_AUTHENTICATED_PATH && session) {
-    content = <AuthenticatedPlaceholder email={user?.email ?? ''} />
+  } else if (path === DEFAULT_AUTHENTICATED_PATH) {
+    content = (
+      <ProtectedRoute>
+        <AuthenticatedPlaceholder email={user?.email ?? ''} />
+      </ProtectedRoute>
+    )
   } else {
     const requestedRedirect = new URLSearchParams(window.location.search).get(
       'redirect',
     )
-    const redirectTo =
-      path === DEFAULT_AUTHENTICATED_PATH
-        ? DEFAULT_AUTHENTICATED_PATH
-        : getSafeRedirect(requestedRedirect)
+    const redirectTo = getSafeRedirect(requestedRedirect)
 
     content = <LoginForm onSignedIn={goTo} redirectTo={redirectTo} />
   }
@@ -50,7 +50,9 @@ function AuthenticatedPlaceholder({ email }: { email: string }) {
       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
         Signed in
       </p>
-      <h1 className="mt-3 text-3xl font-bold text-white">Account access confirmed</h1>
+      <h1 className="mt-3 text-3xl font-bold text-white">
+        Account access confirmed
+      </h1>
       <p className="mt-4 text-slate-300">
         {email || 'Your authenticated session is active.'}
       </p>
@@ -68,7 +70,10 @@ function PasswordResetPlaceholder() {
       <p className="mt-4 text-slate-300">
         Password reset will be available in a future ticket.
       </p>
-      <a className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300" href="/login">
+      <a
+        className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
+        href="/login"
+      >
         Return to sign in
       </a>
     </section>
