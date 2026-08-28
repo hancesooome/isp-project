@@ -1,0 +1,21 @@
+# For configuration options, see:
+# https://supabase.com/docs/guides/local-development/cli/config
+project_id = "isp-platform"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://127.0.0.1:5173"]

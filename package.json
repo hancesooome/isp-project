@@ -1,0 +1,34 @@
+{
+  "name": "isp-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev": "concurrently --kill-others-on-fail --names web,api \"npm run dev --workspace @isp/web\" \"npm run dev --workspace @isp/api\"",
+    "dev:api": "npm run dev --workspace @isp/api",
+    "dev:web": "npm run dev --workspace @isp/web",
+    "lint": "eslint .",
+    "supabase:reset": "supabase db reset",
+    "supabase:start": "supabase start",
+    "supabase:status": "supabase status",
+    "supabase:stop": "supabase stop",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.5",
+    "eslint": "^10.0.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.5",
+    "globals": "^17.11.0",
+    "supabase": "2.116.0",
+    "typescript-eslint": "^8.68.0"
+  }
+}
