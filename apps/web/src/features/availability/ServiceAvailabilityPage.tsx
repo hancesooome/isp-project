@@ -12,6 +12,7 @@ const availabilitySchema = z.object({
 type AvailabilityResult = 'available' | 'unavailable' | null
 
 export function ServiceAvailabilityPage() {
+  const selectedPlanId = new URLSearchParams(window.location.search).get('plan')
   const [address, setAddress] = useState('')
   const [fieldError, setFieldError] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
@@ -122,9 +123,13 @@ export function ServiceAvailabilityPage() {
           </p>
           <a
             className="mt-4 inline-block rounded-lg bg-emerald-400 px-4 py-2 font-semibold text-emerald-950 hover:bg-emerald-300"
-            href="/plans"
+            href={
+              selectedPlanId
+                ? `/apply?plan=${encodeURIComponent(selectedPlanId)}`
+                : '/plans'
+            }
           >
-            View available plans
+            {selectedPlanId ? 'Continue application' : 'View available plans'}
           </a>
         </div>
       ) : null}

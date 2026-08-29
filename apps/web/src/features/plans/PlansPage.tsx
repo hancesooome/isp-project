@@ -128,6 +128,12 @@ export function PlansPage() {
               <p className="mt-1 text-sm capitalize text-slate-400">
                 per {plan.billing_interval === 'monthly' ? 'month' : 'year'}
               </p>
+              <a
+                className="mt-6 inline-block rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950 hover:bg-sky-400"
+                href={`/availability?plan=${encodeURIComponent(plan.id)}`}
+              >
+                Apply for this plan
+              </a>
             </article>
           ))}
         </div>

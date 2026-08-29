@@ -1,6 +1,9 @@
 export const DEFAULT_AUTHENTICATED_PATH = '/account'
 
-const allowedAuthenticatedPaths = new Set([DEFAULT_AUTHENTICATED_PATH])
+const allowedAuthenticatedPaths = new Set([
+  DEFAULT_AUTHENTICATED_PATH,
+  '/apply',
+])
 
 export function getSafeRedirect(value: string | null): string {
   if (value && allowedAuthenticatedPaths.has(value)) {

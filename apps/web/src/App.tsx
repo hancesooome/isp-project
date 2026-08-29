@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { ServiceAvailabilityPage } from './features/availability/ServiceAvailabilityPage'
+import { ServiceApplicationForm } from './features/applications/ServiceApplicationForm'
 import { SignupForm } from './features/auth/SignupForm'
 import { useAuth } from './features/auth/auth-context'
 import { LoginForm } from './features/auth/LoginForm'
@@ -28,6 +29,12 @@ export function App() {
     content = <ServiceAvailabilityPage />
   } else if (path === '/plans') {
     content = <PlansPage />
+  } else if (path === '/apply') {
+    content = (
+      <ProtectedRoute>
+        <ServiceApplicationForm />
+      </ProtectedRoute>
+    )
   } else if (path === DEFAULT_AUTHENTICATED_PATH) {
     content = (
       <ProtectedRoute>
