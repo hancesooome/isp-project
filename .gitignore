@@ -21,3 +21,4 @@ supabase/migrations/202608280002_add_admin_role.sql
 apps/docs/tickets/ISP-008.md
 supabase/migrations/202608290001_create_plans.sql
 supabase/migrations/202608290002_create_customer_profiles.sql
+supabase/migrations/202608290003_create_applications.sql

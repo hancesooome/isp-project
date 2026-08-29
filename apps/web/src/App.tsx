@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { ServiceAvailabilityPage } from './features/availability/ServiceAvailabilityPage'
 import { SignupForm } from './features/auth/SignupForm'
 import { useAuth } from './features/auth/auth-context'
 import { LoginForm } from './features/auth/LoginForm'
@@ -23,6 +24,8 @@ export function App() {
     content = <SignupForm />
   } else if (path === '/forgot-password') {
     content = <PasswordResetPlaceholder />
+  } else if (path === '/availability') {
+    content = <ServiceAvailabilityPage />
   } else if (path === '/plans') {
     content = <PlansPage />
   } else if (path === DEFAULT_AUTHENTICATED_PATH) {

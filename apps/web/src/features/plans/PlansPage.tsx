@@ -88,6 +88,12 @@ export function PlansPage() {
         <p className="mx-auto mt-3 max-w-2xl text-slate-400">
           Compare our currently available internet service plans.
         </p>
+        <a
+          className="mt-5 inline-block font-medium text-sky-400 hover:text-sky-300"
+          href="/availability"
+        >
+          Check service availability
+        </a>
       </header>
 
       {error ? (

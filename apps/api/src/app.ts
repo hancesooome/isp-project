@@ -1,5 +1,7 @@
 import express from 'express'
+import { z } from 'zod'
 
+import { env } from './config/env.js'
 import { supabase } from './lib/supabase.js'
 
 interface Plan {
@@ -11,9 +13,14 @@ interface Plan {
   billing_interval: 'monthly' | 'yearly'
 }
 
+const availabilitySchema = z.object({
+  address: z.string().trim().min(5).max(250),
+})
+
 export const app = express()
 
 app.disable('x-powered-by')
+app.use(express.json({ limit: '10kb' }))
 
 app.get('/health', (_request, response) => {
   response.status(200).json({ status: 'ok' })
@@ -36,4 +43,20 @@ app.get('/plans', async (_request, response) => {
   }
 
   response.status(200).json({ plans: data })
+})
+
+app.post('/service-availability', (request, response) => {
+  const result = availabilitySchema.safeParse(request.body)
+
+  if (!result.success) {
+    response.status(400).json({ error: 'Enter a valid service address' })
+    return
+  }
+
+  const normalizedAddress = result.data.address.toLowerCase()
+  const available = env.serviceAreaKeywords.some((area) =>
+    normalizedAddress.includes(area),
+  )
+
+  response.status(200).json({ available })
 })

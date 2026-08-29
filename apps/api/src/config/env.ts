@@ -18,7 +18,19 @@ function readUrl(name: string): string {
   }
 }
 
+function readServiceAreas(value: string | undefined): string[] {
+  if (!value) {
+    return []
+  }
+
+  return value
+    .split(',')
+    .map((area) => area.trim().toLowerCase())
+    .filter((area) => area.length > 0)
+}
+
 export const env = {
   supabaseUrl: readUrl('SUPABASE_URL'),
   supabaseServiceRoleKey: readRequiredEnv('SUPABASE_SERVICE_ROLE_KEY'),
+  serviceAreaKeywords: readServiceAreas(process.env.SERVICE_AREA_KEYWORDS),
 }
