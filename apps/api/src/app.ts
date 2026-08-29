@@ -13,7 +13,9 @@ interface Plan {
   billing_interval: 'monthly' | 'yearly'
 }
 
-interface CustomerAuthResult {
+type UserRole = 'customer' | 'admin'
+
+interface AuthorizationResult {
   status: 200 | 401 | 403 | 500
   userId?: string
 }
@@ -51,9 +53,10 @@ function isServiceAvailable(address: string): boolean {
   )
 }
 
-async function authenticateCustomer(
+async function authorizeRole(
   authorizationHeader: string | undefined,
-): Promise<CustomerAuthResult> {
+  requiredRole: UserRole,
+): Promise<AuthorizationResult> {
   if (!authorizationHeader?.startsWith('Bearer ')) {
     return { status: 401 }
   }
@@ -80,13 +83,13 @@ async function authenticateCustomer(
     .maybeSingle<{ role: string }>()
 
   if (profileError) {
-    console.error('Failed to verify customer role', {
+    console.error('Failed to verify user role', {
       code: profileError.code,
     })
     return { status: 500 }
   }
 
-  if (profile?.role !== 'customer') {
+  if (profile?.role !== requiredRole) {
     return { status: 403 }
   }
 
@@ -135,7 +138,10 @@ app.post('/service-availability', (request, response) => {
 })
 
 app.post('/applications', async (request, response) => {
-  const auth = await authenticateCustomer(request.header('authorization'))
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
 
   if (auth.status !== 200 || !auth.userId) {
     if (auth.status === 500) {
@@ -250,7 +256,10 @@ app.post('/applications', async (request, response) => {
 })
 
 app.get('/applications/current', async (request, response) => {
-  const auth = await authenticateCustomer(request.header('authorization'))
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
 
   if (auth.status !== 200 || !auth.userId) {
     if (auth.status === 500) {
@@ -281,4 +290,22 @@ app.get('/applications/current', async (request, response) => {
   }
 
   response.status(200).json({ application })
+})
+
+app.get('/admin/access', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to verify admin access' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  response.status(200).json({ authorized: true })
 })

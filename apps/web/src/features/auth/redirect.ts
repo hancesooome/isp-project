@@ -3,6 +3,7 @@ export const DEFAULT_AUTHENTICATED_PATH = '/account'
 const allowedAuthenticatedPaths = new Set([
   DEFAULT_AUTHENTICATED_PATH,
   '/account/application',
+  '/admin',
   '/apply',
 ])
 

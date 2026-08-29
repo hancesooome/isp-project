@@ -3,6 +3,7 @@ import { ServiceAvailabilityPage } from './features/availability/ServiceAvailabi
 import { ServiceApplicationForm } from './features/applications/ServiceApplicationForm'
 import { ApplicationStatusPage } from './features/applications/ApplicationStatusPage'
 import { SignupForm } from './features/auth/SignupForm'
+import { AdminRoute } from './features/auth/AdminRoute'
 import { useAuth } from './features/auth/auth-context'
 import { LoginForm } from './features/auth/LoginForm'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
@@ -42,6 +43,14 @@ export function App() {
         <ApplicationStatusPage />
       </ProtectedRoute>
     )
+  } else if (path === '/admin') {
+    content = (
+      <ProtectedRoute>
+        <AdminRoute>
+          <AdminPlaceholder />
+        </AdminRoute>
+      </ProtectedRoute>
+    )
   } else if (path === DEFAULT_AUTHENTICATED_PATH) {
     content = (
       <ProtectedRoute>
@@ -61,6 +70,22 @@ export function App() {
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-12 text-slate-100">
       {content}
     </main>
+  )
+}
+
+function AdminPlaceholder() {
+  return (
+    <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
+      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
+        Admin
+      </p>
+      <h1 className="mt-3 text-3xl font-bold text-white">
+        Admin access confirmed
+      </h1>
+      <p className="mt-3 text-slate-400">
+        Admin features will be added in later tickets.
+      </p>
+    </section>
   )
 }
 
