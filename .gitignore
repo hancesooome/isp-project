@@ -18,3 +18,5 @@ apps/docs/tickets/ISP-005.md
 apps/docs/tickets/ISP-006.md
 apps/docs/tickets/ISP-007.md
 supabase/migrations/202608280002_add_admin_role.sql
+apps/docs/tickets/ISP-008.md
+supabase/migrations/202608290001_create_plans.sql
