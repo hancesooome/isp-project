@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { ServiceAvailabilityPage } from './features/availability/ServiceAvailabilityPage'
 import { ServiceApplicationForm } from './features/applications/ServiceApplicationForm'
 import { ApplicationStatusPage } from './features/applications/ApplicationStatusPage'
+import { AdminApplicationsPage } from './features/applications/AdminApplicationsPage'
 import { SignupForm } from './features/auth/SignupForm'
 import { AdminRoute } from './features/auth/AdminRoute'
 import { useAuth } from './features/auth/auth-context'
@@ -51,6 +52,22 @@ export function App() {
         </AdminRoute>
       </ProtectedRoute>
     )
+  } else if (path === '/admin/applications') {
+    content = (
+      <ProtectedRoute>
+        <AdminRoute>
+          <AdminApplicationsPage />
+        </AdminRoute>
+      </ProtectedRoute>
+    )
+  } else if (path.startsWith('/admin/applications/')) {
+    content = (
+      <ProtectedRoute>
+        <AdminRoute>
+          <ApplicationReviewPlaceholder />
+        </AdminRoute>
+      </ProtectedRoute>
+    )
   } else if (path === DEFAULT_AUTHENTICATED_PATH) {
     content = (
       <ProtectedRoute>
@@ -85,6 +102,29 @@ function AdminPlaceholder() {
       <p className="mt-3 text-slate-400">
         Admin features will be added in later tickets.
       </p>
+      <a
+        className="mt-6 inline-block rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950 hover:bg-sky-400"
+        href="/admin/applications"
+      >
+        View service applications
+      </a>
+    </section>
+  )
+}
+
+function ApplicationReviewPlaceholder() {
+  return (
+    <section className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
+      <h1 className="text-3xl font-bold text-white">Application review</h1>
+      <p className="mt-3 text-slate-400">
+        Detailed application review will be added in the next ticket.
+      </p>
+      <a
+        className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
+        href="/admin/applications"
+      >
+        Back to applications
+      </a>
     </section>
   )
 }
