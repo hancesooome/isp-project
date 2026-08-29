@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { ServiceAvailabilityPage } from './features/availability/ServiceAvailabilityPage'
 import { ServiceApplicationForm } from './features/applications/ServiceApplicationForm'
+import { ApplicationStatusPage } from './features/applications/ApplicationStatusPage'
 import { SignupForm } from './features/auth/SignupForm'
 import { useAuth } from './features/auth/auth-context'
 import { LoginForm } from './features/auth/LoginForm'
@@ -33,6 +34,12 @@ export function App() {
     content = (
       <ProtectedRoute>
         <ServiceApplicationForm />
+      </ProtectedRoute>
+    )
+  } else if (path === '/account/application') {
+    content = (
+      <ProtectedRoute>
+        <ApplicationStatusPage />
       </ProtectedRoute>
     )
   } else if (path === DEFAULT_AUTHENTICATED_PATH) {
@@ -72,6 +79,12 @@ function AuthenticatedPlaceholder({ email }: { email: string }) {
       <p className="mt-2 text-sm text-slate-500">
         The customer dashboard will be added in a later ticket.
       </p>
+      <a
+        className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
+        href="/account/application"
+      >
+        View application status
+      </a>
     </section>
   )
 }

@@ -163,6 +163,12 @@ export function ServiceApplicationForm() {
         <p className="mt-4 text-slate-300" role="status">
           Your service application was submitted for review.
         </p>
+        <a
+          className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
+          href="/account/application"
+        >
+          View application status
+        </a>
       </section>
     )
   }

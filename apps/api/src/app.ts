@@ -18,6 +18,14 @@ interface CustomerAuthResult {
   userId?: string
 }
 
+interface CustomerApplication {
+  id: string
+  status: 'pending' | 'approved' | 'rejected'
+  submitted_at: string
+  rejection_reason: string | null
+  plan: { name: string } | null
+}
+
 const availabilitySchema = z.object({
   address: z.string().trim().min(5).max(250),
 })
@@ -239,4 +247,38 @@ app.post('/applications', async (request, response) => {
   }
 
   response.status(201).json({ application })
+})
+
+app.get('/applications/current', async (request, response) => {
+  const auth = await authenticateCustomer(request.header('authorization'))
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load application' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: application, error } = await supabase
+    .from('applications')
+    .select(
+      'id, status, submitted_at, rejection_reason, plan:plans(name)',
+    )
+    .eq('user_id', auth.userId)
+    .order('submitted_at', { ascending: false })
+    .limit(1)
+    .maybeSingle<CustomerApplication>()
+
+  if (error) {
+    console.error('Failed to load customer application', { code: error.code })
+    response.status(500).json({ error: 'Unable to load application' })
+    return
+  }
+
+  response.status(200).json({ application })
 })
