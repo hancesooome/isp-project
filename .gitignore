@@ -22,3 +22,4 @@ apps/docs/tickets/ISP-008.md
 supabase/migrations/202608290001_create_plans.sql
 supabase/migrations/202608290002_create_customer_profiles.sql
 supabase/migrations/202608290003_create_applications.sql
+supabase/migrations/202608290004_prevent_duplicate_pending_applications.sql
