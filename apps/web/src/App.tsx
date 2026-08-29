@@ -3,6 +3,7 @@ import { SignupForm } from './features/auth/SignupForm'
 import { useAuth } from './features/auth/auth-context'
 import { LoginForm } from './features/auth/LoginForm'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
+import { PlansPage } from './features/plans/PlansPage'
 import {
   DEFAULT_AUTHENTICATED_PATH,
   getSafeRedirect,
@@ -22,6 +23,8 @@ export function App() {
     content = <SignupForm />
   } else if (path === '/forgot-password') {
     content = <PasswordResetPlaceholder />
+  } else if (path === '/plans') {
+    content = <PlansPage />
   } else if (path === DEFAULT_AUTHENTICATED_PATH) {
     content = (
       <ProtectedRoute>
