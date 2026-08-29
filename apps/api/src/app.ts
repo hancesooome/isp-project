@@ -28,6 +28,16 @@ interface CustomerApplication {
   plan: { name: string } | null
 }
 
+interface AdminApplication {
+  id: string
+  status: 'pending' | 'approved' | 'rejected'
+  installation_address: string
+  submitted_at: string
+  rejection_reason: string | null
+  customer: { id: string; full_name: string | null } | null
+  plan: { id: string; name: string } | null
+}
+
 const availabilitySchema = z.object({
   address: z.string().trim().min(5).max(250),
 })
@@ -43,6 +53,12 @@ const applicationSchema = z
       .regex(/^[0-9+() -]+$/),
     address: z.string().trim().min(5).max(250),
     installation_address: z.string().trim().min(5).max(250),
+  })
+  .strict()
+
+const adminApplicationsQuerySchema = z
+  .object({
+    status: z.enum(['pending', 'approved', 'rejected']).optional(),
   })
   .strict()
 
@@ -308,4 +324,63 @@ app.get('/admin/access', async (request, response) => {
   }
 
   response.status(200).json({ authorized: true })
+})
+
+app.get('/admin/applications', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load applications' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const queryResult = adminApplicationsQuerySchema.safeParse(request.query)
+
+  if (!queryResult.success) {
+    response.status(400).json({ error: 'Invalid application status filter' })
+    return
+  }
+
+  let query = supabase
+    .from('applications')
+    .select(
+      `
+        id,
+        status,
+        installation_address,
+        submitted_at,
+        rejection_reason,
+        customer:profiles!applications_user_id_fkey(id, full_name),
+        plan:plans(id, name)
+      `,
+    )
+    .order('submitted_at', { ascending: false })
+    .order('id')
+
+  if (queryResult.data.status) {
+    query = query.eq('status', queryResult.data.status)
+  }
+
+  const { data, error } = await query.returns<AdminApplication[]>()
+
+  if (error) {
+    console.error('Failed to load admin applications', { code: error.code })
+    response.status(500).json({ error: 'Unable to load applications' })
+    return
+  }
+
+  const statusOrder = { pending: 0, approved: 1, rejected: 2 }
+  const applications = [...data].sort(
+    (first, second) =>
+      statusOrder[first.status] - statusOrder[second.status],
+  )
+
+  response.status(200).json({ applications })
 })
