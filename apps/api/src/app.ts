@@ -84,6 +84,13 @@ interface AdminApplicationDetail {
   } | null
 }
 
+interface AdminSubscription {
+  id: string
+  status: 'active' | 'past_due'
+  customer: { id: string; full_name: string | null } | null
+  plan: { id: string; name: string } | null
+}
+
 const availabilitySchema = z.object({
   address: z.string().trim().min(5).max(250),
 })
@@ -648,6 +655,45 @@ app.post('/admin/invoices', async (request, response) => {
   }
 
   response.status(201).json({ invoice })
+})
+
+app.get('/admin/subscriptions', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load subscriptions' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: subscriptions, error } = await supabase
+    .from('subscriptions')
+    .select(
+      `
+        id,
+        status,
+        customer:profiles!subscriptions_user_id_fkey(id, full_name),
+        plan:plans!subscriptions_plan_id_fkey(id, name)
+      `,
+    )
+    .in('status', ['active', 'past_due'])
+    .order('started_at', { ascending: false })
+    .order('id')
+    .returns<AdminSubscription[]>()
+
+  if (error) {
+    console.error('Failed to load admin subscriptions', { code: error.code })
+    response.status(500).json({ error: 'Unable to load subscriptions' })
+    return
+  }
+
+  response.status(200).json({ subscriptions })
 })
 
 app.get('/admin/applications', async (request, response) => {

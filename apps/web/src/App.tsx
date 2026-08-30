@@ -12,6 +12,7 @@ import { PlansPage } from './features/plans/PlansPage'
 import { CustomerDashboard } from './features/subscriptions/CustomerDashboard'
 import { InvoicesPage } from './features/invoices/InvoicesPage'
 import { InvoiceDetailsPage } from './features/invoices/InvoiceDetailsPage'
+import { AdminBillingPage } from './features/invoices/AdminBillingPage'
 import {
   DEFAULT_AUTHENTICATED_PATH,
   getSafeRedirect,
@@ -80,6 +81,14 @@ export function App() {
         </AdminRoute>
       </ProtectedRoute>
     )
+  } else if (path === '/admin/billing') {
+    content = (
+      <ProtectedRoute>
+        <AdminRoute>
+          <AdminBillingPage />
+        </AdminRoute>
+      </ProtectedRoute>
+    )
   } else if (adminApplicationMatch?.[1]) {
     content = (
       <ProtectedRoute>
@@ -129,6 +138,12 @@ function AdminPlaceholder() {
         href="/admin/applications"
       >
         View service applications
+      </a>
+      <a
+        className="mt-4 block font-medium text-sky-400 hover:text-sky-300"
+        href="/admin/billing"
+      >
+        Manage billing
       </a>
     </section>
   )
