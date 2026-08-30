@@ -1270,3 +1270,5 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
 
   response.status(200).json({ application })
 })
+
+export default app
