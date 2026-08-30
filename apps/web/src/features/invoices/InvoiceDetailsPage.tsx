@@ -53,6 +53,8 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
   const { session } = useAuth()
   const [invoice, setInvoice] = useState<Invoice | null>()
   const [error, setError] = useState<string | null>(null)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   useEffect(() => {
     if (!session) return
@@ -102,6 +104,49 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
     void loadInvoice()
     return () => controller.abort()
   }, [invoiceId, session])
+
+  async function handlePayNow() {
+    if (!session || !invoice || isRedirecting) return
+
+    setCheckoutError(null)
+    setIsRedirecting(true)
+
+    try {
+      const response = await fetch(
+        `/api/invoices/${encodeURIComponent(invoice.id)}/checkout-session`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        },
+      )
+
+      if (!response.ok) throw new Error('CHECKOUT_REQUEST_FAILED')
+
+      const result: unknown = await response.json()
+
+      if (
+        typeof result !== 'object' ||
+        result === null ||
+        !('checkout_url' in result) ||
+        typeof result.checkout_url !== 'string'
+      ) {
+        throw new Error('INVALID_CHECKOUT_RESPONSE')
+      }
+
+      const checkoutUrl = new URL(result.checkout_url)
+
+      if (checkoutUrl.protocol !== 'https:') {
+        throw new Error('INVALID_CHECKOUT_URL')
+      }
+
+      window.location.assign(checkoutUrl.toString())
+    } catch {
+      setCheckoutError('We could not start checkout. Please try again later.')
+      setIsRedirecting(false)
+    }
+  }
 
   if (error) {
     return (
@@ -159,6 +204,27 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
             <dd className="mt-1 break-all font-mono text-sm text-white">{invoice.id}</dd>
           </div>
         </dl>
+
+        {invoice.status === 'open' && invoice.amount_cents > 0 ? (
+          <div className="mt-8 border-t border-slate-800 pt-6">
+            {checkoutError ? (
+              <p className="mb-4 text-sm text-red-300" role="alert">
+                {checkoutError}
+              </p>
+            ) : null}
+            <button
+              className="w-full rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isRedirecting}
+              onClick={() => void handlePayNow()}
+              type="button"
+            >
+              {isRedirecting ? 'Opening secure checkout...' : 'Pay now'}
+            </button>
+            <p className="mt-3 text-center text-sm text-slate-400">
+              You will be redirected to Stripe&apos;s secure checkout.
+            </p>
+          </div>
+        ) : null}
       </article>
     </section>
   )
