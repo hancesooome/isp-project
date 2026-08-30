@@ -500,19 +500,50 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
     return
   }
 
+  if (reviewResult.data.status === 'approved') {
+    const { data: application, error } = await supabase
+      .rpc('approve_application', {
+        p_application_id: idResult.data,
+        p_reviewer_id: auth.userId,
+      })
+      .single<{
+        id: string
+        status: 'approved'
+        reviewed_at: string
+        rejection_reason: null
+      }>()
+
+    if (error) {
+      if (error.code === 'P0002') {
+        response.status(404).json({ error: 'Application not found' })
+        return
+      }
+
+      if (error.code === 'P0001' || error.code === '23505') {
+        response.status(409).json({
+          error: 'Application cannot be approved in its current state',
+        })
+        return
+      }
+
+      console.error('Failed to approve application', { code: error.code })
+      response.status(500).json({ error: 'Unable to review application' })
+      return
+    }
+
+    response.status(200).json({ application })
+    return
+  }
+
   const reviewedAt = new Date().toISOString()
-  const rejectionReason =
-    reviewResult.data.status === 'rejected'
-      ? reviewResult.data.rejection_reason
-      : null
 
   const { data: application, error } = await supabase
     .from('applications')
     .update({
-      status: reviewResult.data.status,
+      status: 'rejected',
       reviewed_at: reviewedAt,
       reviewed_by: auth.userId,
-      rejection_reason: rejectionReason,
+      rejection_reason: reviewResult.data.rejection_reason,
       updated_at: reviewedAt,
     })
     .eq('id', idResult.data)
@@ -520,7 +551,7 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
     .select('id, status, reviewed_at, rejection_reason')
     .maybeSingle<{
       id: string
-      status: 'approved' | 'rejected'
+      status: 'rejected'
       reviewed_at: string
       rejection_reason: string | null
     }>()
