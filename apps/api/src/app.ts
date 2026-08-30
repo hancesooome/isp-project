@@ -109,6 +109,7 @@ const adminApplicationsQuerySchema = z
   .strict()
 
 const applicationIdSchema = z.string().uuid()
+const invoiceIdSchema = z.string().uuid()
 
 const applicationReviewSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('approved') }).strict(),
@@ -453,6 +454,62 @@ app.get('/invoices', async (request, response) => {
   }
 
   response.status(200).json({ invoices })
+})
+
+app.get('/invoices/:id', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load invoice' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = invoiceIdSchema.safeParse(request.params.id)
+
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid invoice ID' })
+    return
+  }
+
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .select(
+      `
+        id,
+        amount_cents,
+        due_date,
+        status,
+        billing_period_start,
+        billing_period_end,
+        created_at
+      `,
+    )
+    .eq('id', idResult.data)
+    .eq('user_id', auth.userId)
+    .maybeSingle<CustomerInvoice>()
+
+  if (error) {
+    console.error('Failed to load customer invoice', { code: error.code })
+    response.status(500).json({ error: 'Unable to load invoice' })
+    return
+  }
+
+  if (!invoice) {
+    response.status(404).json({ error: 'Invoice not found' })
+    return
+  }
+
+  response.status(200).json({ invoice })
 })
 
 app.get('/admin/access', async (request, response) => {
