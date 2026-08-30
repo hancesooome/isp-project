@@ -44,6 +44,7 @@ export const env = {
   supabaseServiceRoleKey: readRequiredEnv('SUPABASE_SERVICE_ROLE_KEY'),
   serviceAreaKeywords: readServiceAreas(process.env.SERVICE_AREA_KEYWORDS),
   stripeSecretKey: readRequiredEnv('STRIPE_SECRET_KEY'),
+  stripeWebhookSecret: readRequiredEnv('STRIPE_WEBHOOK_SECRET'),
   stripeCurrency: readCurrency('STRIPE_CURRENCY'),
   appUrl: readUrl('APP_URL'),
 }

@@ -226,6 +226,33 @@ async function authorizeRole(
 export const app = express()
 
 app.disable('x-powered-by')
+
+app.post(
+  '/stripe/webhook',
+  express.raw({ type: 'application/json', limit: '1mb' }),
+  (request, response) => {
+    const signature = request.header('stripe-signature')
+
+    if (!signature || !Buffer.isBuffer(request.body)) {
+      response.status(400).json({ error: 'Invalid webhook signature' })
+      return
+    }
+
+    try {
+      stripe.webhooks.constructEvent(
+        request.body,
+        signature,
+        env.stripeWebhookSecret,
+      )
+    } catch {
+      response.status(400).json({ error: 'Invalid webhook signature' })
+      return
+    }
+
+    response.status(200).json({ received: true })
+  },
+)
+
 app.use(express.json({ limit: '10kb' }))
 
 app.get('/health', (_request, response) => {
