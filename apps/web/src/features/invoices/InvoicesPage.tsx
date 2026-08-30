@@ -168,31 +168,14 @@ export function InvoicesPage() {
                 </div>
               </div>
 
-              <details className="mt-4 border-t border-slate-800 pt-4">
-                <summary className="cursor-pointer font-medium text-sky-400 hover:text-sky-300">
+              <div className="mt-4 border-t border-slate-800 pt-4">
+                <a
+                  className="font-medium text-sky-400 hover:text-sky-300"
+                  href={`/account/invoices/${encodeURIComponent(invoice.id)}`}
+                >
                   View details
-                </summary>
-                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                  <div>
-                    <dt className="text-slate-400">Billing period</dt>
-                    <dd className="mt-1 text-white">
-                      {dateFormatter.format(
-                        new Date(`${invoice.billing_period_start}T00:00:00`),
-                      )}{' '}
-                      –{' '}
-                      {dateFormatter.format(
-                        new Date(`${invoice.billing_period_end}T00:00:00`),
-                      )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-slate-400">Invoice ID</dt>
-                    <dd className="mt-1 break-all font-mono text-white">
-                      {invoice.id}
-                    </dd>
-                  </div>
-                </dl>
-              </details>
+                </a>
+              </div>
             </article>
           ))}
         </div>

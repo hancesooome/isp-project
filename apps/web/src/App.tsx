@@ -11,6 +11,7 @@ import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import { PlansPage } from './features/plans/PlansPage'
 import { CustomerDashboard } from './features/subscriptions/CustomerDashboard'
 import { InvoicesPage } from './features/invoices/InvoicesPage'
+import { InvoiceDetailsPage } from './features/invoices/InvoiceDetailsPage'
 import {
   DEFAULT_AUTHENTICATED_PATH,
   getSafeRedirect,
@@ -20,6 +21,9 @@ export function App() {
   const path = window.location.pathname
   const adminApplicationMatch = path.match(
     /^\/admin\/applications\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i,
+  )
+  const invoiceMatch = path.match(
+    /^\/account\/invoices\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i,
   )
 
   function goTo(destination: string) {
@@ -52,6 +56,12 @@ export function App() {
     content = (
       <ProtectedRoute>
         <InvoicesPage />
+      </ProtectedRoute>
+    )
+  } else if (invoiceMatch?.[1]) {
+    content = (
+      <ProtectedRoute>
+        <InvoiceDetailsPage invoiceId={invoiceMatch[1]} />
       </ProtectedRoute>
     )
   } else if (path === '/admin') {
