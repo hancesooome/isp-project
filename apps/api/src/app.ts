@@ -28,6 +28,19 @@ interface CustomerApplication {
   plan: { name: string } | null
 }
 
+interface CustomerSubscription {
+  id: string
+  status: 'active' | 'past_due'
+  started_at: string
+  plan: {
+    id: string
+    name: string
+    description: string | null
+    price_cents: number
+    billing_interval: 'monthly' | 'yearly'
+  } | null
+}
+
 interface AdminApplication {
   id: string
   status: 'pending' | 'approved' | 'rejected'
@@ -341,6 +354,49 @@ app.get('/applications/current', async (request, response) => {
   }
 
   response.status(200).json({ application })
+})
+
+app.get('/subscription', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load subscription' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: subscription, error } = await supabase
+    .from('subscriptions')
+    .select(
+      `
+        id,
+        status,
+        started_at,
+        plan:plans(id, name, description, price_cents, billing_interval)
+      `,
+    )
+    .eq('user_id', auth.userId)
+    .in('status', ['active', 'past_due'])
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle<CustomerSubscription>()
+
+  if (error) {
+    console.error('Failed to load customer subscription', { code: error.code })
+    response.status(500).json({ error: 'Unable to load subscription' })
+    return
+  }
+
+  response.status(200).json({ subscription })
 })
 
 app.get('/admin/access', async (request, response) => {
