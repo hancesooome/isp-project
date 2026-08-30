@@ -230,7 +230,7 @@ app.disable('x-powered-by')
 app.post(
   '/stripe/webhook',
   express.raw({ type: 'application/json', limit: '1mb' }),
-  (request, response) => {
+  async (request, response) => {
     const signature = request.header('stripe-signature')
 
     if (!signature || !Buffer.isBuffer(request.body)) {
@@ -238,14 +238,136 @@ app.post(
       return
     }
 
+    let event
+
     try {
-      stripe.webhooks.constructEvent(
+      event = stripe.webhooks.constructEvent(
         request.body,
         signature,
         env.stripeWebhookSecret,
       )
     } catch {
       response.status(400).json({ error: 'Invalid webhook signature' })
+      return
+    }
+
+    if (
+      event.type !== 'checkout.session.completed' &&
+      event.type !== 'checkout.session.async_payment_succeeded'
+    ) {
+      response.status(200).json({ received: true })
+      return
+    }
+
+    const checkoutSession = event.data.object
+
+    if (
+      checkoutSession.mode !== 'payment' ||
+      checkoutSession.payment_status !== 'paid'
+    ) {
+      response.status(200).json({ received: true })
+      return
+    }
+
+    const invoiceIdResult = invoiceIdSchema.safeParse(
+      checkoutSession.metadata?.invoice_id,
+    )
+    const paymentIntentReference =
+      typeof checkoutSession.payment_intent === 'string'
+        ? checkoutSession.payment_intent
+        : checkoutSession.payment_intent?.id
+
+    if (
+      !invoiceIdResult.success ||
+      checkoutSession.client_reference_id !== invoiceIdResult.data ||
+      !paymentIntentReference
+    ) {
+      console.warn('Ignored paid Stripe Checkout Session with invalid references', {
+        eventId: event.id,
+      })
+      response.status(200).json({ received: true })
+      return
+    }
+
+    const { data: invoice, error: invoiceError } = await supabase
+      .from('invoices')
+      .select('id, user_id, amount_cents')
+      .eq('id', invoiceIdResult.data)
+      .maybeSingle<{
+        id: string
+        user_id: string
+        amount_cents: number
+      }>()
+
+    if (invoiceError) {
+      console.error('Failed to reconcile Stripe payment invoice', {
+        code: invoiceError.code,
+        eventId: event.id,
+      })
+      response.status(500).json({ error: 'Unable to process webhook' })
+      return
+    }
+
+    if (
+      !invoice ||
+      checkoutSession.amount_total !== invoice.amount_cents ||
+      checkoutSession.currency !== env.stripeCurrency
+    ) {
+      console.warn('Ignored Stripe payment that did not match its invoice', {
+        eventId: event.id,
+      })
+      response.status(200).json({ received: true })
+      return
+    }
+
+    const paidAt = new Date(event.created * 1000).toISOString()
+    const { error: paymentError } = await supabase.from('payments').insert({
+      invoice_id: invoice.id,
+      user_id: invoice.user_id,
+      amount_cents: invoice.amount_cents,
+      provider: 'stripe',
+      provider_reference: paymentIntentReference,
+      status: 'succeeded',
+      paid_at: paidAt,
+      updated_at: paidAt,
+    })
+
+    if (paymentError) {
+      if (paymentError.code === '23505') {
+        const { data: existingPayment, error: duplicateLookupError } =
+          await supabase
+            .from('payments')
+            .select('id')
+            .eq('provider', 'stripe')
+            .eq('provider_reference', paymentIntentReference)
+            .maybeSingle<{ id: string }>()
+
+        if (duplicateLookupError) {
+          console.error('Failed to verify duplicate Stripe payment', {
+            code: duplicateLookupError.code,
+            eventId: event.id,
+          })
+          response.status(500).json({ error: 'Unable to process webhook' })
+          return
+        }
+
+        if (existingPayment) {
+          response.status(200).json({ received: true })
+          return
+        }
+
+        console.error('Stripe payment conflicted with invoice payment history', {
+          eventId: event.id,
+        })
+        response.status(500).json({ error: 'Unable to process webhook' })
+        return
+      }
+
+      console.error('Failed to record Stripe payment', {
+        code: paymentError.code,
+        eventId: event.id,
+      })
+      response.status(500).json({ error: 'Unable to process webhook' })
       return
     }
 
