@@ -41,6 +41,16 @@ interface CustomerSubscription {
   } | null
 }
 
+interface CustomerInvoice {
+  id: string
+  amount_cents: number
+  due_date: string
+  status: 'open' | 'paid' | 'overdue'
+  billing_period_start: string
+  billing_period_end: string
+  created_at: string
+}
+
 interface AdminApplication {
   id: string
   status: 'pending' | 'approved' | 'rejected'
@@ -397,6 +407,52 @@ app.get('/subscription', async (request, response) => {
   }
 
   response.status(200).json({ subscription })
+})
+
+app.get('/invoices', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load invoices' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: invoices, error } = await supabase
+    .from('invoices')
+    .select(
+      `
+        id,
+        amount_cents,
+        due_date,
+        status,
+        billing_period_start,
+        billing_period_end,
+        created_at
+      `,
+    )
+    .eq('user_id', auth.userId)
+    .order('billing_period_start', { ascending: false })
+    .order('created_at', { ascending: false })
+    .order('id')
+    .returns<CustomerInvoice[]>()
+
+  if (error) {
+    console.error('Failed to load customer invoices', { code: error.code })
+    response.status(500).json({ error: 'Unable to load invoices' })
+    return
+  }
+
+  response.status(200).json({ invoices })
 })
 
 app.get('/admin/access', async (request, response) => {

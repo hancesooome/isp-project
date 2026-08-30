@@ -25,3 +25,4 @@ supabase/migrations/202608290003_create_applications.sql
 supabase/migrations/202608290004_prevent_duplicate_pending_applications.sql
 supabase/migrations/202608300001_create_subscriptions.sql
 supabase/migrations/202608300002_create_approve_application_function.sql
+supabase/migrations/202608300003_create_invoices.sql
