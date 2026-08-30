@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 import { env } from './config/env.js'
 import { supabase } from './lib/supabase.js'
+import { stripe } from './lib/stripe.js'
 
 interface Plan {
   id: string
@@ -561,6 +562,105 @@ app.get('/invoices/:id', async (request, response) => {
   }
 
   response.status(200).json({ invoice })
+})
+
+app.post('/invoices/:id/checkout-session', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to start checkout' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = invoiceIdSchema.safeParse(request.params.id)
+
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid invoice ID' })
+    return
+  }
+
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .select('id, amount_cents, status')
+    .eq('id', idResult.data)
+    .eq('user_id', auth.userId)
+    .maybeSingle<{
+      id: string
+      amount_cents: number
+      status: 'open' | 'paid' | 'overdue'
+    }>()
+
+  if (error) {
+    console.error('Failed to load checkout invoice', { code: error.code })
+    response.status(500).json({ error: 'Unable to start checkout' })
+    return
+  }
+
+  if (!invoice) {
+    response.status(404).json({ error: 'Invoice not found' })
+    return
+  }
+
+  if (invoice.status !== 'open' || invoice.amount_cents <= 0) {
+    response.status(409).json({ error: 'Invoice is not eligible for payment' })
+    return
+  }
+
+  const invoicePath = `/account/invoices/${encodeURIComponent(invoice.id)}`
+  const successUrl = new URL(invoicePath, env.appUrl)
+  successUrl.searchParams.set('checkout', 'success')
+  const cancelUrl = new URL(invoicePath, env.appUrl)
+  cancelUrl.searchParams.set('checkout', 'canceled')
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      success_url: successUrl.toString(),
+      cancel_url: cancelUrl.toString(),
+      client_reference_id: invoice.id,
+      metadata: {
+        invoice_id: invoice.id,
+      },
+      payment_intent_data: {
+        metadata: {
+          invoice_id: invoice.id,
+        },
+      },
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: env.stripeCurrency,
+            unit_amount: invoice.amount_cents,
+            product_data: {
+              name: `ISP invoice #${invoice.id.slice(0, 8).toUpperCase()}`,
+            },
+          },
+        },
+      ],
+    })
+
+    if (!session.url) {
+      console.error('Stripe Checkout Session did not include a URL')
+      response.status(500).json({ error: 'Unable to start checkout' })
+      return
+    }
+
+    response.status(201).json({ checkout_url: session.url })
+  } catch {
+    console.error('Failed to create Stripe Checkout Session')
+    response.status(502).json({ error: 'Unable to start checkout' })
+  }
 })
 
 app.get('/admin/access', async (request, response) => {
