@@ -87,6 +87,16 @@ const adminApplicationsQuerySchema = z
 
 const applicationIdSchema = z.string().uuid()
 
+const applicationReviewSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('approved') }).strict(),
+  z
+    .object({
+      status: z.literal('rejected'),
+      rejection_reason: z.string().trim().min(3).max(500),
+    })
+    .strict(),
+])
+
 function isServiceAvailable(address: string): boolean {
   const normalizedAddress = address.toLowerCase()
   return env.serviceAreaKeywords.some((area) =>
@@ -461,6 +471,87 @@ app.get('/admin/applications/:id', async (request, response) => {
 
   if (!application) {
     response.status(404).json({ error: 'Application not found' })
+    return
+  }
+
+  response.status(200).json({ application })
+})
+
+app.patch('/admin/applications/:id/review', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to review application' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = applicationIdSchema.safeParse(request.params.id)
+  const reviewResult = applicationReviewSchema.safeParse(request.body)
+
+  if (!idResult.success || !reviewResult.success) {
+    response.status(400).json({ error: 'Enter a valid review decision' })
+    return
+  }
+
+  const reviewedAt = new Date().toISOString()
+  const rejectionReason =
+    reviewResult.data.status === 'rejected'
+      ? reviewResult.data.rejection_reason
+      : null
+
+  const { data: application, error } = await supabase
+    .from('applications')
+    .update({
+      status: reviewResult.data.status,
+      reviewed_at: reviewedAt,
+      reviewed_by: auth.userId,
+      rejection_reason: rejectionReason,
+      updated_at: reviewedAt,
+    })
+    .eq('id', idResult.data)
+    .eq('status', 'pending')
+    .select('id, status, reviewed_at, rejection_reason')
+    .maybeSingle<{
+      id: string
+      status: 'approved' | 'rejected'
+      reviewed_at: string
+      rejection_reason: string | null
+    }>()
+
+  if (error) {
+    console.error('Failed to review application', { code: error.code })
+    response.status(500).json({ error: 'Unable to review application' })
+    return
+  }
+
+  if (!application) {
+    const { data: existingApplication, error: lookupError } = await supabase
+      .from('applications')
+      .select('id')
+      .eq('id', idResult.data)
+      .maybeSingle<{ id: string }>()
+
+    if (lookupError) {
+      console.error('Failed to verify application review conflict', {
+        code: lookupError.code,
+      })
+      response.status(500).json({ error: 'Unable to review application' })
+      return
+    }
+
+    if (!existingApplication) {
+      response.status(404).json({ error: 'Application not found' })
+      return
+    }
+
+    response.status(409).json({ error: 'Application has already been reviewed' })
     return
   }
 

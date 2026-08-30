@@ -91,6 +91,28 @@ interface AdminApplicationReviewPageProps {
   applicationId: string
 }
 
+interface ReviewResult {
+  id: string
+  status: 'approved' | 'rejected'
+  reviewed_at: string
+  rejection_reason: string | null
+}
+
+function isReviewResult(value: unknown): value is ReviewResult {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+
+  const review = value as Record<string, unknown>
+
+  return (
+    typeof review.id === 'string' &&
+    (review.status === 'approved' || review.status === 'rejected') &&
+    typeof review.reviewed_at === 'string' &&
+    isNullableString(review.rejection_reason)
+  )
+}
+
 export function AdminApplicationReviewPage({
   applicationId,
 }: AdminApplicationReviewPageProps) {
@@ -98,6 +120,10 @@ export function AdminApplicationReviewPage({
   const [application, setApplication] =
     useState<AdminApplicationDetail | null>()
   const [error, setError] = useState<string | null>(null)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [reviewError, setReviewError] = useState<string | null>(null)
+  const [reviewSuccess, setReviewSuccess] = useState<string | null>(null)
+  const [isReviewing, setIsReviewing] = useState(false)
 
   useEffect(() => {
     if (!session) {
@@ -151,6 +177,87 @@ export function AdminApplicationReviewPage({
     void loadApplication()
     return () => controller.abort()
   }, [applicationId, session])
+
+  async function handleReview(status: 'approved' | 'rejected') {
+    if (!session || isReviewing) {
+      return
+    }
+
+    const trimmedReason = rejectionReason.trim()
+
+    if (status === 'rejected' && trimmedReason.length < 3) {
+      setReviewError('Enter a rejection reason of at least 3 characters.')
+      return
+    }
+
+    setReviewError(null)
+    setReviewSuccess(null)
+    setIsReviewing(true)
+
+    try {
+      const response = await fetch(
+        `/api/admin/applications/${encodeURIComponent(applicationId)}/review`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(
+            status === 'rejected'
+              ? { status, rejection_reason: trimmedReason }
+              : { status },
+          ),
+        },
+      )
+
+      if (response.status === 409) {
+        setReviewError(
+          'This application has already been reviewed. Refresh the page to see its latest status.',
+        )
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error('APPLICATION_REVIEW_FAILED')
+      }
+
+      const result: unknown = await response.json()
+
+      if (
+        typeof result !== 'object' ||
+        result === null ||
+        !('application' in result) ||
+        !isReviewResult(result.application)
+      ) {
+        throw new Error('INVALID_APPLICATION_REVIEW_RESPONSE')
+      }
+
+      const reviewedApplication = result.application
+
+      setApplication((current) =>
+        current
+          ? {
+              ...current,
+              status: reviewedApplication.status,
+              reviewed_at: reviewedApplication.reviewed_at,
+              rejection_reason: reviewedApplication.rejection_reason,
+            }
+          : current,
+      )
+      setReviewSuccess(
+        reviewedApplication.status === 'approved'
+          ? 'Application approved successfully.'
+          : 'Application rejected successfully.',
+      )
+    } catch {
+      setReviewError(
+        'We could not review this application. Please try again later.',
+      )
+    } finally {
+      setIsReviewing(false)
+    }
+  }
 
   if (error) {
     return (
@@ -246,8 +353,58 @@ export function AdminApplicationReviewPage({
       </div>
 
       {application.status === 'pending' ? (
-        <p className="mt-6 rounded-xl border border-slate-700 bg-slate-900 p-5 text-center text-slate-400">
-          Approval and rejection actions will be added in ISP-021.
+        <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+          <h2 className="text-lg font-semibold text-white">Review decision</h2>
+          <p className="mt-2 text-sm text-slate-400">
+            Approve this application or provide a reason before rejecting it.
+          </p>
+
+          <label className="mt-5 block text-sm font-medium text-slate-200" htmlFor="rejectionReason">
+            Rejection reason
+          </label>
+          <textarea
+            className="mt-2 min-h-24 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
+            disabled={isReviewing}
+            id="rejectionReason"
+            maxLength={500}
+            onChange={(event) => {
+              setRejectionReason(event.target.value)
+              setReviewError(null)
+            }}
+            placeholder="Required only when rejecting"
+            value={rejectionReason}
+          />
+
+          {reviewError ? (
+            <p className="mt-4 text-sm text-red-300" role="alert">
+              {reviewError}
+            </p>
+          ) : null}
+
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <button
+              className="flex-1 rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-emerald-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isReviewing}
+              onClick={() => void handleReview('approved')}
+              type="button"
+            >
+              {isReviewing ? 'Saving decision...' : 'Approve application'}
+            </button>
+            <button
+              className="flex-1 rounded-lg bg-red-400 px-4 py-3 font-semibold text-red-950 hover:bg-red-300 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isReviewing}
+              onClick={() => void handleReview('rejected')}
+              type="button"
+            >
+              {isReviewing ? 'Saving decision...' : 'Reject application'}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {reviewSuccess ? (
+        <p className="mt-6 rounded-xl border border-emerald-800 bg-emerald-950/50 p-5 text-center text-emerald-200" role="status">
+          {reviewSuccess}
         </p>
       ) : null}
     </section>
