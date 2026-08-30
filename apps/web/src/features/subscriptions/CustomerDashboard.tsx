@@ -216,6 +216,9 @@ export function CustomerDashboard() {
       )}
 
       <nav className="mt-6 flex flex-wrap gap-4" aria-label="Account navigation">
+        <a className="font-medium text-sky-400 hover:text-sky-300" href="/account/invoices">
+          View invoices
+        </a>
         <a className="font-medium text-sky-400 hover:text-sky-300" href="/account/application">
           View application status
         </a>

@@ -10,6 +10,7 @@ import { LoginForm } from './features/auth/LoginForm'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import { PlansPage } from './features/plans/PlansPage'
 import { CustomerDashboard } from './features/subscriptions/CustomerDashboard'
+import { InvoicesPage } from './features/invoices/InvoicesPage'
 import {
   DEFAULT_AUTHENTICATED_PATH,
   getSafeRedirect,
@@ -45,6 +46,12 @@ export function App() {
     content = (
       <ProtectedRoute>
         <ApplicationStatusPage />
+      </ProtectedRoute>
+    )
+  } else if (path === '/account/invoices') {
+    content = (
+      <ProtectedRoute>
+        <InvoicesPage />
       </ProtectedRoute>
     )
   } else if (path === '/admin') {
