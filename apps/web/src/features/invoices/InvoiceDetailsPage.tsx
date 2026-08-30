@@ -51,6 +51,9 @@ function isInvoice(value: unknown): value is Invoice {
 
 export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
   const { session } = useAuth()
+  const checkoutOutcome = new URLSearchParams(window.location.search).get(
+    'checkout',
+  )
   const [invoice, setInvoice] = useState<Invoice | null>()
   const [error, setError] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
@@ -179,6 +182,18 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
       </a>
 
       <article className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
+        {checkoutOutcome === 'canceled' ? (
+          <p className="mb-6 rounded-lg border border-amber-800 bg-amber-950/50 p-4 text-sm text-amber-200" role="status">
+            Payment was canceled. Your invoice is still unpaid, and you can try
+            again when you are ready.
+          </p>
+        ) : checkoutOutcome === 'success' && invoice.status !== 'paid' ? (
+          <p className="mb-6 rounded-lg border border-sky-800 bg-sky-950/50 p-4 text-sm text-sky-200" role="status">
+            Your payment is being confirmed. This invoice will update after
+            Stripe confirms the payment.
+          </p>
+        ) : null}
+
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">

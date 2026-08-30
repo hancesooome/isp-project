@@ -253,7 +253,8 @@ app.post(
 
     if (
       event.type !== 'checkout.session.completed' &&
-      event.type !== 'checkout.session.async_payment_succeeded'
+      event.type !== 'checkout.session.async_payment_succeeded' &&
+      event.type !== 'checkout.session.async_payment_failed'
     ) {
       response.status(200).json({ received: true })
       return
@@ -261,10 +262,15 @@ app.post(
 
     const checkoutSession = event.data.object
 
-    if (
-      checkoutSession.mode !== 'payment' ||
-      checkoutSession.payment_status !== 'paid'
-    ) {
+    const isFailedPayment =
+      event.type === 'checkout.session.async_payment_failed'
+
+    if (checkoutSession.mode !== 'payment') {
+      response.status(200).json({ received: true })
+      return
+    }
+
+    if (!isFailedPayment && checkoutSession.payment_status !== 'paid') {
       response.status(200).json({ received: true })
       return
     }
@@ -282,7 +288,7 @@ app.post(
       checkoutSession.client_reference_id !== invoiceIdResult.data ||
       !paymentIntentReference
     ) {
-      console.warn('Ignored paid Stripe Checkout Session with invalid references', {
+      console.warn('Ignored Stripe Checkout Session with invalid references', {
         eventId: event.id,
       })
       response.status(200).json({ received: true })
@@ -320,16 +326,18 @@ app.post(
       return
     }
 
-    const paidAt = new Date(event.created * 1000).toISOString()
-    const { error: paymentError } = await supabase.rpc(
-      'record_stripe_payment',
-      {
-        p_invoice_id: invoice.id,
-        p_provider_reference: paymentIntentReference,
-        p_amount_cents: invoice.amount_cents,
-        p_paid_at: paidAt,
-      },
-    )
+    const { error: paymentError } = isFailedPayment
+      ? await supabase.rpc('record_failed_stripe_payment', {
+          p_invoice_id: invoice.id,
+          p_provider_reference: paymentIntentReference,
+          p_amount_cents: invoice.amount_cents,
+        })
+      : await supabase.rpc('record_stripe_payment', {
+          p_invoice_id: invoice.id,
+          p_provider_reference: paymentIntentReference,
+          p_amount_cents: invoice.amount_cents,
+          p_paid_at: new Date(event.created * 1000).toISOString(),
+        })
 
     if (paymentError) {
       console.error('Failed to reconcile Stripe payment', {
