@@ -137,6 +137,12 @@ const adminInvoiceSchema = z
     { path: ['billing_period_end'] },
   )
 
+const adminInvoiceStatusSchema = z
+  .object({
+    status: z.enum(['open', 'paid', 'overdue']),
+  })
+  .strict()
+
 const applicationReviewSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('approved') }).strict(),
   z
@@ -655,6 +661,98 @@ app.post('/admin/invoices', async (request, response) => {
   }
 
   response.status(201).json({ invoice })
+})
+
+app.patch('/admin/invoices/:id/status', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to update invoice status' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = invoiceIdSchema.safeParse(request.params.id)
+  const statusResult = adminInvoiceStatusSchema.safeParse(request.body)
+
+  if (!idResult.success || !statusResult.success) {
+    response.status(400).json({ error: 'Enter a valid invoice status' })
+    return
+  }
+
+  const { data: existingInvoice, error: lookupError } = await supabase
+    .from('invoices')
+    .select('id, status, updated_at')
+    .eq('id', idResult.data)
+    .maybeSingle<{
+      id: string
+      status: 'open' | 'paid' | 'overdue'
+      updated_at: string
+    }>()
+
+  if (lookupError) {
+    console.error('Failed to load invoice status', { code: lookupError.code })
+    response.status(500).json({ error: 'Unable to update invoice status' })
+    return
+  }
+
+  if (!existingInvoice) {
+    response.status(404).json({ error: 'Invoice not found' })
+    return
+  }
+
+  const nextStatus = statusResult.data.status
+
+  if (existingInvoice.status === nextStatus) {
+    response.status(200).json({ invoice: existingInvoice })
+    return
+  }
+
+  const allowedTransitions: Record<
+    typeof existingInvoice.status,
+    Array<typeof nextStatus>
+  > = {
+    open: ['paid', 'overdue'],
+    overdue: ['paid'],
+    paid: [],
+  }
+
+  if (!allowedTransitions[existingInvoice.status].includes(nextStatus)) {
+    response.status(409).json({ error: 'Invoice status transition is not allowed' })
+    return
+  }
+
+  const updatedAt = new Date().toISOString()
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .update({ status: nextStatus, updated_at: updatedAt })
+    .eq('id', existingInvoice.id)
+    .eq('status', existingInvoice.status)
+    .select('id, status, updated_at')
+    .maybeSingle<{
+      id: string
+      status: 'open' | 'paid' | 'overdue'
+      updated_at: string
+    }>()
+
+  if (error) {
+    console.error('Failed to update invoice status', { code: error.code })
+    response.status(500).json({ error: 'Unable to update invoice status' })
+    return
+  }
+
+  if (!invoice) {
+    response.status(409).json({ error: 'Invoice status has already changed' })
+    return
+  }
+
+  response.status(200).json({ invoice })
 })
 
 app.get('/admin/subscriptions', async (request, response) => {
