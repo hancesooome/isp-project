@@ -111,6 +111,25 @@ const adminApplicationsQuerySchema = z
 const applicationIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
 
+const databaseDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine(isValidDatabaseDate)
+
+const adminInvoiceSchema = z
+  .object({
+    subscription_id: z.string().uuid(),
+    amount_cents: z.number().int().min(0).max(2_147_483_647),
+    due_date: databaseDateSchema,
+    billing_period_start: databaseDateSchema,
+    billing_period_end: databaseDateSchema,
+  })
+  .strict()
+  .refine(
+    (invoice) => invoice.billing_period_end > invoice.billing_period_start,
+    { path: ['billing_period_end'] },
+  )
+
 const applicationReviewSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('approved') }).strict(),
   z
@@ -125,6 +144,25 @@ function isServiceAvailable(address: string): boolean {
   const normalizedAddress = address.toLowerCase()
   return env.serviceAreaKeywords.some((area) =>
     normalizedAddress.includes(area),
+  )
+}
+
+function isValidDatabaseDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+
+  if (!match) {
+    return false
+  }
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const date = new Date(Date.UTC(year, month - 1, day))
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
   )
 }
 
@@ -528,6 +566,88 @@ app.get('/admin/access', async (request, response) => {
   }
 
   response.status(200).json({ authorized: true })
+})
+
+app.post('/admin/invoices', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to create invoice' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const result = adminInvoiceSchema.safeParse(request.body)
+
+  if (!result.success) {
+    response.status(400).json({ error: 'Enter valid invoice details' })
+    return
+  }
+
+  const { data: subscription, error: subscriptionError } = await supabase
+    .from('subscriptions')
+    .select('id, user_id, status')
+    .eq('id', result.data.subscription_id)
+    .maybeSingle<{
+      id: string
+      user_id: string
+      status: 'active' | 'past_due' | 'canceled'
+    }>()
+
+  if (subscriptionError) {
+    console.error('Failed to verify invoice subscription', {
+      code: subscriptionError.code,
+    })
+    response.status(500).json({ error: 'Unable to create invoice' })
+    return
+  }
+
+  if (!subscription) {
+    response.status(404).json({ error: 'Subscription not found' })
+    return
+  }
+
+  if (subscription.status === 'canceled') {
+    response.status(409).json({ error: 'Subscription is not current' })
+    return
+  }
+
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .insert({
+      user_id: subscription.user_id,
+      subscription_id: subscription.id,
+      amount_cents: result.data.amount_cents,
+      due_date: result.data.due_date,
+      status: 'open',
+      billing_period_start: result.data.billing_period_start,
+      billing_period_end: result.data.billing_period_end,
+    })
+    .select(
+      'id, amount_cents, due_date, status, billing_period_start, billing_period_end, created_at',
+    )
+    .single<CustomerInvoice>()
+
+  if (error) {
+    if (error.code === '23505') {
+      response.status(409).json({
+        error: 'An invoice already exists for this billing period',
+      })
+      return
+    }
+
+    console.error('Failed to create invoice', { code: error.code })
+    response.status(500).json({ error: 'Unable to create invoice' })
+    return
+  }
+
+  response.status(201).json({ invoice })
 })
 
 app.get('/admin/applications', async (request, response) => {
