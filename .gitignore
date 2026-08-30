@@ -27,3 +27,4 @@ supabase/migrations/202608300001_create_subscriptions.sql
 supabase/migrations/202608300002_create_approve_application_function.sql
 supabase/migrations/202608300003_create_invoices.sql
 supabase/migrations/202608300004_create_payments.sql
+supabase/migrations/202608300005_record_stripe_payment.sql

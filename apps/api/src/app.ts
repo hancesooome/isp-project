@@ -140,7 +140,7 @@ const adminInvoiceSchema = z
 
 const adminInvoiceStatusSchema = z
   .object({
-    status: z.enum(['open', 'paid', 'overdue']),
+    status: z.literal('overdue'),
   })
   .strict()
 
@@ -321,49 +321,18 @@ app.post(
     }
 
     const paidAt = new Date(event.created * 1000).toISOString()
-    const { error: paymentError } = await supabase.from('payments').insert({
-      invoice_id: invoice.id,
-      user_id: invoice.user_id,
-      amount_cents: invoice.amount_cents,
-      provider: 'stripe',
-      provider_reference: paymentIntentReference,
-      status: 'succeeded',
-      paid_at: paidAt,
-      updated_at: paidAt,
-    })
+    const { error: paymentError } = await supabase.rpc(
+      'record_stripe_payment',
+      {
+        p_invoice_id: invoice.id,
+        p_provider_reference: paymentIntentReference,
+        p_amount_cents: invoice.amount_cents,
+        p_paid_at: paidAt,
+      },
+    )
 
     if (paymentError) {
-      if (paymentError.code === '23505') {
-        const { data: existingPayment, error: duplicateLookupError } =
-          await supabase
-            .from('payments')
-            .select('id')
-            .eq('provider', 'stripe')
-            .eq('provider_reference', paymentIntentReference)
-            .maybeSingle<{ id: string }>()
-
-        if (duplicateLookupError) {
-          console.error('Failed to verify duplicate Stripe payment', {
-            code: duplicateLookupError.code,
-            eventId: event.id,
-          })
-          response.status(500).json({ error: 'Unable to process webhook' })
-          return
-        }
-
-        if (existingPayment) {
-          response.status(200).json({ received: true })
-          return
-        }
-
-        console.error('Stripe payment conflicted with invoice payment history', {
-          eventId: event.id,
-        })
-        response.status(500).json({ error: 'Unable to process webhook' })
-        return
-      }
-
-      console.error('Failed to record Stripe payment', {
+      console.error('Failed to reconcile Stripe payment', {
         code: paymentError.code,
         eventId: event.id,
       })
@@ -963,16 +932,7 @@ app.patch('/admin/invoices/:id/status', async (request, response) => {
     return
   }
 
-  const allowedTransitions: Record<
-    typeof existingInvoice.status,
-    Array<typeof nextStatus>
-  > = {
-    open: ['paid', 'overdue'],
-    overdue: ['paid'],
-    paid: [],
-  }
-
-  if (!allowedTransitions[existingInvoice.status].includes(nextStatus)) {
+  if (existingInvoice.status !== 'open') {
     response.status(409).json({ error: 'Invoice status transition is not allowed' })
     return
   }
