@@ -6,17 +6,16 @@ import { AdminApplicationsPage } from './features/applications/AdminApplications
 import { AdminApplicationReviewPage } from './features/applications/AdminApplicationReviewPage'
 import { SignupForm } from './features/auth/SignupForm'
 import { AdminRoute } from './features/auth/AdminRoute'
-import { useAuth } from './features/auth/auth-context'
 import { LoginForm } from './features/auth/LoginForm'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import { PlansPage } from './features/plans/PlansPage'
+import { CustomerDashboard } from './features/subscriptions/CustomerDashboard'
 import {
   DEFAULT_AUTHENTICATED_PATH,
   getSafeRedirect,
 } from './features/auth/redirect'
 
 export function App() {
-  const { user } = useAuth()
   const path = window.location.pathname
   const adminApplicationMatch = path.match(
     /^\/admin\/applications\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i,
@@ -77,7 +76,7 @@ export function App() {
   } else if (path === DEFAULT_AUTHENTICATED_PATH) {
     content = (
       <ProtectedRoute>
-        <AuthenticatedPlaceholder email={user?.email ?? ''} />
+        <CustomerDashboard />
       </ProtectedRoute>
     )
   } else {
@@ -113,31 +112,6 @@ function AdminPlaceholder() {
         href="/admin/applications"
       >
         View service applications
-      </a>
-    </section>
-  )
-}
-
-function AuthenticatedPlaceholder({ email }: { email: string }) {
-  return (
-    <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
-      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
-        Signed in
-      </p>
-      <h1 className="mt-3 text-3xl font-bold text-white">
-        Account access confirmed
-      </h1>
-      <p className="mt-4 text-slate-300">
-        {email || 'Your authenticated session is active.'}
-      </p>
-      <p className="mt-2 text-sm text-slate-500">
-        The customer dashboard will be added in a later ticket.
-      </p>
-      <a
-        className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
-        href="/account/application"
-      >
-        View application status
       </a>
     </section>
   )
