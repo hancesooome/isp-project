@@ -3,6 +3,7 @@ import { ServiceAvailabilityPage } from './features/availability/ServiceAvailabi
 import { ServiceApplicationForm } from './features/applications/ServiceApplicationForm'
 import { ApplicationStatusPage } from './features/applications/ApplicationStatusPage'
 import { AdminApplicationsPage } from './features/applications/AdminApplicationsPage'
+import { AdminApplicationReviewPage } from './features/applications/AdminApplicationReviewPage'
 import { SignupForm } from './features/auth/SignupForm'
 import { AdminRoute } from './features/auth/AdminRoute'
 import { useAuth } from './features/auth/auth-context'
@@ -17,6 +18,9 @@ import {
 export function App() {
   const { user } = useAuth()
   const path = window.location.pathname
+  const adminApplicationMatch = path.match(
+    /^\/admin\/applications\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i,
+  )
 
   function goTo(destination: string) {
     window.location.assign(destination)
@@ -60,11 +64,13 @@ export function App() {
         </AdminRoute>
       </ProtectedRoute>
     )
-  } else if (path.startsWith('/admin/applications/')) {
+  } else if (adminApplicationMatch?.[1]) {
     content = (
       <ProtectedRoute>
         <AdminRoute>
-          <ApplicationReviewPlaceholder />
+          <AdminApplicationReviewPage
+            applicationId={adminApplicationMatch[1]}
+          />
         </AdminRoute>
       </ProtectedRoute>
     )
@@ -107,23 +113,6 @@ function AdminPlaceholder() {
         href="/admin/applications"
       >
         View service applications
-      </a>
-    </section>
-  )
-}
-
-function ApplicationReviewPlaceholder() {
-  return (
-    <section className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
-      <h1 className="text-3xl font-bold text-white">Application review</h1>
-      <p className="mt-3 text-slate-400">
-        Detailed application review will be added in the next ticket.
-      </p>
-      <a
-        className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
-        href="/admin/applications"
-      >
-        Back to applications
       </a>
     </section>
   )

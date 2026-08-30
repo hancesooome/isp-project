@@ -38,6 +38,29 @@ interface AdminApplication {
   plan: { id: string; name: string } | null
 }
 
+interface AdminApplicationDetail {
+  id: string
+  status: 'pending' | 'approved' | 'rejected'
+  installation_address: string
+  submitted_at: string
+  reviewed_at: string | null
+  rejection_reason: string | null
+  customer: {
+    id: string
+    full_name: string | null
+    customer_profile: {
+      phone: string | null
+      address: string | null
+    } | null
+  } | null
+  plan: {
+    id: string
+    name: string
+    description: string | null
+    billing_interval: 'monthly' | 'yearly'
+  } | null
+}
+
 const availabilitySchema = z.object({
   address: z.string().trim().min(5).max(250),
 })
@@ -61,6 +84,8 @@ const adminApplicationsQuerySchema = z
     status: z.enum(['pending', 'approved', 'rejected']).optional(),
   })
   .strict()
+
+const applicationIdSchema = z.string().uuid()
 
 function isServiceAvailable(address: string): boolean {
   const normalizedAddress = address.toLowerCase()
@@ -383,4 +408,61 @@ app.get('/admin/applications', async (request, response) => {
   )
 
   response.status(200).json({ applications })
+})
+
+app.get('/admin/applications/:id', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load application' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = applicationIdSchema.safeParse(request.params.id)
+
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid application ID' })
+    return
+  }
+
+  const { data: application, error } = await supabase
+    .from('applications')
+    .select(
+      `
+        id,
+        status,
+        installation_address,
+        submitted_at,
+        reviewed_at,
+        rejection_reason,
+        customer:profiles!applications_user_id_fkey(
+          id,
+          full_name,
+          customer_profile:customer_profiles(phone, address)
+        ),
+        plan:plans(id, name, description, billing_interval)
+      `,
+    )
+    .eq('id', idResult.data)
+    .maybeSingle<AdminApplicationDetail>()
+
+  if (error) {
+    console.error('Failed to load admin application', { code: error.code })
+    response.status(500).json({ error: 'Unable to load application' })
+    return
+  }
+
+  if (!application) {
+    response.status(404).json({ error: 'Application not found' })
+    return
+  }
+
+  response.status(200).json({ application })
 })
