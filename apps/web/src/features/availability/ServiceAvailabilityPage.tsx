@@ -1,6 +1,8 @@
 import { type FormEvent, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
+import { ErrorPanel } from '../../components/ui/ErrorPanel'
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 
 const availabilitySchema = z.object({
   address: z
@@ -79,10 +81,10 @@ export function ServiceAvailabilityPage() {
   return (
     <section className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
       <Link
-        className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
+        className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
         to="/"
       >
-        ← Back to home
+        &larr; Back to home
       </Link>
       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
         Service availability
@@ -106,7 +108,7 @@ export function ServiceAvailabilityPage() {
           id="address"
           name="address"
           onChange={(event) => updateAddress(event.target.value)}
-          placeholder="House number, street, city"
+          placeholder="e.g. 123 Main Street, Barangay Central, Quezon City"
           value={address}
         />
         {fieldError ? (
@@ -116,11 +118,18 @@ export function ServiceAvailabilityPage() {
         ) : null}
 
         <button
-          className="mt-5 w-full rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isLoading}
           type="submit"
         >
-          {isLoading ? 'Checking availability...' : 'Check availability'}
+          {isLoading ? (
+            <>
+              <LoadingSpinner size="sm" />
+              <span>Checking availability...</span>
+            </>
+          ) : (
+            <span>Check availability</span>
+          )}
         </button>
       </form>
 
@@ -130,7 +139,7 @@ export function ServiceAvailabilityPage() {
             Service is available at this address.
           </p>
           <Link
-            className="mt-4 inline-block rounded-lg bg-emerald-400 px-4 py-2 font-semibold text-emerald-950 hover:bg-emerald-300"
+            className="mt-4 inline-block rounded-lg bg-emerald-400 px-4 py-2 font-semibold text-emerald-950 transition hover:bg-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
             to={
               selectedPlanId
                 ? `/apply?plan=${encodeURIComponent(selectedPlanId)}`
@@ -149,9 +158,9 @@ export function ServiceAvailabilityPage() {
       ) : null}
 
       {requestError ? (
-        <p className="mt-6 rounded-xl border border-red-900 bg-red-950/50 p-5 text-red-200" role="alert">
-          {requestError}
-        </p>
+        <div className="mt-6">
+          <ErrorPanel message={requestError} title="Check failed" />
+        </div>
       ) : null}
     </section>
   )

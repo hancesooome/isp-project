@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import type { ZodError } from 'zod'
 
 import { useAuth } from '../auth/auth-context'
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import {
   applicationSchema,
   type ApplicationFormValues,
@@ -268,11 +269,18 @@ export function ServiceApplicationForm() {
         ) : null}
 
         <button
-          className="w-full rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isSubmitting || plans === null || plansError !== null}
           type="submit"
         >
-          {isSubmitting ? 'Submitting application...' : 'Submit application'}
+          {isSubmitting ? (
+            <>
+              <LoadingSpinner size="sm" />
+              <span>Submitting application...</span>
+            </>
+          ) : (
+            <span>Submit application</span>
+          )}
         </button>
       </form>
     </section>

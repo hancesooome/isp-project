@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ErrorPanel } from '../../components/ui/ErrorPanel'
+import { PageSkeleton } from '../../components/ui/PageSkeleton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 interface AdminApplication {
   id: string
@@ -106,21 +110,6 @@ export function AdminApplicationsPage() {
     return () => controller.abort()
   }, [session])
 
-  if (error) {
-    return (
-      <p
-        className="w-full max-w-3xl rounded-xl border border-red-900 bg-red-950/50 p-5 text-center text-red-200"
-        role="alert"
-      >
-        {error}
-      </p>
-    )
-  }
-
-  if (applications === null) {
-    return <p role="status">Loading service applications...</p>
-  }
-
   return (
     <section className="w-full max-w-6xl">
       <header>
@@ -135,64 +124,55 @@ export function AdminApplicationsPage() {
         </p>
       </header>
 
-      {applications.length === 0 ? (
-        <p className="mt-10 rounded-xl border border-slate-800 bg-slate-900 p-6 text-center text-slate-300" role="status">
-          No service applications found.
-        </p>
-      ) : (
-        <div className="mt-8 grid gap-4">
-          {applications.map((application) => (
-            <article
-              className="grid gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg sm:grid-cols-[1.4fr_1fr_1fr_auto] sm:items-center"
-              key={application.id}
-            >
-              <div>
-                <p className="text-sm text-slate-400">Customer</p>
-                <p className="mt-1 font-semibold text-white">
-                  {application.customer?.full_name ?? 'Name unavailable'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-slate-400">Plan</p>
-                <p className="mt-1 text-white">
-                  {application.plan?.name ?? 'Plan unavailable'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-slate-400">Submitted</p>
-                <p className="mt-1 text-white">
-                  {dateFormatter.format(new Date(application.submitted_at))}
-                </p>
-              </div>
-              <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
-                <StatusBadge status={application.status} />
-                <Link
-                  className="block font-medium text-sky-400 hover:text-sky-300 sm:mt-3"
-                  to={`/admin/applications/${encodeURIComponent(application.id)}`}
-                >
-                  Review
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+      <div className="mt-8">
+        {error ? (
+          <ErrorPanel message={error} title="Applications unavailable" />
+        ) : applications === null ? (
+          <PageSkeleton count={3} type="list" />
+        ) : applications.length === 0 ? (
+          <EmptyState
+            description="No service applications have been submitted by customers yet."
+            title="No service applications found"
+          />
+        ) : (
+          <div className="grid gap-4">
+            {applications.map((application) => (
+              <article
+                className="grid gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg sm:grid-cols-[1.4fr_1fr_1fr_auto] sm:items-center"
+                key={application.id}
+              >
+                <div>
+                  <p className="text-sm text-slate-400">Customer</p>
+                  <p className="mt-1 font-semibold text-white">
+                    {application.customer?.full_name ?? 'Name unavailable'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-400">Plan</p>
+                  <p className="mt-1 text-white">
+                    {application.plan?.name ?? 'Plan unavailable'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-400">Submitted</p>
+                  <p className="mt-1 text-white">
+                    {dateFormatter.format(new Date(application.submitted_at))}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
+                  <StatusBadge status={application.status} />
+                  <Link
+                    className="block font-medium text-sky-400 hover:text-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 sm:mt-3"
+                    to={`/admin/applications/${encodeURIComponent(application.id)}`}
+                  >
+                    Review &rarr;
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
-  )
-}
-
-function StatusBadge({ status }: { status: AdminApplication['status'] }) {
-  const styles = {
-    pending: 'border-amber-700 bg-amber-950/50 text-amber-200',
-    approved: 'border-emerald-700 bg-emerald-950/50 text-emerald-200',
-    rejected: 'border-red-800 bg-red-950/50 text-red-200',
-  }
-
-  return (
-    <span
-      className={`inline-block rounded-full border px-3 py-1 text-sm font-semibold capitalize ${styles[status]}`}
-    >
-      {status}
-    </span>
   )
 }

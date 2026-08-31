@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ErrorPanel } from '../../components/ui/ErrorPanel'
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { PageSkeleton } from '../../components/ui/PageSkeleton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 interface AdminApplicationDetail {
   id: string
@@ -24,6 +29,17 @@ interface AdminApplicationDetail {
     description: string | null
     billing_interval: 'monthly' | 'yearly'
   } | null
+}
+
+interface ReviewResult {
+  id: string
+  status: 'approved' | 'rejected'
+  reviewed_at: string
+  rejection_reason: string | null
+}
+
+interface AdminApplicationReviewPageProps {
+  applicationId: string
 }
 
 const dateFormatter = new Intl.DateTimeFormat('en-PH', {
@@ -88,29 +104,19 @@ function isAdminApplicationDetail(
   )
 }
 
-interface AdminApplicationReviewPageProps {
-  applicationId: string
-}
-
-interface ReviewResult {
-  id: string
-  status: 'approved' | 'rejected'
-  reviewed_at: string
-  rejection_reason: string | null
-}
-
 function isReviewResult(value: unknown): value is ReviewResult {
   if (typeof value !== 'object' || value === null) {
     return false
   }
 
-  const review = value as Record<string, unknown>
+  const application = value as Record<string, unknown>
 
   return (
-    typeof review.id === 'string' &&
-    (review.status === 'approved' || review.status === 'rejected') &&
-    typeof review.reviewed_at === 'string' &&
-    isNullableString(review.rejection_reason)
+    typeof application.id === 'string' &&
+    (application.status === 'approved' || application.status === 'rejected') &&
+    typeof application.reviewed_at === 'string' &&
+    (typeof application.rejection_reason === 'string' ||
+      application.rejection_reason === null)
   )
 }
 
@@ -118,10 +124,11 @@ export function AdminApplicationReviewPage({
   applicationId,
 }: AdminApplicationReviewPageProps) {
   const { session } = useAuth()
-  const [application, setApplication] =
-    useState<AdminApplicationDetail | null>()
-  const [error, setError] = useState<string | null>(null)
+  const [application, setApplication] = useState<
+    AdminApplicationDetail | null
+  >()
   const [rejectionReason, setRejectionReason] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [reviewError, setReviewError] = useState<string | null>(null)
   const [reviewSuccess, setReviewSuccess] = useState<string | null>(null)
   const [isReviewing, setIsReviewing] = useState(false)
@@ -171,7 +178,9 @@ export function AdminApplicationReviewPage({
           return
         }
 
-        setError('We could not load this application. Please try again later.')
+        setError(
+          'We could not load this application detail. Please try again later.',
+        )
       }
     }
 
@@ -180,14 +189,12 @@ export function AdminApplicationReviewPage({
   }, [applicationId, session])
 
   async function handleReview(status: 'approved' | 'rejected') {
-    if (!session || isReviewing) {
+    if (!session || !application || isReviewing) {
       return
     }
 
-    const trimmedReason = rejectionReason.trim()
-
-    if (status === 'rejected' && trimmedReason.length < 3) {
-      setReviewError('Enter a rejection reason of at least 3 characters.')
+    if (status === 'rejected' && !rejectionReason.trim()) {
+      setReviewError('Provide a reason before rejecting this application.')
       return
     }
 
@@ -197,30 +204,23 @@ export function AdminApplicationReviewPage({
 
     try {
       const response = await fetch(
-        `/api/admin/applications/${encodeURIComponent(applicationId)}/review`,
+        `/api/admin/applications/${encodeURIComponent(application.id)}/review`,
         {
-          method: 'PATCH',
+          method: 'POST',
           headers: {
             Authorization: `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(
-            status === 'rejected'
-              ? { status, rejection_reason: trimmedReason }
-              : { status },
-          ),
+          body: JSON.stringify({
+            status,
+            rejection_reason:
+              status === 'rejected' ? rejectionReason.trim() : null,
+          }),
         },
       )
 
-      if (response.status === 409) {
-        setReviewError(
-          'This application has already been reviewed. Refresh the page to see its latest status.',
-        )
-        return
-      }
-
       if (!response.ok) {
-        throw new Error('APPLICATION_REVIEW_FAILED')
+        throw new Error('ADMIN_APPLICATION_REVIEW_FAILED')
       }
 
       const result: unknown = await response.json()
@@ -261,29 +261,20 @@ export function AdminApplicationReviewPage({
   }
 
   if (error) {
-    return (
-      <p
-        className="w-full max-w-3xl rounded-xl border border-red-900 bg-red-950/50 p-5 text-center text-red-200"
-        role="alert"
-      >
-        {error}
-      </p>
-    )
+    return <ErrorPanel message={error} title="Application unavailable" />
   }
 
   if (application === undefined) {
-    return <p role="status">Loading application...</p>
+    return <PageSkeleton type="detail" />
   }
 
   if (application === null) {
     return (
-      <section className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
-        <h1 className="text-3xl font-bold text-white">Application not found</h1>
-        <p className="mt-3 text-slate-400">
-          This application does not exist or is no longer available.
-        </p>
-        <BackLink />
-      </section>
+      <EmptyState
+        action={<BackLink />}
+        description="This application does not exist or is no longer available."
+        title="Application not found"
+      />
     )
   }
 
@@ -319,12 +310,11 @@ export function AdminApplicationReviewPage({
         </DetailCard>
 
         <DetailCard title="Selected plan">
-          <Detail label="Plan" value={application.plan?.name} />
+          <Detail label="Plan name" value={application.plan?.name} />
           <Detail
-            label="Billing interval"
-            value={application.plan?.billing_interval}
+            label="Plan description"
+            value={application.plan?.description}
           />
-          <Detail label="Description" value={application.plan?.description} />
         </DetailCard>
 
         <DetailCard title="Installation">
@@ -334,8 +324,7 @@ export function AdminApplicationReviewPage({
           />
         </DetailCard>
 
-        <DetailCard title="Review status">
-          <Detail label="Current status" value={application.status} />
+        <DetailCard title="Review information">
           <Detail
             label="Reviewed"
             value={
@@ -384,20 +373,34 @@ export function AdminApplicationReviewPage({
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <button
-              className="flex-1 rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-emerald-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-emerald-950 transition hover:bg-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isReviewing}
               onClick={() => void handleReview('approved')}
               type="button"
             >
-              {isReviewing ? 'Saving decision...' : 'Approve application'}
+              {isReviewing ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  <span>Saving decision...</span>
+                </>
+              ) : (
+                <span>Approve application</span>
+              )}
             </button>
             <button
-              className="flex-1 rounded-lg bg-red-400 px-4 py-3 font-semibold text-red-950 hover:bg-red-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-400 px-4 py-3 font-semibold text-red-950 transition hover:bg-red-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isReviewing}
               onClick={() => void handleReview('rejected')}
               type="button"
             >
-              {isReviewing ? 'Saving decision...' : 'Reject application'}
+              {isReviewing ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  <span>Saving decision...</span>
+                </>
+              ) : (
+                <span>Reject application</span>
+              )}
             </button>
           </div>
         </section>
@@ -438,29 +441,13 @@ function Detail({ label, value }: { label: string; value?: string | null }) {
   )
 }
 
-function StatusBadge({ status }: { status: AdminApplicationDetail['status'] }) {
-  const styles = {
-    pending: 'border-amber-700 bg-amber-950/50 text-amber-200',
-    approved: 'border-emerald-700 bg-emerald-950/50 text-emerald-200',
-    rejected: 'border-red-800 bg-red-950/50 text-red-200',
-  }
-
-  return (
-    <span
-      className={`inline-block rounded-full border px-3 py-1 text-sm font-semibold capitalize ${styles[status]}`}
-    >
-      {status}
-    </span>
-  )
-}
-
 function BackLink() {
   return (
     <Link
-      className="inline-block font-medium text-sky-400 hover:text-sky-300"
+      className="inline-block font-medium text-sky-400 hover:text-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
       to="/admin/applications"
     >
-      Back to applications
+      &larr; Back to applications
     </Link>
   )
 }

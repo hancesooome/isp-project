@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 
 import { useAuth } from '../auth/auth-context'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ErrorPanel } from '../../components/ui/ErrorPanel'
+import { PageSkeleton } from '../../components/ui/PageSkeleton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 interface CustomerSubscription {
   id: string
@@ -149,18 +153,11 @@ export function CustomerDashboard() {
   }, [session])
 
   if (error) {
-    return (
-      <p
-        className="w-full max-w-2xl rounded-xl border border-red-900 bg-red-950/50 p-5 text-center text-red-200"
-        role="alert"
-      >
-        {error}
-      </p>
-    )
+    return <ErrorPanel message={error} title="Account unavailable" />
   }
 
   if (subscription === undefined || application === undefined) {
-    return <p role="status">Loading your account...</p>
+    return <PageSkeleton type="detail" />
   }
 
   return (
@@ -189,9 +186,7 @@ export function CustomerDashboard() {
                   </p>
                 ) : null}
               </div>
-              <span className="rounded-full border border-emerald-700 bg-emerald-950/50 px-3 py-1 text-sm font-semibold capitalize text-emerald-200">
-                {subscription.status.replace('_', ' ')}
-              </span>
+              <StatusBadge status={subscription.status} />
             </div>
           </article>
 
@@ -211,7 +206,6 @@ export function CustomerDashboard() {
       ) : (
         <ApplicationSummary application={application} />
       )}
-
     </section>
   )
 }
@@ -232,12 +226,11 @@ function ApplicationSummary({
 }) {
   if (!application) {
     return (
-      <article className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
-        <h2 className="text-xl font-bold text-white">No internet service yet</h2>
-        <p className="mt-2 text-slate-400">
-          Choose a plan and submit an application to get started.
-        </p>
-      </article>
+      <EmptyState
+        className="mt-8"
+        description="Choose a plan and submit an application to get started with internet service."
+        title="No internet service yet"
+      />
     )
   }
 
@@ -254,9 +247,7 @@ function ApplicationSummary({
         <h2 className="text-xl font-bold text-white">
           {application.plan?.name ?? 'Selected plan unavailable'}
         </h2>
-        <span className="rounded-full border border-slate-700 px-3 py-1 text-sm font-semibold capitalize text-slate-200">
-          {application.status}
-        </span>
+        <StatusBadge status={application.status} />
       </div>
       <p className="mt-3 text-slate-400">{messages[application.status]}</p>
     </article>

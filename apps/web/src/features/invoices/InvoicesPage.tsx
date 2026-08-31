@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ErrorPanel } from '../../components/ui/ErrorPanel'
+import { PageSkeleton } from '../../components/ui/PageSkeleton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 interface Invoice {
   id: string
@@ -21,12 +25,6 @@ const priceFormatter = new Intl.NumberFormat('en-US', {
 const dateFormatter = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',
 })
-
-const statusStyles = {
-  open: 'border-amber-700 bg-amber-950/50 text-amber-200',
-  paid: 'border-emerald-700 bg-emerald-950/50 text-emerald-200',
-  overdue: 'border-red-800 bg-red-950/50 text-red-200',
-}
 
 function isInvoice(value: unknown): value is Invoice {
   if (typeof value !== 'object' || value === null) {
@@ -113,71 +111,60 @@ export function InvoicesPage() {
         </p>
       </header>
 
-      {error ? (
-        <p
-          className="mt-8 rounded-xl border border-red-900 bg-red-950/50 p-5 text-center text-red-200"
-          role="alert"
-        >
-          {error}
-        </p>
-      ) : invoices === null ? (
-        <p className="mt-8 text-slate-300" role="status">
-          Loading your invoices...
-        </p>
-      ) : invoices.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
-          <h2 className="text-xl font-bold text-white">No invoices yet</h2>
-          <p className="mt-2 text-slate-400">
-            Your invoices will appear here when they are created.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-8 space-y-4">
-          {invoices.map((invoice) => (
-            <article
-              className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl sm:p-6"
-              key={invoice.id}
-            >
-              <div className="grid gap-4 sm:grid-cols-4 sm:items-center">
-                <div>
-                  <p className="text-sm text-slate-400">Invoice</p>
-                  <p className="mt-1 font-mono font-semibold text-white">
-                    #{invoice.id.slice(0, 8).toUpperCase()}
-                  </p>
+      <div className="mt-8">
+        {error ? (
+          <ErrorPanel message={error} title="Invoices unavailable" />
+        ) : invoices === null ? (
+          <PageSkeleton count={3} type="list" />
+        ) : invoices.length === 0 ? (
+          <EmptyState
+            description="Your invoices will appear here when they are generated."
+            title="No invoices yet"
+          />
+        ) : (
+          <div className="space-y-4">
+            {invoices.map((invoice) => (
+              <article
+                className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl sm:p-6"
+                key={invoice.id}
+              >
+                <div className="grid gap-4 sm:grid-cols-4 sm:items-center">
+                  <div>
+                    <p className="text-sm text-slate-400">Invoice</p>
+                    <p className="mt-1 font-mono font-semibold text-white">
+                      #{invoice.id.slice(0, 8).toUpperCase()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-400">Amount</p>
+                    <p className="mt-1 font-semibold text-white">
+                      {priceFormatter.format(invoice.amount_cents / 100)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-400">Due date</p>
+                    <p className="mt-1 text-white">
+                      {dateFormatter.format(new Date(`${invoice.due_date}T00:00:00`))}
+                    </p>
+                  </div>
+                  <div className="sm:text-right">
+                    <StatusBadge status={invoice.status} />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-slate-400">Amount</p>
-                  <p className="mt-1 font-semibold text-white">
-                    {priceFormatter.format(invoice.amount_cents / 100)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-400">Due date</p>
-                  <p className="mt-1 text-white">
-                    {dateFormatter.format(new Date(`${invoice.due_date}T00:00:00`))}
-                  </p>
-                </div>
-                <div className="sm:text-right">
-                  <span
-                    className={`inline-block rounded-full border px-3 py-1 text-sm font-semibold capitalize ${statusStyles[invoice.status]}`}
-                  >
-                    {invoice.status}
-                  </span>
-                </div>
-              </div>
 
-              <div className="mt-4 border-t border-slate-800 pt-4">
-                <Link
-                  className="font-medium text-sky-400 hover:text-sky-300"
-                  to={`/account/invoices/${encodeURIComponent(invoice.id)}`}
-                >
-                  View details
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+                <div className="mt-4 border-t border-slate-800 pt-4">
+                  <Link
+                    className="font-medium text-sky-400 hover:text-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+                    to={`/account/invoices/${encodeURIComponent(invoice.id)}`}
+                  >
+                    View details &rarr;
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   )
 }

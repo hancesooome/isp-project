@@ -4,6 +4,7 @@ import type { ZodError } from 'zod'
 import { getLoginErrorMessage } from './login-error-message'
 import { loginSchema, type LoginFormValues } from './login-schema'
 import { loginWithPassword } from './login'
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 
 type FieldErrors = Partial<Record<keyof LoginFormValues, string>>
 
@@ -143,11 +144,18 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
         ) : null}
 
         <button
-          className="w-full rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isSubmitting}
           type="submit"
         >
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
+          {isSubmitting ? (
+            <>
+              <LoadingSpinner size="sm" />
+              <span>Signing in...</span>
+            </>
+          ) : (
+            <span>Sign in</span>
+          )}
         </button>
 
         <p className="text-center text-sm text-slate-400">

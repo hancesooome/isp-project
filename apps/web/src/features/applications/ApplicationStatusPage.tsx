@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ErrorPanel } from '../../components/ui/ErrorPanel'
+import { PageSkeleton } from '../../components/ui/PageSkeleton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 interface CustomerApplication {
   id: string
@@ -92,41 +96,28 @@ export function ApplicationStatusPage() {
   }, [session])
 
   if (error) {
-    return (
-      <p
-        className="w-full max-w-xl rounded-xl border border-red-900 bg-red-950/50 p-5 text-center text-red-200"
-        role="alert"
-      >
-        {error}
-      </p>
-    )
+    return <ErrorPanel message={error} title="Application unavailable" />
   }
 
   if (application === undefined) {
-    return <p role="status">Loading your application...</p>
+    return <PageSkeleton type="detail" />
   }
 
   if (application === null) {
     return (
-      <section className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
-        <h1 className="text-3xl font-bold text-white">No application yet</h1>
-        <p className="mt-3 text-slate-400">
-          Choose a plan when you are ready to apply for internet service.
-        </p>
-        <Link
-          className="mt-6 inline-block rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950 hover:bg-sky-400"
-          to="/plans"
-        >
-          View plans
-        </Link>
-      </section>
+      <EmptyState
+        action={
+          <Link
+            className="inline-block rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+            to="/plans"
+          >
+            View plans
+          </Link>
+        }
+        description="Choose a plan when you are ready to apply for internet service."
+        title="No application yet"
+      />
     )
-  }
-
-  const statusStyles = {
-    pending: 'border-amber-700 bg-amber-950/50 text-amber-200',
-    approved: 'border-emerald-700 bg-emerald-950/50 text-emerald-200',
-    rejected: 'border-red-800 bg-red-950/50 text-red-200',
   }
 
   return (
@@ -141,11 +132,9 @@ export function ApplicationStatusPage() {
       <div className="mt-8 space-y-5">
         <div>
           <p className="text-sm text-slate-400">Status</p>
-          <p
-            className={`mt-2 inline-block rounded-full border px-3 py-1 text-sm font-semibold capitalize ${statusStyles[application.status]}`}
-          >
-            {application.status}
-          </p>
+          <div className="mt-2">
+            <StatusBadge status={application.status} />
+          </div>
         </div>
         <div>
           <p className="text-sm text-slate-400">Selected plan</p>

@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 
 import { useAuth } from './auth-context'
 import { getSafeRedirect } from './redirect'
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -13,7 +14,14 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation()
 
   if (isLoading) {
-    return <p role="status">Loading your session...</p>
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6 py-12" role="status">
+        <div className="flex items-center gap-3 text-slate-300">
+          <LoadingSpinner className="text-sky-400" size="md" />
+          <span className="text-sm font-medium">Loading session...</span>
+        </div>
+      </div>
+    )
   }
 
   if (!session) {

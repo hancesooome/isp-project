@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ErrorPanel } from '../../components/ui/ErrorPanel'
+import { PageSkeleton } from '../../components/ui/PageSkeleton'
 
 interface Plan {
   id: string
@@ -81,10 +84,10 @@ export function PlansPage() {
     <section className="w-full max-w-6xl">
       <header className="text-center">
         <Link
-          className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
+          className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
           to="/"
         >
-          ← Back to home
+          &larr; Back to home
         </Link>
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
           Internet plans
@@ -96,29 +99,24 @@ export function PlansPage() {
           Compare our currently available internet service plans.
         </p>
         <Link
-          className="mt-5 inline-block font-medium text-sky-400 hover:text-sky-300"
+          className="mt-5 inline-block font-medium text-sky-400 hover:text-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
           to="/availability"
         >
           Check service availability
         </Link>
       </header>
 
-      {error ? (
-        <p
-          className="mx-auto mt-10 max-w-xl rounded-xl border border-red-900 bg-red-950/50 p-5 text-center text-red-200"
-          role="alert"
-        >
-          {error}
-        </p>
-      ) : plans === null ? (
-        <p className="mt-10 text-center text-slate-300" role="status">
-          Loading plans...
-        </p>
-      ) : plans.length === 0 ? (
-        <p className="mt-10 text-center text-slate-300" role="status">
-          No plans are currently available.
-        </p>
-      ) : (
+      <div className="mt-10">
+        {error ? (
+          <ErrorPanel message={error} title="Could not load plans" />
+        ) : plans === null ? (
+          <PageSkeleton count={3} type="cards" />
+        ) : plans.length === 0 ? (
+          <EmptyState
+            description="There are currently no active internet plans available for selection."
+            title="No plans available"
+          />
+        ) : (
         <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {plans.map((plan) => (
             <article
@@ -145,6 +143,7 @@ export function PlansPage() {
           ))}
         </div>
       )}
+      </div>
     </section>
   )
 }

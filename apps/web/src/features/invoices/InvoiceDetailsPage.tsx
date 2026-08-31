@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ErrorPanel } from '../../components/ui/ErrorPanel'
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { PageSkeleton } from '../../components/ui/PageSkeleton'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 
 interface Invoice {
   id: string
@@ -25,12 +30,6 @@ const priceFormatter = new Intl.NumberFormat('en-US', {
 const dateFormatter = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',
 })
-
-const statusStyles = {
-  open: 'border-amber-700 bg-amber-950/50 text-amber-200',
-  paid: 'border-emerald-700 bg-emerald-950/50 text-emerald-200',
-  overdue: 'border-red-800 bg-red-950/50 text-red-200',
-}
 
 function isInvoice(value: unknown): value is Invoice {
   if (typeof value !== 'object' || value === null) return false
@@ -152,43 +151,53 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
   }
 
   if (error) {
-    return (
-      <p className="w-full max-w-2xl rounded-xl border border-red-900 bg-red-950/50 p-5 text-center text-red-200" role="alert">
-        {error}
-      </p>
-    )
+    return <ErrorPanel message={error} title="Invoice unavailable" />
   }
 
-  if (invoice === undefined) return <p role="status">Loading invoice...</p>
+  if (invoice === undefined) {
+    return <PageSkeleton type="detail" />
+  }
 
   if (invoice === null) {
     return (
-      <section className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
-        <h1 className="text-3xl font-bold text-white">Invoice not found</h1>
-        <p className="mt-3 text-slate-400">
-          This invoice does not exist or is not available to your account.
-        </p>
-        <Link className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300" to="/account/invoices">
-          Back to invoices
-        </Link>
-      </section>
+      <EmptyState
+        action={
+          <Link
+            className="inline-block font-medium text-sky-400 hover:text-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+            to="/account/invoices"
+          >
+            &larr; Back to invoices
+          </Link>
+        }
+        description="This invoice does not exist or is not available to your account."
+        title="Invoice not found"
+      />
     )
   }
 
   return (
     <section className="w-full max-w-2xl">
-      <Link className="text-sm font-medium text-sky-400 hover:text-sky-300" to="/account/invoices">
-        Back to invoices
+      <Link
+        className="text-sm font-medium text-sky-400 hover:text-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+        to="/account/invoices"
+      >
+        &larr; Back to invoices
       </Link>
 
       <article className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
         {checkoutOutcome === 'canceled' ? (
-          <p className="mb-6 rounded-lg border border-amber-800 bg-amber-950/50 p-4 text-sm text-amber-200" role="status">
+          <p
+            className="mb-6 rounded-lg border border-amber-800 bg-amber-950/50 p-4 text-sm text-amber-200"
+            role="status"
+          >
             Payment was canceled. Your invoice is still unpaid, and you can try
             again when you are ready.
           </p>
         ) : checkoutOutcome === 'success' && invoice.status !== 'paid' ? (
-          <p className="mb-6 rounded-lg border border-sky-800 bg-sky-950/50 p-4 text-sm text-sky-200" role="status">
+          <p
+            className="mb-6 rounded-lg border border-sky-800 bg-sky-950/50 p-4 text-sm text-sky-200"
+            role="status"
+          >
             Your payment is being confirmed. This invoice will update after
             Stripe confirms the payment.
           </p>
@@ -203,9 +212,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
               #{invoice.id.slice(0, 8).toUpperCase()}
             </h1>
           </div>
-          <span className={`rounded-full border px-3 py-1 text-sm font-semibold capitalize ${statusStyles[invoice.status]}`}>
-            {invoice.status}
-          </span>
+          <StatusBadge status={invoice.status} />
         </div>
 
         <dl className="mt-8 grid gap-6 sm:grid-cols-2">
@@ -228,12 +235,19 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
               </p>
             ) : null}
             <button
-              className="w-full rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isRedirecting}
               onClick={() => void handlePayNow()}
               type="button"
             >
-              {isRedirecting ? 'Opening secure checkout...' : 'Pay now'}
+              {isRedirecting ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  <span>Opening secure checkout...</span>
+                </>
+              ) : (
+                <span>Pay now</span>
+              )}
             </button>
             <p className="mt-3 text-center text-sm text-slate-400">
               You will be redirected to Stripe&apos;s secure checkout.

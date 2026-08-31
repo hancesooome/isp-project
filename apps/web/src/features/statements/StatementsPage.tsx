@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 
 import { useAuth } from '../auth/auth-context'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ErrorPanel } from '../../components/ui/ErrorPanel'
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { PageSkeleton } from '../../components/ui/PageSkeleton'
 
 interface Statement {
   id: string
@@ -142,58 +146,62 @@ export function StatementsPage() {
         </p>
       </header>
 
-      {error ? (
-        <p className="mt-8 rounded-xl border border-red-900 bg-red-950/50 p-5 text-center text-red-200" role="alert">
-          {error}
-        </p>
-      ) : statements === null ? (
-        <p className="mt-8 text-slate-300" role="status">
-          Loading your statements...
-        </p>
-      ) : statements.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
-          <h2 className="text-xl font-bold text-white">No statements yet</h2>
-          <p className="mt-2 text-slate-400">
-            Your Statements of Account will appear here when they are generated.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-8 space-y-4">
-          {downloadError ? (
-            <p className="rounded-xl border border-red-900 bg-red-950/50 p-4 text-red-200" role="alert">
-              {downloadError}
-            </p>
-          ) : null}
+      <div className="mt-8">
+        {error ? (
+          <ErrorPanel message={error} title="Statements unavailable" />
+        ) : statements === null ? (
+          <PageSkeleton count={3} type="list" />
+        ) : statements.length === 0 ? (
+          <EmptyState
+            description="Your Statements of Account will appear here when they are generated."
+            title="No statements yet"
+          />
+        ) : (
+          <div className="space-y-4">
+            {downloadError ? (
+              <ErrorPanel message={downloadError} title="Download failed" />
+            ) : null}
 
-          {statements.map((statement) => (
-            <article className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl sm:p-6" key={statement.id}>
-              <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-center">
-                <div>
-                  <p className="text-sm text-slate-400">Billing period</p>
-                  <p className="mt-1 font-semibold text-white">
-                    {formatDatabaseDate(statement.billing_period_start)} –{' '}
-                    {formatDatabaseDate(statement.billing_period_end)}
-                  </p>
+            {statements.map((statement) => (
+              <article
+                className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl sm:p-6"
+                key={statement.id}
+              >
+                <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-center">
+                  <div>
+                    <p className="text-sm text-slate-400">Billing period</p>
+                    <p className="mt-1 font-semibold text-white">
+                      {formatDatabaseDate(statement.billing_period_start)} &ndash;{' '}
+                      {formatDatabaseDate(statement.billing_period_end)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-400">Generated</p>
+                    <p className="mt-1 text-white">
+                      {dateFormatter.format(new Date(statement.created_at))}
+                    </p>
+                  </div>
+                  <button
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={downloadingId !== null}
+                    onClick={() => void downloadStatement(statement)}
+                    type="button"
+                  >
+                    {downloadingId === statement.id ? (
+                      <>
+                        <LoadingSpinner size="sm" />
+                        <span>Downloading...</span>
+                      </>
+                    ) : (
+                      <span>Download PDF</span>
+                    )}
+                  </button>
                 </div>
-                <div>
-                  <p className="text-sm text-slate-400">Generated</p>
-                  <p className="mt-1 text-white">
-                    {dateFormatter.format(new Date(statement.created_at))}
-                  </p>
-                </div>
-                <button
-                  className="rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950 hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={downloadingId !== null}
-                  onClick={() => void downloadStatement(statement)}
-                  type="button"
-                >
-                  {downloadingId === statement.id ? 'Downloading...' : 'Download PDF'}
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   )
 }

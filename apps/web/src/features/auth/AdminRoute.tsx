@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useAuth } from './auth-context'
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 
 interface AdminRouteProps {
   children: ReactNode
@@ -54,8 +55,11 @@ export function AdminRoute({ children }: AdminRouteProps) {
 
   if (access === 'checking') {
     return (
-      <div className="flex min-h-screen items-center justify-center px-6 py-12">
-        <p role="status">Checking admin access...</p>
+      <div className="flex min-h-screen items-center justify-center px-6 py-12" role="status">
+        <div className="flex items-center gap-3 text-slate-300">
+          <LoadingSpinner className="text-amber-400" size="md" />
+          <span className="text-sm font-medium">Checking admin access...</span>
+        </div>
       </div>
     )
   }

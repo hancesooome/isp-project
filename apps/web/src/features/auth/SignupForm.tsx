@@ -5,6 +5,7 @@ import {
   signupSchema,
   type SignupFormValues,
 } from './signup-schema'
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { signUpCustomer } from './signup'
 
 type FieldErrors = Partial<Record<keyof SignupFormValues, string>>
@@ -163,11 +164,18 @@ export function SignupForm() {
         ) : null}
 
         <button
-          className="w-full rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isSubmitting}
           type="submit"
         >
-          {isSubmitting ? 'Creating account…' : 'Create account'}
+          {isSubmitting ? (
+            <>
+              <LoadingSpinner size="sm" />
+              <span>Creating account...</span>
+            </>
+          ) : (
+            <span>Create account</span>
+          )}
         </button>
 
         <p className="text-center text-sm text-slate-400">

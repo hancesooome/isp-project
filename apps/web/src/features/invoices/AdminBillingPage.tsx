@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from 'react'
 
 import { useAuth } from '../auth/auth-context'
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 
 interface AdminSubscription {
   id: string
@@ -240,11 +241,18 @@ export function AdminBillingPage() {
         {success ? <p className="text-sm text-emerald-300" role="status">{success}</p> : null}
 
         <button
-          className="w-full rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isSubmitting || subscriptions === null || subscriptions.length === 0 || loadError !== null}
           type="submit"
         >
-          {isSubmitting ? 'Creating invoice...' : 'Create invoice'}
+          {isSubmitting ? (
+            <>
+              <LoadingSpinner size="sm" />
+              <span>Creating invoice...</span>
+            </>
+          ) : (
+            <span>Create invoice</span>
+          )}
         </button>
       </form>
     </section>
