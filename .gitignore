@@ -29,3 +29,4 @@ supabase/migrations/202608300003_create_invoices.sql
 supabase/migrations/202608300004_create_payments.sql
 supabase/migrations/202608300005_record_stripe_payment.sql
 supabase/migrations/202608300006_record_failed_stripe_payment.sql
+supabase/migrations/202608310001_require_pending_application_approval.sql

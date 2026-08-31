@@ -2,6 +2,7 @@ import express from 'express'
 import { z } from 'zod'
 
 import { env } from './config/env.js'
+import { sendEmail } from './lib/email.js'
 import { supabase } from './lib/supabase.js'
 import { stripe } from './lib/stripe.js'
 
@@ -159,6 +160,55 @@ function isServiceAvailable(address: string): boolean {
   return env.serviceAreaKeywords.some((area) =>
     normalizedAddress.includes(area),
   )
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
+async function sendApplicationStatusEmail(
+  userId: string,
+  status: 'approved' | 'rejected',
+  rejectionReason: string | null,
+): Promise<void> {
+  const { data, error } = await supabase.auth.admin.getUserById(userId)
+  const email = data.user?.email
+
+  if (error || !email) {
+    console.error('Failed to load application customer email', {
+      code: error?.code ?? 'EMAIL_NOT_FOUND',
+      userId,
+    })
+    return
+  }
+
+  const isApproved = status === 'approved'
+  const reasonText =
+    !isApproved && rejectionReason
+      ? `\n\nReason: ${rejectionReason}`
+      : ''
+  const reasonHtml =
+    !isApproved && rejectionReason
+      ? `<p><strong>Reason:</strong> ${escapeHtml(rejectionReason)}</p>`
+      : ''
+
+  await sendEmail({
+    to: email,
+    subject: isApproved
+      ? 'Your service application was approved'
+      : 'Update on your service application',
+    text: isApproved
+      ? 'Your ISP service application has been approved.'
+      : `Your ISP service application was not approved.${reasonText}`,
+    html: isApproved
+      ? '<p>Your ISP service application has been approved.</p>'
+      : `<p>Your ISP service application was not approved.</p>${reasonHtml}`,
+  })
 }
 
 function isValidDatabaseDate(value: string): boolean {
@@ -1150,6 +1200,23 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
     return
   }
 
+  const { data: applicationOwner, error: ownerError } = await supabase
+    .from('applications')
+    .select('user_id')
+    .eq('id', idResult.data)
+    .maybeSingle<{ user_id: string }>()
+
+  if (ownerError) {
+    console.error('Failed to load application owner', { code: ownerError.code })
+    response.status(500).json({ error: 'Unable to review application' })
+    return
+  }
+
+  if (!applicationOwner) {
+    response.status(404).json({ error: 'Application not found' })
+    return
+  }
+
   if (reviewResult.data.status === 'approved') {
     const { data: application, error } = await supabase
       .rpc('approve_application', {
@@ -1180,6 +1247,12 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
       response.status(500).json({ error: 'Unable to review application' })
       return
     }
+
+    await sendApplicationStatusEmail(
+      applicationOwner.user_id,
+      'approved',
+      null,
+    )
 
     response.status(200).json({ application })
     return
@@ -1235,6 +1308,12 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
     response.status(409).json({ error: 'Application has already been reviewed' })
     return
   }
+
+  await sendApplicationStatusEmail(
+    applicationOwner.user_id,
+    'rejected',
+    application.rejection_reason,
+  )
 
   response.status(200).json({ application })
 })
