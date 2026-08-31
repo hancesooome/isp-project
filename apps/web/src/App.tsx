@@ -38,7 +38,7 @@ const uuidPattern =
 export function App() {
   return (
     <Routes>
-      <Route element={<CentredPage><HomePage /></CentredPage>} path="/" />
+      <Route element={<HomePage />} path="/" />
       <Route element={<CentredPage><LoginPage /></CentredPage>} path="/login" />
       <Route element={<CentredPage><SignupForm /></CentredPage>} path="/signup" />
       <Route element={<CentredPage><PasswordResetPlaceholder /></CentredPage>} path="/forgot-password" />

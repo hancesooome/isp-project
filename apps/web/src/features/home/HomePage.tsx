@@ -1,247 +1,179 @@
-const journeySteps = [
-  {
-    number: '01',
-    title: 'Check your address',
-    description: 'Confirm that service is available at your installation address.',
-  },
-  {
-    number: '02',
-    title: 'Choose a plan',
-    description: 'Compare the internet plans that are currently available.',
-  },
-  {
-    number: '03',
-    title: 'Apply online',
-    description: 'Send your service application and follow its review status.',
-  },
-  {
-    number: '04',
-    title: 'Manage your account',
-    description: 'Review invoices, make secure payments, and download statements.',
-  },
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+
+interface Plan {
+  id: string
+  name: string
+  description: string | null
+  price_cents: number
+  billing_interval: 'monthly' | 'yearly'
+}
+
+const benefits = [
+  ['01', 'Start with your address', 'Check service availability before choosing the plan that fits your home.'],
+  ['02', 'Apply with clarity', 'Select an active plan, submit your application online, and follow its status.'],
+  ['03', 'Manage service online', 'Access your plan, invoices, payments, and available statements from one account.'],
 ]
 
-const platformFeatures = [
-  {
-    title: 'Online applications',
-    description:
-      'Choose an available plan, submit your details, and follow the review from your account.',
-  },
-  {
-    title: 'Clear account access',
-    description:
-      'See your current service plan and application status in one customer portal.',
-  },
-  {
-    title: 'Secure online billing',
-    description:
-      'Review invoice details and use Stripe Checkout when an invoice is ready for payment.',
-  },
-  {
-    title: 'Monthly statements',
-    description:
-      'Access your available Statements of Account as private downloadable PDF files.',
-  },
-]
+const priceFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 0,
+})
 
-const focusClass =
-  'rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950'
+const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
+
+function isPlan(value: unknown): value is Plan {
+  if (typeof value !== 'object' || value === null) return false
+  const plan = value as Record<string, unknown>
+  return typeof plan.id === 'string' && typeof plan.name === 'string' &&
+    (typeof plan.description === 'string' || plan.description === null) &&
+    typeof plan.price_cents === 'number' &&
+    (plan.billing_interval === 'monthly' || plan.billing_interval === 'yearly')
+}
 
 export function HomePage() {
-  return (
-    <div className="w-full max-w-7xl overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 shadow-2xl shadow-sky-950/20">
-      <header className="border-b border-slate-800/80 px-5 py-5 sm:px-8 lg:px-10">
-        <div className="flex flex-wrap items-center justify-between gap-5">
-          <Link
-            className={`flex items-center gap-3 font-bold text-white ${focusClass}`}
-            to="/"
-          >
-            <span
-              aria-hidden="true"
-              className="grid size-10 place-items-center rounded-xl bg-sky-400 font-black text-slate-950"
-            >
-              ISP
-            </span>
-            <span>ISP Platform</span>
-          </Link>
+  const [plans, setPlans] = useState<Plan[] | null>(null)
+  const [plansError, setPlansError] = useState(false)
 
-          <nav
-            aria-label="Public navigation"
-            className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm font-medium"
-          >
-            <Link className={`text-white ${focusClass}`} to="/">
-              Home
-            </Link>
-            <Link
-              className={`text-slate-300 transition hover:text-white ${focusClass}`}
-              to="/plans"
-            >
-              Plans
-            </Link>
-            <Link
-              className={`text-slate-300 transition hover:text-white ${focusClass}`}
-              to="/availability"
-            >
-              Check availability
-            </Link>
-            <Link
-              className={`text-slate-300 transition hover:text-white ${focusClass}`}
-              to="/login"
-            >
-              Log in
-            </Link>
-            <Link
-              className={`rounded-lg bg-sky-400 px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-sky-300 ${focusClass}`}
-              to="/signup"
-            >
-              Sign up
-            </Link>
+  useEffect(() => {
+    const controller = new AbortController()
+    async function loadPlans() {
+      try {
+        const response = await fetch('/api/plans', { signal: controller.signal })
+        if (!response.ok) throw new Error('PLANS_REQUEST_FAILED')
+        const result: unknown = await response.json()
+        if (typeof result !== 'object' || result === null || !('plans' in result) ||
+          !Array.isArray(result.plans) || !result.plans.every(isPlan)) {
+          throw new Error('INVALID_PLANS_RESPONSE')
+        }
+        setPlans(result.plans)
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return
+        setPlansError(true)
+      }
+    }
+    void loadPlans()
+    return () => controller.abort()
+  }, [])
+
+  return (
+    <div className="min-h-screen overflow-hidden bg-[#f7f8fb] text-[#111318]">
+      <header className="absolute inset-x-0 top-0 z-20 px-4 pt-4 sm:px-6 lg:px-8">
+        <div className="public-glass mx-auto flex max-w-7xl items-center justify-between rounded-[14px] px-4 py-3 sm:px-5">
+          <Brand />
+          <nav aria-label="Public navigation" className="hidden items-center gap-7 text-sm font-medium text-slate-700 md:flex">
+            <Link className={`transition hover:text-slate-950 ${focusClass}`} to="/plans">Plans</Link>
+            <Link className={`transition hover:text-slate-950 ${focusClass}`} to="/availability">Coverage</Link>
+            <a className={`transition hover:text-slate-950 ${focusClass}`} href="#why-isp">Why ISP</a>
           </nav>
+          <div className="hidden items-center gap-2 md:flex">
+            <Link className={`rounded-[10px] px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-white/70 ${focusClass}`} to="/login">Log in</Link>
+            <Link className={`rounded-[10px] border border-slate-900/10 bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 ${focusClass}`} to="/signup">Sign up</Link>
+          </div>
+          <details className="public-mobile-menu relative md:hidden">
+            <summary className={`grid size-11 cursor-pointer list-none place-items-center rounded-[10px] border border-slate-900/10 bg-white/70 text-slate-950 ${focusClass}`}>
+              <span className="sr-only">Open navigation</span>
+              <span aria-hidden="true" className="space-y-1.5"><span className="block h-px w-5 bg-current" /><span className="block h-px w-5 bg-current" /><span className="block h-px w-5 bg-current" /></span>
+            </summary>
+            <nav aria-label="Mobile public navigation" className="public-glass absolute right-0 mt-2 grid w-56 gap-1 rounded-[14px] p-2 text-sm font-medium shadow-xl">
+              <Link className={`rounded-lg px-3 py-3 hover:bg-white/80 ${focusClass}`} to="/plans">Plans</Link>
+              <Link className={`rounded-lg px-3 py-3 hover:bg-white/80 ${focusClass}`} to="/availability">Coverage</Link>
+              <a className={`rounded-lg px-3 py-3 hover:bg-white/80 ${focusClass}`} href="#why-isp">Why ISP</a>
+              <div className="my-1 border-t border-slate-900/10" />
+              <Link className={`rounded-lg px-3 py-3 hover:bg-white/80 ${focusClass}`} to="/login">Log in</Link>
+              <Link className={`rounded-lg bg-slate-950 px-3 py-3 text-center text-white ${focusClass}`} to="/signup">Sign up</Link>
+            </nav>
+          </details>
         </div>
       </header>
 
-      <div className="relative isolate overflow-hidden px-5 py-16 sm:px-8 sm:py-24 lg:px-10 lg:py-28">
-        <div
-          aria-hidden="true"
-          className="absolute -right-24 -top-32 -z-10 size-96 rounded-full bg-sky-500/15 blur-3xl"
-        />
-        <div
-          aria-hidden="true"
-          className="absolute -bottom-40 left-1/4 -z-10 size-80 rounded-full bg-cyan-400/10 blur-3xl"
-        />
-
-        <section className="mx-auto max-w-4xl text-center" aria-labelledby="home-heading">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-400">
-            Internet service made clearer
-          </p>
-          <h1
-            className="mt-5 text-4xl font-black tracking-tight text-white sm:text-6xl lg:text-7xl"
-            id="home-heading"
-          >
-            Get connected. Stay in control.
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">
-            Check service availability, compare active plans, apply online, and
-            manage your ISP account from one secure portal.
-          </p>
-          <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link
-              className={`rounded-xl bg-sky-400 px-6 py-3.5 font-bold text-slate-950 transition hover:bg-sky-300 ${focusClass}`}
-              to="/availability"
-            >
-              Check your address
-            </Link>
-            <Link
-              className={`rounded-xl border border-slate-700 bg-slate-900/70 px-6 py-3.5 font-bold text-white transition hover:border-slate-500 hover:bg-slate-800 ${focusClass}`}
-              to="/plans"
-            >
-              View internet plans
-            </Link>
+      <main>
+        <section className="public-hero-grid relative min-h-[760px] border-b border-slate-900/10 px-5 pb-16 pt-32 sm:px-8 sm:pt-40 lg:min-h-[800px] lg:px-10">
+          <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+            <div className="relative z-10 max-w-3xl">
+              <p className="text-xs font-semibold tracking-[0.16em] text-slate-500 uppercase">Connected living, made simple</p>
+              <h1 className="mt-5 max-w-3xl text-[2.75rem] leading-[0.98] font-semibold tracking-[-0.055em] text-slate-950 sm:text-6xl lg:text-7xl">
+                Internet built for <span className="public-accent-text">everything that matters.</span>
+              </h1>
+              <p className="mt-7 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">Find available service, choose an active plan, and manage your ISP account through one clear online experience.</p>
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <Link className={`public-primary-button inline-flex min-h-12 items-center justify-center rounded-[10px] px-6 text-sm font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:-translate-y-0.5 ${focusClass}`} to="/availability">Check availability <span aria-hidden="true" className="ml-2">→</span></Link>
+                <Link className={`inline-flex min-h-12 items-center justify-center rounded-[10px] border border-slate-900/12 bg-white/75 px-6 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-white ${focusClass}`} to="/plans">View plans</Link>
+              </div>
+              <p className="mt-4 text-sm text-slate-500">Start with the address where you want service installed.</p>
+            </div>
+            <div aria-hidden="true" className="public-signal-art relative mx-auto h-[320px] w-full max-w-xl sm:h-[400px] lg:h-[520px]">
+              <div className="public-router"><span className="public-router-light" /></div>
+              <span className="public-signal public-signal-one" /><span className="public-signal public-signal-two" /><span className="public-signal public-signal-three" />
+              <div className="public-service-note"><span className="public-service-dot" /><span><strong>Ready when you are</strong><small>Check your service address online</small></span></div>
+            </div>
           </div>
         </section>
-      </div>
 
-      <section
-        aria-labelledby="journey-heading"
-        className="border-y border-slate-800 bg-slate-900/60 px-5 py-16 sm:px-8 lg:px-10"
-      >
-        <div className="mx-auto max-w-6xl">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
-              How it works
-            </p>
-            <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl" id="journey-heading">
-              From address check to account access
-            </h2>
-            <p className="mt-3 leading-7 text-slate-400">
-              A straightforward path for choosing service and managing it online.
-            </p>
+        <section className="bg-white px-5 py-20 sm:px-8 sm:py-24 lg:px-10" id="why-isp">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-8 border-b border-slate-900/10 pb-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+              <div><p className="text-xs font-semibold tracking-[0.16em] text-slate-500 uppercase">A clearer way to connect</p><h2 className="mt-4 max-w-lg text-3xl leading-tight font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl">From availability check to account access.</h2></div>
+              <p className="max-w-2xl text-base leading-7 text-slate-600 lg:justify-self-end">The service journey stays straightforward: confirm your location, review real plan options, apply, and return to your account when you need it.</p>
+            </div>
+            <ol className="grid md:grid-cols-3">
+              {benefits.map(([number, title, description]) => (
+                <li className="border-b border-slate-900/10 py-9 md:border-r md:border-b-0 md:px-8 md:first:pl-0 md:last:border-r-0 md:last:pr-0" key={number}>
+                  <span className="text-sm font-semibold text-blue-600">{number}</span><h3 className="mt-5 text-xl font-semibold tracking-[-0.02em] text-slate-950">{title}</h3><p className="mt-3 max-w-sm leading-7 text-slate-600">{description}</p>
+                </li>
+              ))}
+            </ol>
           </div>
+        </section>
 
-          <ol className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {journeySteps.map((step) => (
-              <li
-                className="rounded-2xl border border-slate-800 bg-slate-950 p-6"
-                key={step.number}
-              >
-                <span className="font-mono text-sm font-bold text-sky-400">
-                  {step.number}
-                </span>
-                <h3 className="mt-5 text-lg font-bold text-white">{step.title}</h3>
-                <p className="mt-2 leading-6 text-slate-400">{step.description}</p>
-              </li>
-            ))}
-          </ol>
+        <section className="border-y border-slate-900/10 bg-[#f7f8fb] px-5 py-20 sm:px-8 sm:py-24 lg:px-10" aria-labelledby="plans-heading">
+          <div className="mx-auto max-w-7xl">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+              <div><p className="text-xs font-semibold tracking-[0.16em] text-slate-500 uppercase">Internet plans</p><h2 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl" id="plans-heading">Choose your connection.</h2><p className="mt-3 max-w-xl leading-7 text-slate-600">Review currently active plans, then check availability for your address.</p></div>
+              <Link className={`text-sm font-semibold text-slate-950 underline decoration-slate-300 underline-offset-8 transition hover:decoration-blue-500 ${focusClass}`} to="/plans">Compare all plans →</Link>
+            </div>
+            <div className="mt-12">
+              {plansError ? (
+                <div className="flex flex-col gap-4 border-y border-slate-900/10 py-8 sm:flex-row sm:items-center sm:justify-between" role="status"><p className="text-slate-600">Plan details are unavailable right now.</p><Link className={`text-sm font-semibold text-blue-700 ${focusClass}`} to="/plans">Open plans page →</Link></div>
+              ) : plans === null ? (
+                <div aria-label="Loading plans" className="grid gap-px overflow-hidden rounded-[14px] border border-slate-900/10 bg-slate-900/10 md:grid-cols-3" role="status">{[0, 1, 2].map((item) => <div className="h-64 animate-pulse bg-white/80" key={item} />)}</div>
+              ) : plans.length === 0 ? (
+                <div className="border-y border-slate-900/10 py-8 text-slate-600">No active plans are available to preview right now.</div>
+              ) : (
+                <div className="grid gap-px overflow-hidden rounded-[14px] border border-slate-900/10 bg-slate-900/10 shadow-[0_18px_50px_rgba(18,25,38,0.06)] md:grid-cols-3">
+                  {plans.slice(0, 3).map((plan) => (
+                    <article className="flex min-h-72 flex-col bg-white p-7 sm:p-8" key={plan.id}>
+                      <h3 className="text-xl font-semibold text-slate-950">{plan.name}</h3><p className="mt-3 line-clamp-2 min-h-12 leading-6 text-slate-600">{plan.description ?? 'Internet service for your home.'}</p><p className="mt-7 text-3xl font-semibold tracking-[-0.03em] text-slate-950">{priceFormatter.format(plan.price_cents / 100)}</p><p className="mt-1 text-sm text-slate-500">per {plan.billing_interval === 'monthly' ? 'month' : 'year'}</p>
+                      <Link className={`mt-auto inline-flex min-h-11 items-center justify-center rounded-[10px] border border-slate-900/12 px-4 text-sm font-semibold text-slate-950 transition hover:border-slate-900 hover:bg-slate-950 hover:text-white ${focusClass}`} to={`/availability?plan=${encodeURIComponent(plan.id)}`}>Check this plan</Link>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-white px-5 py-20 sm:px-8 sm:py-24 lg:px-10">
+          <div className="public-coverage-panel mx-auto grid max-w-7xl overflow-hidden rounded-[18px] bg-slate-950 text-white lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="p-8 sm:p-12 lg:p-14"><p className="text-xs font-semibold tracking-[0.16em] text-slate-400 uppercase">Service availability</p><h2 className="mt-4 max-w-2xl text-3xl leading-tight font-semibold tracking-[-0.035em] sm:text-4xl">See what is available at your address.</h2><p className="mt-4 max-w-xl leading-7 text-slate-300">Enter your installation address in the existing availability flow to begin.</p></div>
+            <div className="border-t border-white/10 p-8 sm:p-12 lg:border-t-0 lg:border-l lg:p-14"><Link className={`public-primary-button inline-flex min-h-12 w-full items-center justify-center rounded-[10px] px-6 text-sm font-semibold text-white transition hover:brightness-110 lg:w-auto ${focusClass}`} to="/availability">Check availability →</Link></div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-slate-900/10 bg-[#f7f8fb] px-5 py-12 sm:px-8 lg:px-10">
+        <div className="mx-auto grid max-w-7xl gap-9 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto] lg:items-start lg:gap-16">
+          <div><Brand /><p className="mt-4 max-w-sm text-sm leading-6 text-slate-500">Internet service applications and account management in one clear platform.</p></div>
+          <nav aria-label="Footer service navigation" className="grid gap-3 text-sm"><p className="mb-1 font-semibold text-slate-950">Explore</p><Link className={`text-slate-600 hover:text-slate-950 ${focusClass}`} to="/plans">Plans</Link><Link className={`text-slate-600 hover:text-slate-950 ${focusClass}`} to="/availability">Availability</Link></nav>
+          <nav aria-label="Footer account navigation" className="grid gap-3 text-sm"><p className="mb-1 font-semibold text-slate-950">Account</p><Link className={`text-slate-600 hover:text-slate-950 ${focusClass}`} to="/login">Log in</Link><Link className={`text-slate-600 hover:text-slate-950 ${focusClass}`} to="/signup">Sign up</Link></nav>
         </div>
-      </section>
-
-      <section
-        aria-labelledby="features-heading"
-        className="px-5 py-16 sm:px-8 lg:px-10 lg:py-20"
-      >
-        <div className="mx-auto max-w-6xl">
-          <div className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
-              Your service account
-            </p>
-            <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl" id="features-heading">
-              The essentials, available online
-            </h2>
-          </div>
-
-          <div className="mt-10 grid gap-5 md:grid-cols-2">
-            {platformFeatures.map((feature) => (
-              <article
-                className="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-6 sm:p-7"
-                key={feature.title}
-              >
-                <div aria-hidden="true" className="size-2 rounded-full bg-sky-400" />
-                <h3 className="mt-5 text-xl font-bold text-white">{feature.title}</h3>
-                <p className="mt-2 max-w-xl leading-7 text-slate-400">
-                  {feature.description}
-                </p>
-              </article>
-            ))}
-          </div>
-
-          <div className="mt-12 rounded-2xl border border-sky-900 bg-sky-950/40 p-7 text-center sm:p-10">
-            <h2 className="text-2xl font-bold text-white sm:text-3xl">
-              Ready to check your location?
-            </h2>
-            <p className="mx-auto mt-3 max-w-xl text-slate-300">
-              Start with your installation address, then compare the plans currently
-              available to apply for.
-            </p>
-            <Link
-              className={`mt-6 inline-block rounded-xl bg-sky-400 px-6 py-3 font-bold text-slate-950 transition hover:bg-sky-300 ${focusClass}`}
-              to="/availability"
-            >
-              Check service availability
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <footer className="border-t border-slate-800 bg-slate-900/50 px-5 py-8 sm:px-8 lg:px-10">
-        <div className="flex flex-col gap-5 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} ISP Platform</p>
-          <nav aria-label="Footer navigation" className="flex flex-wrap gap-5">
-            <Link className={`transition hover:text-white ${focusClass}`} to="/plans">
-              Plans
-            </Link>
-            <Link className={`transition hover:text-white ${focusClass}`} to="/availability">
-              Availability
-            </Link>
-            <Link className={`transition hover:text-white ${focusClass}`} to="/login">
-              Log in
-            </Link>
-            <Link className={`transition hover:text-white ${focusClass}`} to="/signup">
-              Sign up
-            </Link>
-          </nav>
-        </div>
+        <div className="mx-auto mt-10 max-w-7xl border-t border-slate-900/10 pt-6 text-sm text-slate-500">© {new Date().getFullYear()} ISP Platform</div>
       </footer>
     </div>
   )
 }
-import { Link } from 'react-router-dom'
+
+function Brand() {
+  return <Link className={`inline-flex items-center gap-2.5 rounded-md font-semibold tracking-[-0.02em] text-slate-950 ${focusClass}`} to="/"><span aria-hidden="true" className="relative grid size-8 place-items-center rounded-[9px] bg-slate-950 text-white"><span className="absolute h-3.5 w-1 rotate-[-24deg] rounded-full bg-gradient-to-b from-cyan-300 via-blue-500 to-violet-500" /><span className="ml-2 h-2 w-1 rotate-[-24deg] rounded-full bg-white/90" /></span><span>ISP Platform</span></Link>
+}
