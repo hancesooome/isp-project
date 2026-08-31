@@ -4,6 +4,7 @@ const allowedAuthenticatedPaths = new Set([
   DEFAULT_AUTHENTICATED_PATH,
   '/account/application',
   '/account/invoices',
+  '/account/statements',
   '/admin',
   '/admin/applications',
   '/admin/billing',

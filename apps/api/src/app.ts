@@ -61,6 +61,13 @@ interface CustomerStatementReference {
   storage_key: string
 }
 
+interface CustomerStatement {
+  id: string
+  billing_period_start: string
+  billing_period_end: string
+  created_at: string
+}
+
 interface AdminApplication {
   id: string
   status: 'pending' | 'approved' | 'rejected'
@@ -844,6 +851,42 @@ app.get('/invoices/:id', async (request, response) => {
   }
 
   response.status(200).json({ invoice })
+})
+
+app.get('/statements', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load statements' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: statements, error } = await supabase
+    .from('statements_of_account')
+    .select('id, billing_period_start, billing_period_end, created_at')
+    .eq('user_id', auth.userId)
+    .order('billing_period_start', { ascending: false })
+    .order('created_at', { ascending: false })
+    .order('id')
+    .returns<CustomerStatement[]>()
+
+  if (error) {
+    console.error('Failed to load customer statements', { code: error.code })
+    response.status(500).json({ error: 'Unable to load statements' })
+    return
+  }
+
+  response.status(200).json({ statements })
 })
 
 app.get('/statements/:id/download', async (request, response) => {

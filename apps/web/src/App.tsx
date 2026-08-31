@@ -13,6 +13,7 @@ import { CustomerDashboard } from './features/subscriptions/CustomerDashboard'
 import { InvoicesPage } from './features/invoices/InvoicesPage'
 import { InvoiceDetailsPage } from './features/invoices/InvoiceDetailsPage'
 import { AdminBillingPage } from './features/invoices/AdminBillingPage'
+import { StatementsPage } from './features/statements/StatementsPage'
 import {
   DEFAULT_AUTHENTICATED_PATH,
   getSafeRedirect,
@@ -57,6 +58,12 @@ export function App() {
     content = (
       <ProtectedRoute>
         <InvoicesPage />
+      </ProtectedRoute>
+    )
+  } else if (path === '/account/statements') {
+    content = (
+      <ProtectedRoute>
+        <StatementsPage />
       </ProtectedRoute>
     )
   } else if (invoiceMatch?.[1]) {

@@ -219,6 +219,9 @@ export function CustomerDashboard() {
         <a className="font-medium text-sky-400 hover:text-sky-300" href="/account/invoices">
           View invoices
         </a>
+        <a className="font-medium text-sky-400 hover:text-sky-300" href="/account/statements">
+          View statements
+        </a>
         <a className="font-medium text-sky-400 hover:text-sky-300" href="/account/application">
           View application status
         </a>
