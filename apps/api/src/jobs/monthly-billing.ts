@@ -1,4 +1,7 @@
+import { env } from '../config/env.js'
+import { sendEmail } from '../lib/email.js'
 import { supabase } from '../lib/supabase.js'
+import { generateAndStoreStatementOfAccountPdf } from '../services/statement-of-account-storage.js'
 
 interface BillingSubscription {
   id: string
@@ -13,6 +16,8 @@ interface BillingSubscription {
 interface MonthlyBillingResult {
   generatedInvoices: number
   skippedInvoices: number
+  processedStatements: number
+  sentStatementEmails: number
 }
 
 export function calculateMonthlyCharge(
@@ -36,6 +41,32 @@ export function calculateMonthlyCharge(
 
 function toDatabaseDate(date: Date): string {
   return date.toISOString().slice(0, 10)
+}
+
+async function sendStatementReadyEmail(
+  userId: string,
+  billingMonth: string,
+): Promise<boolean> {
+  const { data, error } = await supabase.auth.admin.getUserById(userId)
+  const email = data.user?.email
+
+  if (error || !email) {
+    console.error('Failed to load statement customer email', {
+      code: error?.code ?? 'EMAIL_NOT_FOUND',
+      userId,
+    })
+    return false
+  }
+
+  const statementsUrl = new URL('/account/statements', env.appUrl).toString()
+  const result = await sendEmail({
+    to: email,
+    subject: `Your ${billingMonth} Statement of Account is ready`,
+    text: `Your monthly Statement of Account is ready. Sign in to view or download it: ${statementsUrl}`,
+    html: `<p>Your monthly Statement of Account is ready.</p><p><a href="${statementsUrl}">View your statements</a></p>`,
+  })
+
+  return result.success
 }
 
 export async function runMonthlyBillingJob(
@@ -66,6 +97,8 @@ export async function runMonthlyBillingJob(
 
   let generatedInvoices = 0
   let skippedInvoices = 0
+  let processedStatements = 0
+  let sentStatementEmails = 0
 
   for (const subscription of subscriptions) {
     let amountCents: number
@@ -113,7 +146,74 @@ export async function runMonthlyBillingJob(
     } else {
       skippedInvoices += 1
     }
+
+    const statement = await generateAndStoreStatementOfAccountPdf(
+      subscription.user_id,
+      year,
+      month + 1,
+    )
+
+    if (!statement) {
+      console.error('Monthly statement customer was not found', {
+        userId: subscription.user_id,
+      })
+      continue
+    }
+
+    processedStatements += 1
+
+    const claimedAt = new Date().toISOString()
+    const { data: claimedStatement, error: claimError } = await supabase
+      .from('statements_of_account')
+      .update({ email_claimed_at: claimedAt })
+      .eq('id', statement.id)
+      .is('email_claimed_at', null)
+      .select('id')
+      .maybeSingle<{ id: string }>()
+
+    if (claimError) {
+      console.error('Failed to claim monthly statement email', {
+        code: claimError.code,
+        statementId: statement.id,
+      })
+      continue
+    }
+
+    if (!claimedStatement) {
+      continue
+    }
+
+    const billingMonth = new Intl.DateTimeFormat('en-US', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(periodStart)
+    const sent = await sendStatementReadyEmail(
+      subscription.user_id,
+      billingMonth,
+    )
+
+    if (sent) {
+      sentStatementEmails += 1
+      continue
+    }
+
+    const { error: releaseError } = await supabase
+      .from('statements_of_account')
+      .update({ email_claimed_at: null })
+      .eq('id', statement.id)
+      .eq('email_claimed_at', claimedAt)
+
+    console.error('Failed to send monthly statement email', {
+      releaseFailed: Boolean(releaseError),
+      statementId: statement.id,
+    })
   }
 
-  return { generatedInvoices, skippedInvoices }
+  return {
+    generatedInvoices,
+    skippedInvoices,
+    processedStatements,
+    sentStatementEmails,
+  }
 }

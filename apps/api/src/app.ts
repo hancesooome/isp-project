@@ -513,6 +513,8 @@ app.get('/jobs/monthly-billing', async (request, response) => {
 
     console.info('Monthly billing job completed', {
       generatedInvoices: result.generatedInvoices,
+      processedStatements: result.processedStatements,
+      sentStatementEmails: result.sentStatementEmails,
     })
     response.status(200).json({ success: true, ...result })
   } catch {
