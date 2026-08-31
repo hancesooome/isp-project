@@ -80,6 +80,12 @@ export function PlansPage() {
   return (
     <section className="w-full max-w-6xl">
       <header className="text-center">
+        <Link
+          className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
+          to="/"
+        >
+          ← Back to home
+        </Link>
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
           Internet plans
         </p>

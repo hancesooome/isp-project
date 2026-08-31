@@ -187,7 +187,13 @@ function AdminPlaceholder() {
 function PasswordResetPlaceholder() {
   return (
     <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
-      <h1 className="text-3xl font-bold text-white">Password reset</h1>
+      <Link
+        className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
+        to="/"
+      >
+        ← Back to home
+      </Link>
+      <h1 className="mt-3 text-3xl font-bold text-white">Password reset</h1>
       <p className="mt-4 text-slate-300">
         Password reset will be available in a future ticket.
       </p>

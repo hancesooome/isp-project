@@ -86,6 +86,12 @@ export function SignupForm() {
   if (successMessage) {
     return (
       <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
+        <Link
+          className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
+          to="/"
+        >
+          ← Back to home
+        </Link>
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
           Account created
         </p>
@@ -99,6 +105,12 @@ export function SignupForm() {
 
   return (
     <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
+      <Link
+        className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
+        to="/"
+      >
+        ← Back to home
+      </Link>
       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
         ISP Platform
       </p>
