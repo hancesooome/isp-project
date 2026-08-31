@@ -31,3 +31,4 @@ supabase/migrations/202608300005_record_stripe_payment.sql
 supabase/migrations/202608300006_record_failed_stripe_payment.sql
 supabase/migrations/202608310001_require_pending_application_approval.sql
 supabase/migrations/202608310002_add_payment_receipt_marker.sql
+supabase/migrations/202608310003_create_soa_storage_bucket.sql

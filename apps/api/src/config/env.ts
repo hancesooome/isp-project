@@ -42,6 +42,7 @@ function readCurrency(name: string): string {
 export const env = {
   supabaseUrl: readUrl('SUPABASE_URL'),
   supabaseServiceRoleKey: readRequiredEnv('SUPABASE_SERVICE_ROLE_KEY'),
+  soaStorageBucket: readRequiredEnv('SOA_STORAGE_BUCKET'),
   serviceAreaKeywords: readServiceAreas(process.env.SERVICE_AREA_KEYWORDS),
   stripeSecretKey: readRequiredEnv('STRIPE_SECRET_KEY'),
   stripeWebhookSecret: readRequiredEnv('STRIPE_WEBHOOK_SECRET'),
