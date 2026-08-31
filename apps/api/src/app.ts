@@ -211,6 +211,44 @@ async function sendApplicationStatusEmail(
   })
 }
 
+async function sendPaymentReceiptEmail(
+  userId: string,
+  invoiceId: string,
+  amountCents: number,
+  paidAt: string,
+): Promise<boolean> {
+  const { data, error } = await supabase.auth.admin.getUserById(userId)
+  const email = data.user?.email
+
+  if (error || !email) {
+    console.error('Failed to load payment customer email', {
+      code: error?.code ?? 'EMAIL_NOT_FOUND',
+      userId,
+    })
+    return false
+  }
+
+  const invoiceReference = invoiceId.slice(0, 8).toUpperCase()
+  const amount = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: env.stripeCurrency.toUpperCase(),
+  }).format(amountCents / 100)
+  const paymentDate = new Intl.DateTimeFormat('en-PH', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Manila',
+  }).format(new Date(paidAt))
+
+  const result = await sendEmail({
+    to: email,
+    subject: `Payment receipt for invoice #${invoiceReference}`,
+    text: `We received your payment.\n\nInvoice: #${invoiceReference}\nAmount paid: ${amount}\nPayment date: ${paymentDate}`,
+    html: `<p>We received your payment.</p><p><strong>Invoice:</strong> #${invoiceReference}<br><strong>Amount paid:</strong> ${amount}<br><strong>Payment date:</strong> ${paymentDate}</p>`,
+  })
+
+  return result.success
+}
+
 function isValidDatabaseDate(value: string): boolean {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
 
@@ -376,6 +414,7 @@ app.post(
       return
     }
 
+    const paidAt = new Date(event.created * 1000).toISOString()
     const { error: paymentError } = isFailedPayment
       ? await supabase.rpc('record_failed_stripe_payment', {
           p_invoice_id: invoice.id,
@@ -386,7 +425,7 @@ app.post(
           p_invoice_id: invoice.id,
           p_provider_reference: paymentIntentReference,
           p_amount_cents: invoice.amount_cents,
-          p_paid_at: new Date(event.created * 1000).toISOString(),
+          p_paid_at: paidAt,
         })
 
     if (paymentError) {
@@ -396,6 +435,43 @@ app.post(
       })
       response.status(500).json({ error: 'Unable to process webhook' })
       return
+    }
+
+    if (!isFailedPayment) {
+      const { data: shouldSendReceipt, error: receiptClaimError } =
+        await supabase.rpc('claim_stripe_payment_receipt', {
+          p_provider_reference: paymentIntentReference,
+        })
+
+      if (receiptClaimError) {
+        console.error('Failed to claim payment receipt email', {
+          code: receiptClaimError.code,
+          eventId: event.id,
+        })
+      } else if (shouldSendReceipt) {
+        const sent = await sendPaymentReceiptEmail(
+          invoice.user_id,
+          invoice.id,
+          invoice.amount_cents,
+          paidAt,
+        )
+
+        if (!sent) {
+          const { error: resetError } = await supabase
+            .from('payments')
+            .update({ receipt_email_claimed_at: null })
+            .eq('provider', 'stripe')
+            .eq('provider_reference', paymentIntentReference)
+            .eq('status', 'succeeded')
+
+          if (resetError) {
+            console.error('Failed to release payment receipt email claim', {
+              code: resetError.code,
+              eventId: event.id,
+            })
+          }
+        }
+      }
     }
 
     response.status(200).json({ received: true })
