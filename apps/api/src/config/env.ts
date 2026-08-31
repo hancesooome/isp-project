@@ -46,5 +46,7 @@ export const env = {
   stripeSecretKey: readRequiredEnv('STRIPE_SECRET_KEY'),
   stripeWebhookSecret: readRequiredEnv('STRIPE_WEBHOOK_SECRET'),
   stripeCurrency: readCurrency('STRIPE_CURRENCY'),
+  resendApiKey: readRequiredEnv('RESEND_API_KEY'),
+  emailFrom: readRequiredEnv('EMAIL_FROM'),
   appUrl: readUrl('APP_URL'),
 }
