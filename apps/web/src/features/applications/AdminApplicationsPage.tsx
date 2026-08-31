@@ -124,10 +124,7 @@ export function AdminApplicationsPage() {
   return (
     <section className="w-full max-w-6xl">
       <header>
-        <Link className="text-sm text-sky-400 hover:text-sky-300" to="/admin">
-          Back to admin
-        </Link>
-        <p className="mt-6 text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
           Admin
         </p>
         <h1 className="mt-2 text-3xl font-bold text-white sm:text-4xl">

@@ -53,34 +53,42 @@ export function AdminRoute({ children }: AdminRouteProps) {
   }, [session])
 
   if (access === 'checking') {
-    return <p role="status">Checking admin access...</p>
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6 py-12">
+        <p role="status">Checking admin access...</p>
+      </div>
+    )
   }
 
   if (access === 'denied') {
     return (
-      <section className="w-full max-w-md rounded-2xl border border-red-900 bg-red-950/40 p-8 text-center">
-        <h1 className="text-3xl font-bold text-white">Access denied</h1>
-        <p className="mt-3 text-red-200">
-          Your account does not have permission to view this page.
-        </p>
-        <Link
-          className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
-          to="/account"
-        >
-          Return to account
-        </Link>
-      </section>
+      <div className="flex min-h-screen items-center justify-center px-6 py-12">
+        <section className="w-full max-w-md rounded-2xl border border-red-900 bg-red-950/40 p-8 text-center shadow-xl">
+          <h1 className="text-3xl font-bold text-white">Access denied</h1>
+          <p className="mt-3 text-red-200">
+            Your account does not have permission to view this page.
+          </p>
+          <Link
+            className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
+            to="/account"
+          >
+            Return to account
+          </Link>
+        </section>
+      </div>
     )
   }
 
   if (access === 'error') {
     return (
-      <p
-        className="w-full max-w-md rounded-xl border border-red-900 bg-red-950/50 p-5 text-center text-red-200"
-        role="alert"
-      >
-        We could not verify admin access. Please try again later.
-      </p>
+      <div className="flex min-h-screen items-center justify-center px-6 py-12">
+        <p
+          className="w-full max-w-md rounded-xl border border-red-900 bg-red-950/50 p-5 text-center text-red-200"
+          role="alert"
+        >
+          We could not verify admin access. Please try again later.
+        </p>
+      </div>
     )
   }
 

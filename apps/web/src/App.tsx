@@ -22,6 +22,8 @@ import {
   getSafeRedirect,
 } from './features/auth/redirect'
 import { CustomerLayout } from './features/account/CustomerLayout'
+import { AdminLayout } from './features/admin/AdminLayout'
+import { AdminOverviewPage } from './features/admin/AdminOverviewPage'
 import { HomePage } from './features/home/HomePage'
 import { AdminBillingPage } from './features/invoices/AdminBillingPage'
 import { InvoiceDetailsPage } from './features/invoices/InvoiceDetailsPage'
@@ -67,51 +69,18 @@ export function App() {
       <Route
         element={
           <ProtectedRoute>
-            <CentredPage>
-              <AdminRoute>
-                <AdminPlaceholder />
-              </AdminRoute>
-            </CentredPage>
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
           </ProtectedRoute>
         }
         path="/admin"
-      />
-      <Route
-        element={
-          <ProtectedRoute>
-            <CentredPage>
-              <AdminRoute>
-                <AdminApplicationsPage />
-              </AdminRoute>
-            </CentredPage>
-          </ProtectedRoute>
-        }
-        path="/admin/applications"
-      />
-      <Route
-        element={
-          <ProtectedRoute>
-            <CentredPage>
-              <AdminRoute>
-                <AdminApplicationReviewRoute />
-              </AdminRoute>
-            </CentredPage>
-          </ProtectedRoute>
-        }
-        path="/admin/applications/:id"
-      />
-      <Route
-        element={
-          <ProtectedRoute>
-            <CentredPage>
-              <AdminRoute>
-                <AdminBillingPage />
-              </AdminRoute>
-            </CentredPage>
-          </ProtectedRoute>
-        }
-        path="/admin/billing"
-      />
+      >
+        <Route index element={<AdminOverviewPage />} />
+        <Route path="applications" element={<AdminApplicationsPage />} />
+        <Route path="applications/:id" element={<AdminApplicationReviewRoute />} />
+        <Route path="billing" element={<AdminBillingPage />} />
+      </Route>
       <Route element={<CentredPage><NotFoundPage /></CentredPage>} path="*" />
     </Routes>
   )
@@ -156,33 +125,6 @@ function AdminApplicationReviewRoute() {
   )
 }
 
-function AdminPlaceholder() {
-  return (
-    <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
-      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
-        Admin
-      </p>
-      <h1 className="mt-3 text-3xl font-bold text-white">
-        Admin access confirmed
-      </h1>
-      <p className="mt-3 text-slate-400">
-        Admin features will be added in later tickets.
-      </p>
-      <Link
-        className="mt-6 inline-block rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950 hover:bg-sky-400"
-        to="/admin/applications"
-      >
-        View service applications
-      </Link>
-      <Link
-        className="mt-4 block font-medium text-sky-400 hover:text-sky-300"
-        to="/admin/billing"
-      >
-        Manage billing
-      </Link>
-    </section>
-  )
-}
 
 function PasswordResetPlaceholder() {
   return (
