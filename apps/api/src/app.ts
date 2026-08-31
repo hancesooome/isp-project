@@ -6,6 +6,7 @@ import { runMonthlyBillingJob } from './jobs/monthly-billing.js'
 import { sendEmail } from './lib/email.js'
 import { supabase } from './lib/supabase.js'
 import { stripe } from './lib/stripe.js'
+import { statementOfAccountStorage } from './services/statement-of-account-storage.js'
 
 interface Plan {
   id: string
@@ -52,6 +53,12 @@ interface CustomerInvoice {
   billing_period_start: string
   billing_period_end: string
   created_at: string
+}
+
+interface CustomerStatementReference {
+  id: string
+  billing_period_start: string
+  storage_key: string
 }
 
 interface AdminApplication {
@@ -120,6 +127,7 @@ const adminApplicationsQuerySchema = z
 
 const applicationIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
+const statementIdSchema = z.string().uuid()
 
 const databaseDateSchema = z
   .string()
@@ -836,6 +844,84 @@ app.get('/invoices/:id', async (request, response) => {
   }
 
   response.status(200).json({ invoice })
+})
+
+app.get('/statements/:id/download', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to download statement' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = statementIdSchema.safeParse(request.params.id)
+
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid statement ID' })
+    return
+  }
+
+  const { data: statement, error } = await supabase
+    .from('statements_of_account')
+    .select('id, billing_period_start, storage_key')
+    .eq('id', idResult.data)
+    .eq('user_id', auth.userId)
+    .maybeSingle<CustomerStatementReference>()
+
+  if (error) {
+    console.error('Failed to load customer statement reference', {
+      code: error.code,
+    })
+    response.status(500).json({ error: 'Unable to download statement' })
+    return
+  }
+
+  if (!statement) {
+    response.status(404).json({ error: 'Statement not found' })
+    return
+  }
+
+  const { data: file, error: downloadError } =
+    await statementOfAccountStorage.download(statement.storage_key)
+
+  if (downloadError || !file) {
+    console.error('Failed to download statement of account PDF', {
+      statusCode: downloadError?.statusCode,
+      statementId: statement.id,
+    })
+
+    if (String(downloadError?.statusCode) === '404') {
+      response.status(404).json({ error: 'Statement file not found' })
+      return
+    }
+
+    response.status(500).json({ error: 'Unable to download statement' })
+    return
+  }
+
+  const billingMonth = statement.billing_period_start.slice(0, 7)
+  const pdf = Buffer.from(await file.arrayBuffer())
+
+  response
+    .status(200)
+    .set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition':
+        `attachment; filename="statement-of-account-${billingMonth}.pdf"`,
+      'Content-Length': String(pdf.length),
+      'Cache-Control': 'private, no-store',
+    })
+    .send(pdf)
 })
 
 app.post('/invoices/:id/checkout-session', async (request, response) => {
