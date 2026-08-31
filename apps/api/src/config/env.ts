@@ -48,5 +48,6 @@ export const env = {
   stripeCurrency: readCurrency('STRIPE_CURRENCY'),
   resendApiKey: readRequiredEnv('RESEND_API_KEY'),
   emailFrom: readRequiredEnv('EMAIL_FROM'),
+  cronSecret: readRequiredEnv('CRON_SECRET'),
   appUrl: readUrl('APP_URL'),
 }

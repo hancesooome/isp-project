@@ -2,6 +2,7 @@ import express from 'express'
 import { z } from 'zod'
 
 import { env } from './config/env.js'
+import { runMonthlyBillingJob } from './jobs/monthly-billing.js'
 import { sendEmail } from './lib/email.js'
 import { supabase } from './lib/supabase.js'
 import { stripe } from './lib/stripe.js'
@@ -482,6 +483,27 @@ app.use(express.json({ limit: '10kb' }))
 
 app.get('/health', (_request, response) => {
   response.status(200).json({ status: 'ok' })
+})
+
+app.get('/jobs/monthly-billing', async (request, response) => {
+  if (request.header('authorization') !== `Bearer ${env.cronSecret}`) {
+    response.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+
+  console.info('Monthly billing job started')
+
+  try {
+    const result = await runMonthlyBillingJob()
+
+    console.info('Monthly billing job completed', {
+      generatedInvoices: result.generatedInvoices,
+    })
+    response.status(200).json({ success: true, ...result })
+  } catch {
+    console.error('Monthly billing job failed')
+    response.status(500).json({ error: 'Unable to run monthly billing job' })
+  }
 })
 
 app.get('/plans', async (_request, response) => {
