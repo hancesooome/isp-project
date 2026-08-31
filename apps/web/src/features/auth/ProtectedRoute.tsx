@@ -25,7 +25,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!session) {
-    const returnTo = getSafeRedirect(location.pathname)
+    const returnTo = getSafeRedirect(`${location.pathname}${location.search}`)
     const searchParams = new URLSearchParams({ redirect: returnTo })
 
     return <Navigate replace to={`/login?${searchParams.toString()}`} />
