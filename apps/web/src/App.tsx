@@ -14,6 +14,7 @@ import { InvoicesPage } from './features/invoices/InvoicesPage'
 import { InvoiceDetailsPage } from './features/invoices/InvoiceDetailsPage'
 import { AdminBillingPage } from './features/invoices/AdminBillingPage'
 import { StatementsPage } from './features/statements/StatementsPage'
+import { HomePage } from './features/home/HomePage'
 import {
   DEFAULT_AUTHENTICATED_PATH,
   getSafeRedirect,
@@ -34,7 +35,9 @@ export function App() {
 
   let content: ReactNode
 
-  if (path === '/signup') {
+  if (path === '/') {
+    content = <HomePage />
+  } else if (path === '/signup') {
     content = <SignupForm />
   } else if (path === '/forgot-password') {
     content = <PasswordResetPlaceholder />

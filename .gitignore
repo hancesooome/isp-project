@@ -34,3 +34,5 @@ supabase/migrations/202608310002_add_payment_receipt_marker.sql
 supabase/migrations/202608310003_create_soa_storage_bucket.sql
 supabase/migrations/202608310004_create_statements_of_account.sql
 supabase/migrations/202608310005_add_statement_email_marker.sql
+apps/docs/tickets/ISP-056-073.md
+apps/docs/tickets/PHASE-9.5-FRONTEND-APPLICATION-SHELL.md
