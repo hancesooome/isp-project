@@ -5,8 +5,8 @@ interface BillingSubscription {
   user_id: string
   started_at: string
   plan: {
-    price_cents: number
-    billing_interval: 'monthly' | 'yearly'
+    price_cents: unknown
+    billing_interval: unknown
   }
 }
 
@@ -15,8 +15,23 @@ interface MonthlyBillingResult {
   skippedInvoices: number
 }
 
-export function calculateMonthlyInvoiceAmount(priceCents: number): number {
-  return priceCents
+export function calculateMonthlyCharge(
+  plan: BillingSubscription['plan'],
+): number {
+  if (plan.billing_interval !== 'monthly') {
+    throw new Error('MONTHLY_BILLING_INTERVAL_INVALID')
+  }
+
+  if (
+    typeof plan.price_cents !== 'number' ||
+    !Number.isSafeInteger(plan.price_cents) ||
+    plan.price_cents < 0 ||
+    plan.price_cents > 2_147_483_647
+  ) {
+    throw new Error('MONTHLY_BILLING_PRICE_INVALID')
+  }
+
+  return plan.price_cents
 }
 
 function toDatabaseDate(date: Date): string {
@@ -53,12 +68,21 @@ export async function runMonthlyBillingJob(
   let skippedInvoices = 0
 
   for (const subscription of subscriptions) {
+    let amountCents: number
+
+    try {
+      amountCents = calculateMonthlyCharge(subscription.plan)
+    } catch {
+      console.error('Invalid monthly subscription plan pricing', {
+        subscriptionId: subscription.id,
+      })
+      throw new Error('MONTHLY_BILLING_PRICE_INVALID')
+    }
+
     const { error } = await supabase.from('invoices').insert({
       user_id: subscription.user_id,
       subscription_id: subscription.id,
-      amount_cents: calculateMonthlyInvoiceAmount(
-        subscription.plan.price_cents,
-      ),
+      amount_cents: amountCents,
       due_date: toDatabaseDate(dueDate),
       status: 'open',
       billing_period_start: toDatabaseDate(periodStart),
