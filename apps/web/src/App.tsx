@@ -1,3 +1,4 @@
+import React from 'react'
 import {
   Link,
   Route,
@@ -20,6 +21,7 @@ import {
   DEFAULT_AUTHENTICATED_PATH,
   getSafeRedirect,
 } from './features/auth/redirect'
+import { CustomerLayout } from './features/account/CustomerLayout'
 import { HomePage } from './features/home/HomePage'
 import { AdminBillingPage } from './features/invoices/AdminBillingPage'
 import { InvoiceDetailsPage } from './features/invoices/InvoiceDetailsPage'
@@ -33,105 +35,93 @@ const uuidPattern =
 
 export function App() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-12 text-slate-100">
-      <Routes>
-        <Route element={<HomePage />} path="/" />
-        <Route element={<LoginPage />} path="/login" />
-        <Route element={<SignupForm />} path="/signup" />
-        <Route element={<PasswordResetPlaceholder />} path="/forgot-password" />
-        <Route element={<ServiceAvailabilityPage />} path="/availability" />
-        <Route element={<PlansPage />} path="/plans" />
-        <Route
-          element={
-            <ProtectedRoute>
-              <ServiceApplicationForm />
-            </ProtectedRoute>
-          }
-          path="/apply"
-        />
-        <Route
-          element={
-            <ProtectedRoute>
-              <CustomerDashboard />
-            </ProtectedRoute>
-          }
-          path="/account"
-        />
-        <Route
-          element={
-            <ProtectedRoute>
-              <ApplicationStatusPage />
-            </ProtectedRoute>
-          }
-          path="/account/application"
-        />
-        <Route
-          element={
-            <ProtectedRoute>
-              <InvoicesPage />
-            </ProtectedRoute>
-          }
-          path="/account/invoices"
-        />
-        <Route
-          element={
-            <ProtectedRoute>
-              <InvoiceDetailsRoute />
-            </ProtectedRoute>
-          }
-          path="/account/invoices/:id"
-        />
-        <Route
-          element={
-            <ProtectedRoute>
-              <StatementsPage />
-            </ProtectedRoute>
-          }
-          path="/account/statements"
-        />
-        <Route
-          element={
-            <ProtectedRoute>
+    <Routes>
+      <Route element={<HomePage />} path="/" />
+      <Route element={<CentredPage><LoginPage /></CentredPage>} path="/login" />
+      <Route element={<CentredPage><SignupForm /></CentredPage>} path="/signup" />
+      <Route element={<CentredPage><PasswordResetPlaceholder /></CentredPage>} path="/forgot-password" />
+      <Route element={<CentredPage><ServiceAvailabilityPage /></CentredPage>} path="/availability" />
+      <Route element={<CentredPage><PlansPage /></CentredPage>} path="/plans" />
+      <Route
+        element={
+          <ProtectedRoute>
+            <CentredPage><ServiceApplicationForm /></CentredPage>
+          </ProtectedRoute>
+        }
+        path="/apply"
+      />
+      <Route
+        element={
+          <ProtectedRoute>
+            <CustomerLayout />
+          </ProtectedRoute>
+        }
+        path="/account"
+      >
+        <Route index element={<CustomerDashboard />} />
+        <Route path="application" element={<ApplicationStatusPage />} />
+        <Route path="invoices" element={<InvoicesPage />} />
+        <Route path="invoices/:id" element={<InvoiceDetailsRoute />} />
+        <Route path="statements" element={<StatementsPage />} />
+      </Route>
+      <Route
+        element={
+          <ProtectedRoute>
+            <CentredPage>
               <AdminRoute>
                 <AdminPlaceholder />
               </AdminRoute>
-            </ProtectedRoute>
-          }
-          path="/admin"
-        />
-        <Route
-          element={
-            <ProtectedRoute>
+            </CentredPage>
+          </ProtectedRoute>
+        }
+        path="/admin"
+      />
+      <Route
+        element={
+          <ProtectedRoute>
+            <CentredPage>
               <AdminRoute>
                 <AdminApplicationsPage />
               </AdminRoute>
-            </ProtectedRoute>
-          }
-          path="/admin/applications"
-        />
-        <Route
-          element={
-            <ProtectedRoute>
+            </CentredPage>
+          </ProtectedRoute>
+        }
+        path="/admin/applications"
+      />
+      <Route
+        element={
+          <ProtectedRoute>
+            <CentredPage>
               <AdminRoute>
                 <AdminApplicationReviewRoute />
               </AdminRoute>
-            </ProtectedRoute>
-          }
-          path="/admin/applications/:id"
-        />
-        <Route
-          element={
-            <ProtectedRoute>
+            </CentredPage>
+          </ProtectedRoute>
+        }
+        path="/admin/applications/:id"
+      />
+      <Route
+        element={
+          <ProtectedRoute>
+            <CentredPage>
               <AdminRoute>
                 <AdminBillingPage />
               </AdminRoute>
-            </ProtectedRoute>
-          }
-          path="/admin/billing"
-        />
-        <Route element={<NotFoundPage />} path="*" />
-      </Routes>
-    </main>
+            </CentredPage>
+          </ProtectedRoute>
+        }
+        path="/admin/billing"
+      />
+      <Route element={<CentredPage><NotFoundPage /></CentredPage>} path="*" />
+    </Routes>
+  )
+}
+
+function CentredPage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center px-6 py-12">
+      {children}
+    </div>
   )
 }
 

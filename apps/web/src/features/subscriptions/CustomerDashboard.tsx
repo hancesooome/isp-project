@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
 
@@ -87,7 +86,7 @@ function isApplication(value: unknown): value is CustomerApplication {
 }
 
 export function CustomerDashboard() {
-  const { session, user } = useAuth()
+  const { session } = useAuth()
   const [subscription, setSubscription] = useState<
     CustomerSubscription | null
   >()
@@ -173,9 +172,6 @@ export function CustomerDashboard() {
         <h1 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
           Your account
         </h1>
-        <p className="mt-2 text-slate-400">
-          {user?.email ?? 'Your ISP service account'}
-        </p>
       </header>
 
       {subscription ? (
@@ -216,22 +212,6 @@ export function CustomerDashboard() {
         <ApplicationSummary application={application} />
       )}
 
-      <nav className="mt-6 flex flex-wrap gap-4" aria-label="Account navigation">
-        <Link className="font-medium text-sky-400 hover:text-sky-300" to="/account/invoices">
-          View invoices
-        </Link>
-        <Link className="font-medium text-sky-400 hover:text-sky-300" to="/account/statements">
-          View statements
-        </Link>
-        <Link className="font-medium text-sky-400 hover:text-sky-300" to="/account/application">
-          View application status
-        </Link>
-        {!subscription && !application ? (
-          <Link className="font-medium text-sky-400 hover:text-sky-300" to="/plans">
-            View available plans
-          </Link>
-        ) : null}
-      </nav>
     </section>
   )
 }

@@ -102,10 +102,7 @@ export function InvoicesPage() {
   return (
     <section className="w-full max-w-5xl">
       <header>
-        <Link className="text-sm font-medium text-sky-400 hover:text-sky-300" to="/account">
-          Back to account
-        </Link>
-        <p className="mt-5 text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
           Billing
         </p>
         <h1 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
