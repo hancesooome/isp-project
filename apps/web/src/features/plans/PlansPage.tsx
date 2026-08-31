@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 interface Plan {
   id: string
@@ -88,12 +89,12 @@ export function PlansPage() {
         <p className="mx-auto mt-3 max-w-2xl text-slate-400">
           Compare our currently available internet service plans.
         </p>
-        <a
+        <Link
           className="mt-5 inline-block font-medium text-sky-400 hover:text-sky-300"
-          href="/availability"
+          to="/availability"
         >
           Check service availability
-        </a>
+        </Link>
       </header>
 
       {error ? (
@@ -128,12 +129,12 @@ export function PlansPage() {
               <p className="mt-1 text-sm capitalize text-slate-400">
                 per {plan.billing_interval === 'monthly' ? 'month' : 'year'}
               </p>
-              <a
+              <Link
                 className="mt-6 inline-block rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950 hover:bg-sky-400"
-                href={`/availability?plan=${encodeURIComponent(plan.id)}`}
+                to={`/availability?plan=${encodeURIComponent(plan.id)}`}
               >
                 Apply for this plan
-              </a>
+              </Link>
             </article>
           ))}
         </div>

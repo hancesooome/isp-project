@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
 
@@ -455,11 +456,11 @@ function StatusBadge({ status }: { status: AdminApplicationDetail['status'] }) {
 
 function BackLink() {
   return (
-    <a
+    <Link
       className="inline-block font-medium text-sky-400 hover:text-sky-300"
-      href="/admin/applications"
+      to="/admin/applications"
     >
       Back to applications
-    </a>
+    </Link>
   )
 }

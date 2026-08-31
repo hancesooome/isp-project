@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import type { ZodError } from 'zod'
 
 import { useAuth } from '../auth/auth-context'
@@ -15,7 +16,7 @@ interface PlanOption {
 type FieldErrors = Partial<Record<keyof ApplicationFormValues, string>>
 
 const initialValues: ApplicationFormValues = {
-  planId: new URLSearchParams(window.location.search).get('plan') ?? '',
+  planId: '',
   phone: '',
   address: '',
   installationAddress: '',
@@ -47,8 +48,12 @@ function isPlanOption(value: unknown): value is PlanOption {
 }
 
 export function ServiceApplicationForm() {
+  const [searchParams] = useSearchParams()
   const { session } = useAuth()
-  const [values, setValues] = useState(initialValues)
+  const [values, setValues] = useState(() => ({
+    ...initialValues,
+    planId: searchParams.get('plan') ?? '',
+  }))
   const [plans, setPlans] = useState<PlanOption[] | null>(null)
   const [plansError, setPlansError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -163,12 +168,12 @@ export function ServiceApplicationForm() {
         <p className="mt-4 text-slate-300" role="status">
           Your service application was submitted for review.
         </p>
-        <a
+        <Link
           className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
-          href="/account/application"
+          to="/account/application"
         >
           View application status
-        </a>
+        </Link>
       </section>
     )
   }

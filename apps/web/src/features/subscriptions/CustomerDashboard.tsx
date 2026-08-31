@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
 
@@ -216,19 +217,19 @@ export function CustomerDashboard() {
       )}
 
       <nav className="mt-6 flex flex-wrap gap-4" aria-label="Account navigation">
-        <a className="font-medium text-sky-400 hover:text-sky-300" href="/account/invoices">
+        <Link className="font-medium text-sky-400 hover:text-sky-300" to="/account/invoices">
           View invoices
-        </a>
-        <a className="font-medium text-sky-400 hover:text-sky-300" href="/account/statements">
+        </Link>
+        <Link className="font-medium text-sky-400 hover:text-sky-300" to="/account/statements">
           View statements
-        </a>
-        <a className="font-medium text-sky-400 hover:text-sky-300" href="/account/application">
+        </Link>
+        <Link className="font-medium text-sky-400 hover:text-sky-300" to="/account/application">
           View application status
-        </a>
+        </Link>
         {!subscription && !application ? (
-          <a className="font-medium text-sky-400 hover:text-sky-300" href="/plans">
+          <Link className="font-medium text-sky-400 hover:text-sky-300" to="/plans">
             View available plans
-          </a>
+          </Link>
         ) : null}
       </nav>
     </section>

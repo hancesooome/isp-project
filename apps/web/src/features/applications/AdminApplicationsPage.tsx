@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
 
@@ -123,9 +124,9 @@ export function AdminApplicationsPage() {
   return (
     <section className="w-full max-w-6xl">
       <header>
-        <a className="text-sm text-sky-400 hover:text-sky-300" href="/admin">
+        <Link className="text-sm text-sky-400 hover:text-sky-300" to="/admin">
           Back to admin
-        </a>
+        </Link>
         <p className="mt-6 text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
           Admin
         </p>
@@ -168,12 +169,12 @@ export function AdminApplicationsPage() {
               </div>
               <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
                 <StatusBadge status={application.status} />
-                <a
+                <Link
                   className="block font-medium text-sky-400 hover:text-sky-300 sm:mt-3"
-                  href={`/admin/applications/${encodeURIComponent(application.id)}`}
+                  to={`/admin/applications/${encodeURIComponent(application.id)}`}
                 >
                   Review
-                </a>
+                </Link>
               </div>
             </article>
           ))}

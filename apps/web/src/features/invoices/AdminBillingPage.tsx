@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
 
@@ -194,9 +195,9 @@ export function AdminBillingPage() {
   return (
     <section className="w-full max-w-3xl">
       <header>
-        <a className="text-sm text-sky-400 hover:text-sky-300" href="/admin">
+        <Link className="text-sm text-sky-400 hover:text-sky-300" to="/admin">
           Back to admin
-        </a>
+        </Link>
         <p className="mt-6 text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
           Admin billing
         </p>

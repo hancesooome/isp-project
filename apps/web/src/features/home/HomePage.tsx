@@ -52,9 +52,9 @@ export function HomePage() {
     <div className="w-full max-w-7xl overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 shadow-2xl shadow-sky-950/20">
       <header className="border-b border-slate-800/80 px-5 py-5 sm:px-8 lg:px-10">
         <div className="flex flex-wrap items-center justify-between gap-5">
-          <a
+          <Link
             className={`flex items-center gap-3 font-bold text-white ${focusClass}`}
-            href="/"
+            to="/"
           >
             <span
               aria-hidden="true"
@@ -63,39 +63,39 @@ export function HomePage() {
               ISP
             </span>
             <span>ISP Platform</span>
-          </a>
+          </Link>
 
           <nav
             aria-label="Public navigation"
             className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm font-medium"
           >
-            <a className={`text-white ${focusClass}`} href="/">
+            <Link className={`text-white ${focusClass}`} to="/">
               Home
-            </a>
-            <a
+            </Link>
+            <Link
               className={`text-slate-300 transition hover:text-white ${focusClass}`}
-              href="/plans"
+              to="/plans"
             >
               Plans
-            </a>
-            <a
+            </Link>
+            <Link
               className={`text-slate-300 transition hover:text-white ${focusClass}`}
-              href="/availability"
+              to="/availability"
             >
               Check availability
-            </a>
-            <a
+            </Link>
+            <Link
               className={`text-slate-300 transition hover:text-white ${focusClass}`}
-              href="/login"
+              to="/login"
             >
               Log in
-            </a>
-            <a
+            </Link>
+            <Link
               className={`rounded-lg bg-sky-400 px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-sky-300 ${focusClass}`}
-              href="/signup"
+              to="/signup"
             >
               Sign up
-            </a>
+            </Link>
           </nav>
         </div>
       </header>
@@ -125,18 +125,18 @@ export function HomePage() {
             manage your ISP account from one secure portal.
           </p>
           <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-            <a
+            <Link
               className={`rounded-xl bg-sky-400 px-6 py-3.5 font-bold text-slate-950 transition hover:bg-sky-300 ${focusClass}`}
-              href="/availability"
+              to="/availability"
             >
               Check your address
-            </a>
-            <a
+            </Link>
+            <Link
               className={`rounded-xl border border-slate-700 bg-slate-900/70 px-6 py-3.5 font-bold text-white transition hover:border-slate-500 hover:bg-slate-800 ${focusClass}`}
-              href="/plans"
+              to="/plans"
             >
               View internet plans
-            </a>
+            </Link>
           </div>
         </section>
       </div>
@@ -212,12 +212,12 @@ export function HomePage() {
               Start with your installation address, then compare the plans currently
               available to apply for.
             </p>
-            <a
+            <Link
               className={`mt-6 inline-block rounded-xl bg-sky-400 px-6 py-3 font-bold text-slate-950 transition hover:bg-sky-300 ${focusClass}`}
-              href="/availability"
+              to="/availability"
             >
               Check service availability
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -226,21 +226,22 @@ export function HomePage() {
         <div className="flex flex-col gap-5 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} ISP Platform</p>
           <nav aria-label="Footer navigation" className="flex flex-wrap gap-5">
-            <a className={`transition hover:text-white ${focusClass}`} href="/plans">
+            <Link className={`transition hover:text-white ${focusClass}`} to="/plans">
               Plans
-            </a>
-            <a className={`transition hover:text-white ${focusClass}`} href="/availability">
+            </Link>
+            <Link className={`transition hover:text-white ${focusClass}`} to="/availability">
               Availability
-            </a>
-            <a className={`transition hover:text-white ${focusClass}`} href="/login">
+            </Link>
+            <Link className={`transition hover:text-white ${focusClass}`} to="/login">
               Log in
-            </a>
-            <a className={`transition hover:text-white ${focusClass}`} href="/signup">
+            </Link>
+            <Link className={`transition hover:text-white ${focusClass}`} to="/signup">
               Sign up
-            </a>
+            </Link>
           </nav>
         </div>
       </footer>
     </div>
   )
 }
+import { Link } from 'react-router-dom'

@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
 
 import { useAuth } from './auth-context'
 import { getSafeRedirect } from './redirect'
@@ -9,22 +10,17 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isLoading, session } = useAuth()
-
-  useEffect(() => {
-    if (!isLoading && !session) {
-      const returnTo = getSafeRedirect(window.location.pathname)
-      const searchParams = new URLSearchParams({ redirect: returnTo })
-
-      window.location.replace(`/login?${searchParams.toString()}`)
-    }
-  }, [isLoading, session])
+  const location = useLocation()
 
   if (isLoading) {
     return <p role="status">Loading your session...</p>
   }
 
   if (!session) {
-    return <p role="status">Redirecting to login...</p>
+    const returnTo = getSafeRedirect(location.pathname)
+    const searchParams = new URLSearchParams({ redirect: returnTo })
+
+    return <Navigate replace to={`/login?${searchParams.toString()}`} />
   }
 
   return children

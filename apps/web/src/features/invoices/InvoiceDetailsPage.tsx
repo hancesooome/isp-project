@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
 
@@ -51,9 +52,8 @@ function isInvoice(value: unknown): value is Invoice {
 
 export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
   const { session } = useAuth()
-  const checkoutOutcome = new URLSearchParams(window.location.search).get(
-    'checkout',
-  )
+  const [searchParams] = useSearchParams()
+  const checkoutOutcome = searchParams.get('checkout')
   const [invoice, setInvoice] = useState<Invoice | null>()
   const [error, setError] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
@@ -168,18 +168,18 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
         <p className="mt-3 text-slate-400">
           This invoice does not exist or is not available to your account.
         </p>
-        <a className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300" href="/account/invoices">
+        <Link className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300" to="/account/invoices">
           Back to invoices
-        </a>
+        </Link>
       </section>
     )
   }
 
   return (
     <section className="w-full max-w-2xl">
-      <a className="text-sm font-medium text-sky-400 hover:text-sky-300" href="/account/invoices">
+      <Link className="text-sm font-medium text-sky-400 hover:text-sky-300" to="/account/invoices">
         Back to invoices
-      </a>
+      </Link>
 
       <article className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
         {checkoutOutcome === 'canceled' ? (

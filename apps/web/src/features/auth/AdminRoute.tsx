@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from './auth-context'
 
@@ -62,12 +63,12 @@ export function AdminRoute({ children }: AdminRouteProps) {
         <p className="mt-3 text-red-200">
           Your account does not have permission to view this page.
         </p>
-        <a
+        <Link
           className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
-          href="/account"
+          to="/account"
         >
           Return to account
-        </a>
+        </Link>
       </section>
     )
   }

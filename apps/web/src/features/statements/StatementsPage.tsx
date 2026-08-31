@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
 
@@ -131,9 +132,9 @@ export function StatementsPage() {
   return (
     <section className="w-full max-w-5xl">
       <header>
-        <a className="text-sm font-medium text-sky-400 hover:text-sky-300" href="/account">
+        <Link className="text-sm font-medium text-sky-400 hover:text-sky-300" to="/account">
           Back to account
-        </a>
+        </Link>
         <p className="mt-5 text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
           Billing
         </p>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
 
@@ -112,12 +113,12 @@ export function ApplicationStatusPage() {
         <p className="mt-3 text-slate-400">
           Choose a plan when you are ready to apply for internet service.
         </p>
-        <a
+        <Link
           className="mt-6 inline-block rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950 hover:bg-sky-400"
-          href="/plans"
+          to="/plans"
         >
           View plans
-        </a>
+        </Link>
       </section>
     )
   }

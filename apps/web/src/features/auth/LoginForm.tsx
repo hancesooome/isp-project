@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { ZodError } from 'zod'
 import { getLoginErrorMessage } from './login-error-message'
 import { loginSchema, type LoginFormValues } from './login-schema'
@@ -125,9 +126,9 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
           ) : null}
         </div>
 
-        <a className="block text-sm text-sky-400 hover:text-sky-300" href="/forgot-password">
+        <Link className="block text-sm text-sky-400 hover:text-sky-300" to="/forgot-password">
           Forgot password?
-        </a>
+        </Link>
 
         {submissionError ? (
           <p className="text-sm text-red-300" role="alert">
@@ -145,9 +146,9 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
 
         <p className="text-center text-sm text-slate-400">
           Don&apos;t have an account?{' '}
-          <a className="font-medium text-sky-400 hover:text-sky-300" href="/signup">
+          <Link className="font-medium text-sky-400 hover:text-sky-300" to="/signup">
             Create account
-          </a>
+          </Link>
         </p>
       </form>
     </section>
