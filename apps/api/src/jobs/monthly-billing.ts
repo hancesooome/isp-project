@@ -79,31 +79,40 @@ export async function runMonthlyBillingJob(
       throw new Error('MONTHLY_BILLING_PRICE_INVALID')
     }
 
-    const { error } = await supabase.from('invoices').insert({
-      user_id: subscription.user_id,
-      subscription_id: subscription.id,
-      amount_cents: amountCents,
-      due_date: toDatabaseDate(dueDate),
-      status: 'open',
-      billing_period_start: toDatabaseDate(periodStart),
-      billing_period_end: toDatabaseDate(periodEnd),
-    })
+    const { data: invoice, error } = await supabase
+      .from('invoices')
+      .upsert(
+        {
+          user_id: subscription.user_id,
+          subscription_id: subscription.id,
+          amount_cents: amountCents,
+          due_date: toDatabaseDate(dueDate),
+          status: 'open',
+          billing_period_start: toDatabaseDate(periodStart),
+          billing_period_end: toDatabaseDate(periodEnd),
+        },
+        {
+          onConflict:
+            'subscription_id,billing_period_start,billing_period_end',
+          ignoreDuplicates: true,
+        },
+      )
+      .select('id')
+      .maybeSingle<{ id: string }>()
 
-    if (!error) {
+    if (error) {
+      console.error('Failed to generate monthly invoice', {
+        code: error.code,
+        subscriptionId: subscription.id,
+      })
+      throw new Error('MONTHLY_BILLING_INVOICE_FAILED')
+    }
+
+    if (invoice) {
       generatedInvoices += 1
-      continue
-    }
-
-    if (error.code === '23505') {
+    } else {
       skippedInvoices += 1
-      continue
     }
-
-    console.error('Failed to generate monthly invoice', {
-      code: error.code,
-      subscriptionId: subscription.id,
-    })
-    throw new Error('MONTHLY_BILLING_INVOICE_FAILED')
   }
 
   return { generatedInvoices, skippedInvoices }
