@@ -129,9 +129,40 @@ interface AdminApplicationDetail {
 
 interface AdminSubscription {
   id: string
-  status: 'active' | 'past_due'
+  status: 'active' | 'past_due' | 'canceled'
+  started_at: string
+  ended_at: string | null
   customer: { id: string; full_name: string | null } | null
   plan: { id: string; name: string } | null
+}
+
+interface AdminSubscriptionDetail extends AdminSubscription {
+  created_at: string
+  updated_at: string
+  customer: {
+    id: string
+    full_name: string | null
+    customer_profile: {
+      phone: string | null
+      address: string | null
+      installation_address: string | null
+    } | null
+  } | null
+  plan: {
+    id: string
+    name: string
+    slug: string
+    speed_mbps: number | null
+    price_cents: number
+    billing_interval: 'monthly' | 'yearly'
+    is_active: boolean
+  } | null
+  application: {
+    id: string
+    status: 'pending' | 'approved' | 'rejected'
+    submitted_at: string
+    installation_address: string
+  } | null
 }
 
 interface AdminCustomerSummary {
@@ -218,6 +249,7 @@ const customerIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
 const planIdSchema = z.string().uuid()
 const statementIdSchema = z.string().uuid()
+const subscriptionIdSchema = z.string().uuid()
 const supportTicketIdSchema = z.string().uuid()
 
 const supportTicketSchema = z
@@ -283,6 +315,18 @@ const adminPlanSchema = z
 const adminPlanActivationSchema = z
   .object({
     is_active: z.boolean(),
+  })
+  .strict()
+
+const adminSubscriptionsQuerySchema = z
+  .object({
+    status: z.enum(['active', 'past_due', 'canceled', 'all']).optional(),
+  })
+  .strict()
+
+const adminSubscriptionStatusSchema = z
+  .object({
+    status: z.enum(['active', 'past_due', 'canceled']),
   })
   .strict()
 
@@ -1933,20 +1977,36 @@ app.get('/admin/subscriptions', async (request, response) => {
     return
   }
 
-  const { data: subscriptions, error } = await supabase
+  const queryResult = adminSubscriptionsQuerySchema.safeParse(request.query)
+
+  if (!queryResult.success) {
+    response.status(400).json({ error: 'Invalid subscription status filter' })
+    return
+  }
+
+  let query = supabase
     .from('subscriptions')
     .select(
       `
         id,
         status,
+        started_at,
+        ended_at,
         customer:profiles!subscriptions_user_id_fkey(id, full_name),
         plan:plans!subscriptions_plan_id_fkey(id, name)
       `,
     )
-    .in('status', ['active', 'past_due'])
     .order('started_at', { ascending: false })
     .order('id')
-    .returns<AdminSubscription[]>()
+
+  if (!queryResult.data.status) {
+    query = query.in('status', ['active', 'past_due'])
+  } else if (queryResult.data.status !== 'all') {
+    query = query.eq('status', queryResult.data.status)
+  }
+
+  const { data: subscriptions, error } =
+    await query.returns<AdminSubscription[]>()
 
   if (error) {
     console.error('Failed to load admin subscriptions', { code: error.code })
@@ -1955,6 +2015,227 @@ app.get('/admin/subscriptions', async (request, response) => {
   }
 
   response.status(200).json({ subscriptions })
+})
+
+app.get('/admin/subscriptions/:id', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load subscription' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = subscriptionIdSchema.safeParse(request.params.id)
+
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid subscription ID' })
+    return
+  }
+
+  const { data: subscription, error } = await supabase
+    .from('subscriptions')
+    .select(
+      `
+        id,
+        status,
+        started_at,
+        ended_at,
+        created_at,
+        updated_at,
+        customer:profiles!subscriptions_user_id_fkey(
+          id,
+          full_name,
+          customer_profile:customer_profiles(phone, address, installation_address)
+        ),
+        plan:plans!subscriptions_plan_id_fkey(
+          id,
+          name,
+          slug,
+          speed_mbps,
+          price_cents,
+          billing_interval,
+          is_active
+        ),
+        application:applications!subscriptions_application_id_fkey(
+          id,
+          status,
+          submitted_at,
+          installation_address
+        )
+      `,
+    )
+    .eq('id', idResult.data)
+    .maybeSingle<AdminSubscriptionDetail>()
+
+  if (error) {
+    console.error('Failed to load admin subscription', { code: error.code })
+    response.status(500).json({ error: 'Unable to load subscription' })
+    return
+  }
+
+  if (!subscription) {
+    response.status(404).json({ error: 'Subscription not found' })
+    return
+  }
+
+  const [authResult, invoicesResult] = await Promise.all([
+    subscription.customer
+      ? supabase.auth.admin.getUserById(subscription.customer.id)
+      : Promise.resolve({ data: { user: null }, error: null }),
+    supabase
+      .from('invoices')
+      .select('amount_cents, due_date, status')
+      .eq('subscription_id', subscription.id)
+      .returns<AdminCustomerInvoiceSummaryRow[]>(),
+  ])
+
+  if (authResult.error || invoicesResult.error) {
+    console.error('Failed to load admin subscription account information', {
+      authError: authResult.error?.name,
+      invoicesCode: invoicesResult.error?.code,
+      subscriptionId: subscription.id,
+    })
+    response.status(500).json({ error: 'Unable to load subscription' })
+    return
+  }
+
+  const outstandingInvoices = invoicesResult.data.filter(
+    (invoice) => invoice.status === 'open' || invoice.status === 'overdue',
+  )
+
+  response.status(200).json({
+    subscription: {
+      ...subscription,
+      customer: subscription.customer
+        ? {
+            ...subscription.customer,
+            email: authResult.data.user?.email ?? null,
+          }
+        : null,
+      billing: {
+        total_invoices: invoicesResult.data.length,
+        overdue_invoices: invoicesResult.data.filter(
+          (invoice) => invoice.status === 'overdue',
+        ).length,
+        outstanding_cents: outstandingInvoices.reduce(
+          (total, invoice) => total + invoice.amount_cents,
+          0,
+        ),
+      },
+    },
+  })
+})
+
+app.patch('/admin/subscriptions/:id/status', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to update subscription status' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = subscriptionIdSchema.safeParse(request.params.id)
+  const statusResult = adminSubscriptionStatusSchema.safeParse(request.body)
+
+  if (!idResult.success || !statusResult.success) {
+    response.status(400).json({ error: 'Enter a valid subscription status' })
+    return
+  }
+
+  type SubscriptionStatus = 'active' | 'past_due' | 'canceled'
+  const { data: existingSubscription, error: lookupError } = await supabase
+    .from('subscriptions')
+    .select('id, status, started_at, ended_at, updated_at')
+    .eq('id', idResult.data)
+    .maybeSingle<{
+      id: string
+      status: SubscriptionStatus
+      started_at: string
+      ended_at: string | null
+      updated_at: string
+    }>()
+
+  if (lookupError) {
+    console.error('Failed to load subscription status', {
+      code: lookupError.code,
+    })
+    response.status(500).json({ error: 'Unable to update subscription status' })
+    return
+  }
+
+  if (!existingSubscription) {
+    response.status(404).json({ error: 'Subscription not found' })
+    return
+  }
+
+  const nextStatus = statusResult.data.status
+
+  if (existingSubscription.status === nextStatus) {
+    response.status(200).json({ subscription: existingSubscription })
+    return
+  }
+
+  const allowedTransitions: Record<SubscriptionStatus, SubscriptionStatus[]> = {
+    active: ['past_due', 'canceled'],
+    past_due: ['active', 'canceled'],
+    canceled: [],
+  }
+
+  if (!allowedTransitions[existingSubscription.status].includes(nextStatus)) {
+    response.status(409).json({
+      error: 'Subscription status transition is not allowed',
+    })
+    return
+  }
+
+  const updatedAt = new Date().toISOString()
+  const { data: subscription, error } = await supabase
+    .from('subscriptions')
+    .update({
+      status: nextStatus,
+      ended_at: nextStatus === 'canceled' ? updatedAt : null,
+      updated_at: updatedAt,
+    })
+    .eq('id', existingSubscription.id)
+    .eq('status', existingSubscription.status)
+    .select('id, status, started_at, ended_at, updated_at')
+    .maybeSingle<{
+      id: string
+      status: SubscriptionStatus
+      started_at: string
+      ended_at: string | null
+      updated_at: string
+    }>()
+
+  if (error) {
+    console.error('Failed to update subscription status', {
+      code: error.code,
+      subscriptionId: existingSubscription.id,
+    })
+    response.status(500).json({ error: 'Unable to update subscription status' })
+    return
+  }
+
+  if (!subscription) {
+    response.status(409).json({ error: 'Subscription status already changed' })
+    return
+  }
+
+  response.status(200).json({ subscription })
 })
 
 app.get('/admin/applications', async (request, response) => {

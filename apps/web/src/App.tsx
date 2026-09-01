@@ -37,6 +37,10 @@ import { AdminPlansPage } from './features/plans/AdminPlansPage'
 import { StatementsPage } from './features/statements/StatementsPage'
 import { CustomerDashboard } from './features/subscriptions/CustomerDashboard'
 import {
+  AdminSubscriptionDetailsPage,
+  AdminSubscriptionsPage,
+} from './features/subscriptions/AdminSubscriptionsPage'
+import {
   SupportTicketDetailsPage,
   SupportTicketsPage,
 } from './features/support/SupportTicketsPage'
@@ -97,6 +101,8 @@ export function App() {
         <Route path="customers" element={<AdminCustomersPage />} />
         <Route path="customers/:id" element={<AdminCustomerDetailsRoute />} />
         <Route path="plans" element={<AdminPlansPage />} />
+        <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
+        <Route path="subscriptions/:id" element={<AdminSubscriptionDetailsRoute />} />
         <Route path="billing" element={<AdminBillingPage />} />
         <Route path="support" element={<AdminSupportTicketsPage />} />
         <Route path="support/:id" element={<AdminSupportTicketDetailsRoute />} />
@@ -158,6 +164,15 @@ function AdminCustomerDetailsRoute() {
   const { id } = useParams()
   return id && uuidPattern.test(id) ? (
     <AdminCustomerDetailsPage customerId={id} />
+  ) : (
+    <NotFoundPage />
+  )
+}
+
+function AdminSubscriptionDetailsRoute() {
+  const { id } = useParams()
+  return id && uuidPattern.test(id) ? (
+    <AdminSubscriptionDetailsPage subscriptionId={id} />
   ) : (
     <NotFoundPage />
   )

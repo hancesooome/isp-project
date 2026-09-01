@@ -9,6 +9,7 @@ const adminNavItems = [
   { label: 'Applications', to: '/admin/applications', end: false, icon: 'applications' },
   { label: 'Customers', to: '/admin/customers', end: false, icon: 'customers' },
   { label: 'Plans', to: '/admin/plans', end: false, icon: 'plans' },
+  { label: 'Subscriptions', mobileLabel: 'Subs', to: '/admin/subscriptions', end: false, icon: 'subscriptions' },
   { label: 'Billing', to: '/admin/billing', end: false, icon: 'billing' },
   { label: 'Support', to: '/admin/support', end: false, icon: 'support' },
 ] as const
@@ -82,10 +83,11 @@ export function AdminLayout() {
 
         <nav
           aria-label="Admin portal mobile navigation"
-          className="fixed inset-x-3 bottom-3 z-20 grid grid-cols-6 rounded-[14px] border border-white/10 bg-[rgba(17,22,31,0.94)] p-1 shadow-2xl backdrop-blur-xl md:hidden"
+          className="fixed inset-x-3 bottom-3 z-20 grid grid-cols-7 rounded-[14px] border border-white/10 bg-[rgba(17,22,31,0.94)] p-1 shadow-2xl backdrop-blur-xl md:hidden"
         >
           {adminNavItems.map((item) => (
             <NavLink
+              aria-label={item.label}
               className={({ isActive }) =>
                 `flex min-h-14 flex-col items-center justify-center gap-1 rounded-[9px] px-2 text-[10px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
                   isActive ? 'bg-white/9 text-blue-300' : 'text-slate-400 hover:bg-white/6 hover:text-white'
@@ -95,7 +97,7 @@ export function AdminLayout() {
               key={item.to}
               to={item.to}
             >
-              {({ isActive }) => <><AdminIcon active={isActive} name={item.icon} /><span>{item.label}</span></>}
+              {({ isActive }) => <><AdminIcon active={isActive} name={item.icon} /><span>{'mobileLabel' in item ? item.mobileLabel : item.label}</span></>}
             </NavLink>
           ))}
         </nav>
@@ -200,6 +202,7 @@ function AdminIcon({ active, name }: { active: boolean; name: string }) {
     applications: <><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v5h5M10 13h5M10 17h5" /></>,
     customers: <><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></>,
     plans: <><path d="M5 12.55a11 11 0 0114.08 0M8.53 16.11a6 6 0 016.95 0M12 20h.01" /></>,
+    subscriptions: <><rect height="16" rx="2" width="18" x="3" y="4" /><path d="M7 8h10M7 12h7M7 16h4" /></>,
     billing: <><rect height="15" rx="2" width="18" x="3" y="5" /><path d="M3 10h18M7 15h3M15 15h2" /></>,
     support: <><path d="M21 12a8 8 0 01-8 8H8l-5 2 2-5a8 8 0 1116-5z" /><path d="M9.5 9a2.5 2.5 0 014.8.9c0 1.8-2.3 2-2.3 3.6M12 17h.01" /></>,
   }
