@@ -55,6 +55,27 @@ function readNonNegativeInteger(name: string, fallback: number): number {
   return parsed
 }
 
+function readIntegerInRange(
+  name: string,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  const value = process.env[name]?.trim()
+
+  if (!value) {
+    return fallback
+  }
+
+  const parsed = Number(value)
+
+  if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {
+    throw new Error(`${name} must be an integer between ${minimum} and ${maximum}`)
+  }
+
+  return parsed
+}
+
 export const env = {
   supabaseUrl: readUrl('SUPABASE_URL'),
   supabaseServiceRoleKey: readRequiredEnv('SUPABASE_SERVICE_ROLE_KEY'),
@@ -68,4 +89,29 @@ export const env = {
   cronSecret: readRequiredEnv('CRON_SECRET'),
   appUrl: readUrl('APP_URL'),
   dueReminderDays: readNonNegativeInteger('DUE_REMINDER_DAYS', 3),
+  trustProxyHops: readIntegerInRange(
+    'TRUST_PROXY_HOPS',
+    process.env.VERCEL ? 1 : 0,
+    0,
+    5,
+  ),
+  rateLimitWindowMs: readIntegerInRange(
+    'RATE_LIMIT_WINDOW_MS',
+    15 * 60 * 1000,
+    1000,
+    24 * 60 * 60 * 1000,
+  ),
+  rateLimitMax: readIntegerInRange('RATE_LIMIT_MAX', 300, 1, 100_000),
+  writeRateLimitMax: readIntegerInRange(
+    'WRITE_RATE_LIMIT_MAX',
+    60,
+    1,
+    100_000,
+  ),
+  availabilityRateLimitMax: readIntegerInRange(
+    'AVAILABILITY_RATE_LIMIT_MAX',
+    20,
+    1,
+    100_000,
+  ),
 }

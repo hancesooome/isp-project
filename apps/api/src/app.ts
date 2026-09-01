@@ -1,4 +1,5 @@
 import express from 'express'
+import { rateLimit } from 'express-rate-limit'
 import { z } from 'zod'
 
 import { env } from './config/env.js'
@@ -516,6 +517,40 @@ export const app = express()
 
 app.disable('x-powered-by')
 
+if (env.trustProxyHops > 0) {
+  app.set('trust proxy', env.trustProxyHops)
+}
+
+const commonRateLimitOptions = {
+  windowMs: env.rateLimitWindowMs,
+  standardHeaders: 'draft-7' as const,
+  legacyHeaders: false,
+  passOnStoreError: true,
+  handler: (_request: express.Request, response: express.Response) => {
+    response.status(429).json({ error: 'Too many requests. Please try again later.' })
+  },
+}
+
+const generalRateLimiter = rateLimit({
+  ...commonRateLimitOptions,
+  limit: env.rateLimitMax,
+  skip: (request) => request.method === 'OPTIONS',
+})
+
+const writeRateLimiter = rateLimit({
+  ...commonRateLimitOptions,
+  limit: env.writeRateLimitMax,
+  skip: (request) =>
+    request.method === 'GET' ||
+    request.method === 'HEAD' ||
+    request.method === 'OPTIONS',
+})
+
+const availabilityRateLimiter = rateLimit({
+  ...commonRateLimitOptions,
+  limit: env.availabilityRateLimitMax,
+})
+
 app.post(
   '/stripe/webhook',
   express.raw({ type: 'application/json', limit: '1mb' }),
@@ -746,6 +781,9 @@ app.get('/jobs/overdue-invoices', async (request, response) => {
   }
 })
 
+app.use(generalRateLimiter)
+app.use(writeRateLimiter)
+
 app.get('/plans', async (_request, response) => {
   const { data, error } = await supabase
     .from('plans')
@@ -765,7 +803,7 @@ app.get('/plans', async (_request, response) => {
   response.status(200).json({ plans: data })
 })
 
-app.post('/service-availability', (request, response) => {
+app.post('/service-availability', availabilityRateLimiter, (request, response) => {
   const result = availabilitySchema.safeParse(request.body)
 
   if (!result.success) {
