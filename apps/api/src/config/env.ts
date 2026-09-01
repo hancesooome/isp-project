@@ -39,6 +39,22 @@ function readCurrency(name: string): string {
   return value
 }
 
+function readNonNegativeInteger(name: string, fallback: number): number {
+  const value = process.env[name]?.trim()
+
+  if (!value) {
+    return fallback
+  }
+
+  const parsed = Number(value)
+
+  if (!Number.isSafeInteger(parsed) || parsed < 0 || parsed > 30) {
+    throw new Error(`${name} must be an integer between 0 and 30`)
+  }
+
+  return parsed
+}
+
 export const env = {
   supabaseUrl: readUrl('SUPABASE_URL'),
   supabaseServiceRoleKey: readRequiredEnv('SUPABASE_SERVICE_ROLE_KEY'),
@@ -51,4 +67,5 @@ export const env = {
   emailFrom: readRequiredEnv('EMAIL_FROM'),
   cronSecret: readRequiredEnv('CRON_SECRET'),
   appUrl: readUrl('APP_URL'),
+  dueReminderDays: readNonNegativeInteger('DUE_REMINDER_DAYS', 3),
 }
