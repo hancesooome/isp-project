@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 import { env } from './config/env.js'
 import { runMonthlyBillingJob } from './jobs/monthly-billing.js'
+import { runOverdueInvoiceJob } from './jobs/overdue-invoices.js'
 import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
 import { sendEmail } from './lib/email.js'
 import { supabase } from './lib/supabase.js'
@@ -540,6 +541,25 @@ app.get('/jobs/upcoming-due-reminders', async (request, response) => {
   } catch {
     console.error('Upcoming-due reminder job failed')
     response.status(500).json({ error: 'Unable to run upcoming-due reminders' })
+  }
+})
+
+app.get('/jobs/overdue-invoices', async (request, response) => {
+  if (request.header('authorization') !== `Bearer ${env.cronSecret}`) {
+    response.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+
+  console.info('Overdue invoice job started')
+
+  try {
+    const result = await runOverdueInvoiceJob()
+
+    console.info('Overdue invoice job completed', result)
+    response.status(200).json({ success: true, ...result })
+  } catch {
+    console.error('Overdue invoice job failed')
+    response.status(500).json({ error: 'Unable to mark overdue invoices' })
   }
 })
 

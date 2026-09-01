@@ -8,6 +8,10 @@
     {
       "path": "/jobs/upcoming-due-reminders",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/jobs/overdue-invoices",
+      "schedule": "5 0 * * *"
     }
   ]
 }
