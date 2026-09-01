@@ -39,11 +39,11 @@ export function App() {
   return (
     <Routes>
       <Route element={<HomePage />} path="/" />
-      <Route element={<CentredPage><LoginPage /></CentredPage>} path="/login" />
+      <Route element={<LightCentredPage><LoginPage /></LightCentredPage>} path="/login" />
       <Route element={<CentredPage><SignupForm /></CentredPage>} path="/signup" />
       <Route element={<CentredPage><PasswordResetPlaceholder /></CentredPage>} path="/forgot-password" />
-      <Route element={<CentredPage><ServiceAvailabilityPage /></CentredPage>} path="/availability" />
-      <Route element={<CentredPage><PlansPage /></CentredPage>} path="/plans" />
+      <Route element={<LightCentredPage><ServiceAvailabilityPage /></LightCentredPage>} path="/availability" />
+      <Route element={<LightCentredPage><PlansPage /></LightCentredPage>} path="/plans" />
       <Route
         element={
           <ProtectedRoute>
@@ -89,6 +89,15 @@ export function App() {
 function CentredPage({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen items-center justify-center px-6 py-12">
+      {children}
+    </div>
+  )
+}
+
+function LightCentredPage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f7f8fb] px-5 py-12">
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
       {children}
     </div>
   )
