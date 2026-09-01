@@ -127,6 +127,47 @@ interface AdminSubscription {
   plan: { id: string; name: string } | null
 }
 
+interface AdminCustomerSummary {
+  id: string
+  full_name: string | null
+  customer_profile: { phone: string | null } | null
+}
+
+interface AdminCustomerProfile extends AdminCustomerSummary {
+  customer_profile: {
+    phone: string | null
+    address: string | null
+    installation_address: string | null
+  } | null
+}
+
+interface AdminCustomerApplication {
+  id: string
+  status: 'pending' | 'approved' | 'rejected'
+  installation_address: string
+  submitted_at: string
+  reviewed_at: string | null
+  plan: { name: string } | null
+}
+
+interface AdminCustomerSubscription {
+  id: string
+  status: 'active' | 'past_due' | 'canceled'
+  started_at: string
+  ended_at: string | null
+  plan: {
+    name: string
+    price_cents: number
+    billing_interval: 'monthly' | 'yearly'
+  } | null
+}
+
+interface AdminCustomerInvoiceSummaryRow {
+  amount_cents: number
+  due_date: string
+  status: 'open' | 'paid' | 'overdue'
+}
+
 interface AdminSupportTicketSummary {
   id: string
   subject: string
@@ -166,6 +207,7 @@ const adminApplicationsQuerySchema = z
   .strict()
 
 const applicationIdSchema = z.string().uuid()
+const customerIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
 const statementIdSchema = z.string().uuid()
 const supportTicketIdSchema = z.string().uuid()
@@ -1336,6 +1378,166 @@ app.get('/admin/access', async (request, response) => {
   }
 
   response.status(200).json({ authorized: true })
+})
+
+app.get('/admin/customers', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load customers' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: customers, error } = await supabase
+    .from('profiles')
+    .select(
+      `
+        id,
+        full_name,
+        customer_profile:customer_profiles(phone)
+      `,
+    )
+    .eq('role', 'customer')
+    .order('full_name')
+    .order('id')
+    .returns<AdminCustomerSummary[]>()
+
+  if (error) {
+    console.error('Failed to load admin customers', { code: error.code })
+    response.status(500).json({ error: 'Unable to load customers' })
+    return
+  }
+
+  response.status(200).json({ customers })
+})
+
+app.get('/admin/customers/:id', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load customer' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = customerIdSchema.safeParse(request.params.id)
+
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid customer ID' })
+    return
+  }
+
+  const customerId = idResult.data
+  const { data: customer, error: customerError } = await supabase
+    .from('profiles')
+    .select(
+      `
+        id,
+        full_name,
+        customer_profile:customer_profiles(phone, address, installation_address)
+      `,
+    )
+    .eq('id', customerId)
+    .eq('role', 'customer')
+    .maybeSingle<AdminCustomerProfile>()
+
+  if (customerError) {
+    console.error('Failed to load admin customer', { code: customerError.code })
+    response.status(500).json({ error: 'Unable to load customer' })
+    return
+  }
+
+  if (!customer) {
+    response.status(404).json({ error: 'Customer not found' })
+    return
+  }
+
+  const [authResult, applicationsResult, subscriptionsResult, invoicesResult] =
+    await Promise.all([
+      supabase.auth.admin.getUserById(customerId),
+      supabase
+        .from('applications')
+        .select(
+          'id, status, installation_address, submitted_at, reviewed_at, plan:plans(name)',
+        )
+        .eq('user_id', customerId)
+        .order('submitted_at', { ascending: false })
+        .order('id')
+        .returns<AdminCustomerApplication[]>(),
+      supabase
+        .from('subscriptions')
+        .select(
+          'id, status, started_at, ended_at, plan:plans(name, price_cents, billing_interval)',
+        )
+        .eq('user_id', customerId)
+        .order('started_at', { ascending: false })
+        .order('id')
+        .returns<AdminCustomerSubscription[]>(),
+      supabase
+        .from('invoices')
+        .select('amount_cents, due_date, status')
+        .eq('user_id', customerId)
+        .returns<AdminCustomerInvoiceSummaryRow[]>(),
+    ])
+
+  if (
+    authResult.error ||
+    applicationsResult.error ||
+    subscriptionsResult.error ||
+    invoicesResult.error
+  ) {
+    console.error('Failed to load admin customer account information', {
+      authError: authResult.error?.name,
+      applicationsCode: applicationsResult.error?.code,
+      subscriptionsCode: subscriptionsResult.error?.code,
+      invoicesCode: invoicesResult.error?.code,
+      customerId,
+    })
+    response.status(500).json({ error: 'Unable to load customer' })
+    return
+  }
+
+  const outstandingInvoices = invoicesResult.data.filter(
+    (invoice) => invoice.status === 'open' || invoice.status === 'overdue',
+  )
+  const nextDueDate =
+    outstandingInvoices.map((invoice) => invoice.due_date).sort()[0] ?? null
+
+  response.status(200).json({
+    customer: {
+      ...customer,
+      email: authResult.data.user.email ?? null,
+      applications: applicationsResult.data,
+      subscriptions: subscriptionsResult.data,
+      billing: {
+        total_invoices: invoicesResult.data.length,
+        open_invoices: invoicesResult.data.filter(
+          (invoice) => invoice.status === 'open',
+        ).length,
+        overdue_invoices: invoicesResult.data.filter(
+          (invoice) => invoice.status === 'overdue',
+        ).length,
+        outstanding_cents: outstandingInvoices.reduce(
+          (total, invoice) => total + invoice.amount_cents,
+          0,
+        ),
+        next_due_date: nextDueDate,
+      },
+    },
+  })
 })
 
 app.post('/admin/invoices', async (request, response) => {

@@ -23,6 +23,10 @@ import {
 } from './features/auth/redirect'
 import { CustomerLayout } from './features/account/CustomerLayout'
 import { AdminLayout } from './features/admin/AdminLayout'
+import {
+  AdminCustomerDetailsPage,
+  AdminCustomersPage,
+} from './features/admin/AdminCustomersPage'
 import { AdminOverviewPage } from './features/admin/AdminOverviewPage'
 import { HomePage } from './features/home/HomePage'
 import { AdminBillingPage } from './features/invoices/AdminBillingPage'
@@ -89,6 +93,8 @@ export function App() {
         <Route index element={<AdminOverviewPage />} />
         <Route path="applications" element={<AdminApplicationsPage />} />
         <Route path="applications/:id" element={<AdminApplicationReviewRoute />} />
+        <Route path="customers" element={<AdminCustomersPage />} />
+        <Route path="customers/:id" element={<AdminCustomerDetailsRoute />} />
         <Route path="billing" element={<AdminBillingPage />} />
         <Route path="support" element={<AdminSupportTicketsPage />} />
         <Route path="support/:id" element={<AdminSupportTicketDetailsRoute />} />
@@ -141,6 +147,15 @@ function AdminApplicationReviewRoute() {
   const { id } = useParams()
   return id && uuidPattern.test(id) ? (
     <AdminApplicationReviewPage applicationId={id} />
+  ) : (
+    <NotFoundPage />
+  )
+}
+
+function AdminCustomerDetailsRoute() {
+  const { id } = useParams()
+  return id && uuidPattern.test(id) ? (
+    <AdminCustomerDetailsPage customerId={id} />
   ) : (
     <NotFoundPage />
   )

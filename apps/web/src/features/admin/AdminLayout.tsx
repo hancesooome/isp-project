@@ -7,6 +7,7 @@ import { useAuth } from '../auth/auth-context'
 const adminNavItems = [
   { label: 'Overview', to: '/admin', end: true, icon: 'overview' },
   { label: 'Applications', to: '/admin/applications', end: false, icon: 'applications' },
+  { label: 'Customers', to: '/admin/customers', end: false, icon: 'customers' },
   { label: 'Billing', to: '/admin/billing', end: false, icon: 'billing' },
   { label: 'Support', to: '/admin/support', end: false, icon: 'support' },
 ] as const
@@ -80,7 +81,7 @@ export function AdminLayout() {
 
         <nav
           aria-label="Admin portal mobile navigation"
-          className="fixed inset-x-3 bottom-3 z-20 grid grid-cols-4 rounded-[14px] border border-white/10 bg-[rgba(17,22,31,0.94)] p-1 shadow-2xl backdrop-blur-xl md:hidden"
+          className="fixed inset-x-3 bottom-3 z-20 grid grid-cols-5 rounded-[14px] border border-white/10 bg-[rgba(17,22,31,0.94)] p-1 shadow-2xl backdrop-blur-xl md:hidden"
         >
           {adminNavItems.map((item) => (
             <NavLink
@@ -196,6 +197,7 @@ function AdminIcon({ active, name }: { active: boolean; name: string }) {
   const paths: Record<string, ReactNode> = {
     overview: <><rect height="7" rx="1" width="7" x="3" y="3" /><rect height="7" rx="1" width="7" x="14" y="3" /><rect height="7" rx="1" width="7" x="3" y="14" /><rect height="7" rx="1" width="7" x="14" y="14" /></>,
     applications: <><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v5h5M10 13h5M10 17h5" /></>,
+    customers: <><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></>,
     billing: <><rect height="15" rx="2" width="18" x="3" y="5" /><path d="M3 10h18M7 15h3M15 15h2" /></>,
     support: <><path d="M21 12a8 8 0 01-8 8H8l-5 2 2-5a8 8 0 1116-5z" /><path d="M9.5 9a2.5 2.5 0 014.8.9c0 1.8-2.3 2-2.3 3.6M12 17h.01" /></>,
   }
