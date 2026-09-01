@@ -70,6 +70,16 @@ interface CustomerStatement {
   created_at: string
 }
 
+interface CustomerSupportTicket {
+  id: string
+  subject: string
+  description: string
+  status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  created_at: string
+  updated_at: string
+  resolved_at: string | null
+}
+
 interface AdminApplication {
   id: string
   status: 'pending' | 'approved' | 'rejected'
@@ -137,6 +147,14 @@ const adminApplicationsQuerySchema = z
 const applicationIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
 const statementIdSchema = z.string().uuid()
+const supportTicketIdSchema = z.string().uuid()
+
+const supportTicketSchema = z
+  .object({
+    subject: z.string().trim().min(3).max(200),
+    description: z.string().trim().min(10).max(5000),
+  })
+  .strict()
 
 const databaseDateSchema = z
   .string()
@@ -748,6 +766,143 @@ app.get('/applications/current', async (request, response) => {
   }
 
   response.status(200).json({ application })
+})
+
+app.post('/support-tickets', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to create support ticket' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const result = supportTicketSchema.safeParse(request.body)
+
+  if (!result.success) {
+    response.status(400).json({ error: 'Enter valid support ticket details' })
+    return
+  }
+
+  const { data: ticket, error } = await supabase
+    .from('support_tickets')
+    .insert({
+      user_id: auth.userId,
+      subject: result.data.subject,
+      description: result.data.description,
+    })
+    .select(
+      'id, subject, description, status, created_at, updated_at, resolved_at',
+    )
+    .single<CustomerSupportTicket>()
+
+  if (error) {
+    console.error('Failed to create customer support ticket', {
+      code: error.code,
+    })
+    response.status(500).json({ error: 'Unable to create support ticket' })
+    return
+  }
+
+  response.status(201).json({ ticket })
+})
+
+app.get('/support-tickets', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load support tickets' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: tickets, error } = await supabase
+    .from('support_tickets')
+    .select(
+      'id, subject, description, status, created_at, updated_at, resolved_at',
+    )
+    .eq('user_id', auth.userId)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .returns<CustomerSupportTicket[]>()
+
+  if (error) {
+    console.error('Failed to load customer support tickets', {
+      code: error.code,
+    })
+    response.status(500).json({ error: 'Unable to load support tickets' })
+    return
+  }
+
+  response.status(200).json({ tickets })
+})
+
+app.get('/support-tickets/:id', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load support ticket' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = supportTicketIdSchema.safeParse(request.params.id)
+
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid support ticket ID' })
+    return
+  }
+
+  const { data: ticket, error } = await supabase
+    .from('support_tickets')
+    .select(
+      'id, subject, description, status, created_at, updated_at, resolved_at',
+    )
+    .eq('id', idResult.data)
+    .eq('user_id', auth.userId)
+    .maybeSingle<CustomerSupportTicket>()
+
+  if (error) {
+    console.error('Failed to load customer support ticket', {
+      code: error.code,
+    })
+    response.status(500).json({ error: 'Unable to load support ticket' })
+    return
+  }
+
+  if (!ticket) {
+    response.status(404).json({ error: 'Support ticket not found' })
+    return
+  }
+
+  response.status(200).json({ ticket })
 })
 
 app.get('/subscription', async (request, response) => {
