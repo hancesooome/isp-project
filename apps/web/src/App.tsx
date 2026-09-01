@@ -33,6 +33,7 @@ import { AdminBillingPage } from './features/invoices/AdminBillingPage'
 import { InvoiceDetailsPage } from './features/invoices/InvoiceDetailsPage'
 import { InvoicesPage } from './features/invoices/InvoicesPage'
 import { PlansPage } from './features/plans/PlansPage'
+import { AdminPlansPage } from './features/plans/AdminPlansPage'
 import { StatementsPage } from './features/statements/StatementsPage'
 import { CustomerDashboard } from './features/subscriptions/CustomerDashboard'
 import {
@@ -95,6 +96,7 @@ export function App() {
         <Route path="applications/:id" element={<AdminApplicationReviewRoute />} />
         <Route path="customers" element={<AdminCustomersPage />} />
         <Route path="customers/:id" element={<AdminCustomerDetailsRoute />} />
+        <Route path="plans" element={<AdminPlansPage />} />
         <Route path="billing" element={<AdminBillingPage />} />
         <Route path="support" element={<AdminSupportTicketsPage />} />
         <Route path="support/:id" element={<AdminSupportTicketDetailsRoute />} />

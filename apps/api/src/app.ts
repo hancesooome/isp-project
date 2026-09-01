@@ -19,6 +19,13 @@ interface Plan {
   billing_interval: 'monthly' | 'yearly'
 }
 
+interface AdminPlan extends Plan {
+  speed_mbps: number | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 type UserRole = 'customer' | 'admin'
 
 interface AuthorizationResult {
@@ -209,6 +216,7 @@ const adminApplicationsQuerySchema = z
 const applicationIdSchema = z.string().uuid()
 const customerIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
+const planIdSchema = z.string().uuid()
 const statementIdSchema = z.string().uuid()
 const supportTicketIdSchema = z.string().uuid()
 
@@ -255,6 +263,31 @@ const adminInvoiceStatusSchema = z
     status: z.literal('overdue'),
   })
   .strict()
+
+const adminPlanSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100),
+    slug: z
+      .string()
+      .trim()
+      .min(1)
+      .max(100)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    description: z.string().trim().max(1000).nullable(),
+    speed_mbps: z.number().int().min(1).max(100_000),
+    price_cents: z.number().int().min(0).max(2_147_483_647),
+    billing_interval: z.enum(['monthly', 'yearly']),
+  })
+  .strict()
+
+const adminPlanActivationSchema = z
+  .object({
+    is_active: z.boolean(),
+  })
+  .strict()
+
+const adminPlanSelect =
+  'id, name, slug, description, speed_mbps, price_cents, billing_interval, is_active, created_at, updated_at'
 
 const applicationReviewSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('approved') }).strict(),
@@ -1378,6 +1411,186 @@ app.get('/admin/access', async (request, response) => {
   }
 
   response.status(200).json({ authorized: true })
+})
+
+app.get('/admin/plans', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load plans' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: plans, error } = await supabase
+    .from('plans')
+    .select(adminPlanSelect)
+    .order('is_active', { ascending: false })
+    .order('price_cents')
+    .order('name')
+    .order('id')
+    .returns<AdminPlan[]>()
+
+  if (error) {
+    console.error('Failed to load admin plans', { code: error.code })
+    response.status(500).json({ error: 'Unable to load plans' })
+    return
+  }
+
+  response.status(200).json({ plans })
+})
+
+app.post('/admin/plans', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to create plan' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const result = adminPlanSchema.safeParse(request.body)
+
+  if (!result.success) {
+    response.status(400).json({ error: 'Enter valid plan details' })
+    return
+  }
+
+  const { data: plan, error } = await supabase
+    .from('plans')
+    .insert({
+      ...result.data,
+      description: result.data.description || null,
+    })
+    .select(adminPlanSelect)
+    .single<AdminPlan>()
+
+  if (error) {
+    if (error.code === '23505') {
+      response.status(409).json({ error: 'A plan with this slug already exists' })
+      return
+    }
+
+    console.error('Failed to create admin plan', { code: error.code })
+    response.status(500).json({ error: 'Unable to create plan' })
+    return
+  }
+
+  response.status(201).json({ plan })
+})
+
+app.patch('/admin/plans/:id', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to update plan' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = planIdSchema.safeParse(request.params.id)
+  const planResult = adminPlanSchema.safeParse(request.body)
+
+  if (!idResult.success || !planResult.success) {
+    response.status(400).json({ error: 'Enter valid plan details' })
+    return
+  }
+
+  const { data: plan, error } = await supabase
+    .from('plans')
+    .update({
+      ...planResult.data,
+      description: planResult.data.description || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', idResult.data)
+    .select(adminPlanSelect)
+    .maybeSingle<AdminPlan>()
+
+  if (error) {
+    if (error.code === '23505') {
+      response.status(409).json({ error: 'A plan with this slug already exists' })
+      return
+    }
+
+    console.error('Failed to update admin plan', { code: error.code })
+    response.status(500).json({ error: 'Unable to update plan' })
+    return
+  }
+
+  if (!plan) {
+    response.status(404).json({ error: 'Plan not found' })
+    return
+  }
+
+  response.status(200).json({ plan })
+})
+
+app.patch('/admin/plans/:id/activation', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to update plan availability' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = planIdSchema.safeParse(request.params.id)
+  const activationResult = adminPlanActivationSchema.safeParse(request.body)
+
+  if (!idResult.success || !activationResult.success) {
+    response.status(400).json({ error: 'Enter a valid plan availability' })
+    return
+  }
+
+  const { data: plan, error } = await supabase
+    .from('plans')
+    .update({
+      is_active: activationResult.data.is_active,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', idResult.data)
+    .select(adminPlanSelect)
+    .maybeSingle<AdminPlan>()
+
+  if (error) {
+    console.error('Failed to update admin plan availability', {
+      code: error.code,
+    })
+    response.status(500).json({ error: 'Unable to update plan availability' })
+    return
+  }
+
+  if (!plan) {
+    response.status(404).json({ error: 'Plan not found' })
+    return
+  }
+
+  response.status(200).json({ plan })
 })
 
 app.get('/admin/customers', async (request, response) => {
