@@ -19,6 +19,17 @@ interface SupportTicket {
   resolved_at: string | null
 }
 
+interface SupportResponse {
+  id: string
+  body: string
+  created_at: string
+  author: { full_name: string | null } | null
+}
+
+interface SupportTicketDetail extends SupportTicket {
+  responses: SupportResponse[]
+}
+
 const ticketSchema = z.object({
   subject: z
     .string()
@@ -59,6 +70,32 @@ function isSupportTicket(value: unknown): value is SupportTicket {
     typeof ticket.created_at === 'string' &&
     typeof ticket.updated_at === 'string' &&
     (ticket.resolved_at === null || typeof ticket.resolved_at === 'string')
+  )
+}
+
+function isSupportResponse(value: unknown): value is SupportResponse {
+  if (typeof value !== 'object' || value === null) return false
+
+  const response = value as Record<string, unknown>
+  const author = response.author
+
+  return (
+    typeof response.id === 'string' &&
+    typeof response.body === 'string' &&
+    typeof response.created_at === 'string' &&
+    (author === null ||
+      (typeof author === 'object' &&
+        'full_name' in author &&
+        (typeof author.full_name === 'string' || author.full_name === null)))
+  )
+}
+
+function isSupportTicketDetail(value: unknown): value is SupportTicketDetail {
+  return (
+    isSupportTicket(value) &&
+    'responses' in value &&
+    Array.isArray(value.responses) &&
+    value.responses.every(isSupportResponse)
   )
 }
 
@@ -324,7 +361,7 @@ export function SupportTicketsPage() {
 
 export function SupportTicketDetailsPage({ ticketId }: { ticketId: string }) {
   const { session } = useAuth()
-  const [ticket, setTicket] = useState<SupportTicket | null>()
+  const [ticket, setTicket] = useState<SupportTicketDetail | null>()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -349,7 +386,7 @@ export function SupportTicketDetailsPage({ ticketId }: { ticketId: string }) {
           typeof result !== 'object' ||
           result === null ||
           !('ticket' in result) ||
-          !isSupportTicket(result.ticket)
+          !isSupportTicketDetail(result.ticket)
         ) {
           throw new Error('INVALID_SUPPORT_TICKET_RESPONSE')
         }
@@ -393,10 +430,40 @@ export function SupportTicketDetailsPage({ ticketId }: { ticketId: string }) {
           <div><dt className="text-slate-500">Created</dt><dd className="mt-1 font-semibold text-slate-950">{dateFormatter.format(new Date(ticket.created_at))}</dd></div>
           <div><dt className="text-slate-500">Last updated</dt><dd className="mt-1 font-semibold text-slate-950">{dateFormatter.format(new Date(ticket.updated_at))}</dd></div>
         </dl>
-        <div className="mt-6">
-          <h2 className="text-sm font-semibold text-slate-950">Description</h2>
-          <p className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-7 text-slate-600">{ticket.description}</p>
-        </div>
+        <section className="mt-7 border-t border-slate-900/8 pt-7">
+          <h2 className="text-lg font-bold text-slate-950">Conversation</h2>
+          <div className="mt-4 rounded-[14px] border border-slate-900/8 bg-slate-50 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-950">You</p>
+              <time className="text-xs text-slate-500" dateTime={ticket.created_at}>
+                {dateFormatter.format(new Date(ticket.created_at))}
+              </time>
+            </div>
+            <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">{ticket.description}</p>
+          </div>
+
+          {ticket.responses.length === 0 ? (
+            <p className="mt-4 rounded-[12px] border border-dashed border-slate-900/12 p-4 text-sm text-slate-500">
+              No staff responses yet. Updates from our support team will appear here.
+            </p>
+          ) : (
+            <ol className="mt-4 space-y-4" aria-label="Staff responses">
+              {ticket.responses.map((response) => (
+                <li className="ml-auto max-w-[92%] rounded-[14px] border border-blue-200 bg-blue-50 p-4 sm:p-5" key={response.id}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-blue-950">
+                      {response.author?.full_name ?? 'Support team'}
+                    </p>
+                    <time className="text-xs text-blue-700/70" dateTime={response.created_at}>
+                      {dateFormatter.format(new Date(response.created_at))}
+                    </time>
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-blue-950/80">{response.body}</p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
       </article>
     </section>
   )

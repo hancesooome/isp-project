@@ -80,6 +80,13 @@ interface CustomerSupportTicket {
   resolved_at: string | null
 }
 
+interface SupportTicketResponse {
+  id: string
+  body: string
+  created_at: string
+  author: { full_name: string | null } | null
+}
+
 interface AdminApplication {
   id: string
   status: 'pending' | 'approved' | 'rejected'
@@ -167,6 +174,12 @@ const supportTicketSchema = z
   .object({
     subject: z.string().trim().min(3).max(200),
     description: z.string().trim().min(10).max(5000),
+  })
+  .strict()
+
+const supportTicketResponseSchema = z
+  .object({
+    body: z.string().trim().min(1).max(5000),
   })
   .strict()
 
@@ -916,7 +929,31 @@ app.get('/support-tickets/:id', async (request, response) => {
     return
   }
 
-  response.status(200).json({ ticket })
+  const { data: responses, error: responsesError } = await supabase
+    .from('support_ticket_responses')
+    .select(
+      `
+        id,
+        body,
+        created_at,
+        author:profiles!support_ticket_responses_admin_id_fkey(full_name)
+      `,
+    )
+    .eq('ticket_id', ticket.id)
+    .order('created_at')
+    .order('id')
+    .returns<SupportTicketResponse[]>()
+
+  if (responsesError) {
+    console.error('Failed to load customer support ticket responses', {
+      code: responsesError.code,
+      ticketId: ticket.id,
+    })
+    response.status(500).json({ error: 'Unable to load support ticket' })
+    return
+  }
+
+  response.status(200).json({ ticket: { ...ticket, responses } })
 })
 
 app.get('/subscription', async (request, response) => {
@@ -1710,7 +1747,102 @@ app.get('/admin/support-tickets/:id', async (request, response) => {
     return
   }
 
-  response.status(200).json({ ticket })
+  const { data: responses, error: responsesError } = await supabase
+    .from('support_ticket_responses')
+    .select(
+      `
+        id,
+        body,
+        created_at,
+        author:profiles!support_ticket_responses_admin_id_fkey(full_name)
+      `,
+    )
+    .eq('ticket_id', ticket.id)
+    .order('created_at')
+    .order('id')
+    .returns<SupportTicketResponse[]>()
+
+  if (responsesError) {
+    console.error('Failed to load admin support ticket responses', {
+      code: responsesError.code,
+      ticketId: ticket.id,
+    })
+    response.status(500).json({ error: 'Unable to load support ticket' })
+    return
+  }
+
+  response.status(200).json({ ticket: { ...ticket, responses } })
+})
+
+app.post('/admin/support-tickets/:id/responses', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to add support response' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = supportTicketIdSchema.safeParse(request.params.id)
+  const bodyResult = supportTicketResponseSchema.safeParse(request.body)
+
+  if (!idResult.success || !bodyResult.success) {
+    response.status(400).json({ error: 'Enter a valid support response' })
+    return
+  }
+
+  const { data: ticket, error: ticketError } = await supabase
+    .from('support_tickets')
+    .select('id')
+    .eq('id', idResult.data)
+    .maybeSingle<{ id: string }>()
+
+  if (ticketError) {
+    console.error('Failed to verify support ticket response target', {
+      code: ticketError.code,
+    })
+    response.status(500).json({ error: 'Unable to add support response' })
+    return
+  }
+
+  if (!ticket) {
+    response.status(404).json({ error: 'Support ticket not found' })
+    return
+  }
+
+  const { data: ticketResponse, error } = await supabase
+    .from('support_ticket_responses')
+    .insert({
+      ticket_id: ticket.id,
+      admin_id: auth.userId,
+      body: bodyResult.data.body,
+    })
+    .select(
+      `
+        id,
+        body,
+        created_at,
+        author:profiles!support_ticket_responses_admin_id_fkey(full_name)
+      `,
+    )
+    .single<SupportTicketResponse>()
+
+  if (error) {
+    console.error('Failed to create support ticket response', {
+      code: error.code,
+      ticketId: ticket.id,
+    })
+    response.status(500).json({ error: 'Unable to add support response' })
+    return
+  }
+
+  response.status(201).json({ response: ticketResponse })
 })
 
 app.patch('/admin/applications/:id/review', async (request, response) => {
