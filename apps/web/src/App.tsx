@@ -31,6 +31,10 @@ import { InvoicesPage } from './features/invoices/InvoicesPage'
 import { PlansPage } from './features/plans/PlansPage'
 import { StatementsPage } from './features/statements/StatementsPage'
 import { CustomerDashboard } from './features/subscriptions/CustomerDashboard'
+import {
+  SupportTicketDetailsPage,
+  SupportTicketsPage,
+} from './features/support/SupportTicketsPage'
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -65,6 +69,8 @@ export function App() {
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="invoices/:id" element={<InvoiceDetailsRoute />} />
         <Route path="statements" element={<StatementsPage />} />
+        <Route path="support" element={<SupportTicketsPage />} />
+        <Route path="support/:id" element={<SupportTicketDetailsRoute />} />
       </Route>
       <Route
         element={
@@ -129,6 +135,15 @@ function AdminApplicationReviewRoute() {
   const { id } = useParams()
   return id && uuidPattern.test(id) ? (
     <AdminApplicationReviewPage applicationId={id} />
+  ) : (
+    <NotFoundPage />
+  )
+}
+
+function SupportTicketDetailsRoute() {
+  const { id } = useParams()
+  return id && uuidPattern.test(id) ? (
+    <SupportTicketDetailsPage ticketId={id} />
   ) : (
     <NotFoundPage />
   )

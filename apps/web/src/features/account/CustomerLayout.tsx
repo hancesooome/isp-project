@@ -9,6 +9,7 @@ const navItems = [
   { label: 'Application Status', shortLabel: 'Application', to: '/account/application', end: false, icon: 'application' },
   { label: 'Invoices', shortLabel: 'Invoices', to: '/account/invoices', end: false, icon: 'invoices' },
   { label: 'Statements', shortLabel: 'Statements', to: '/account/statements', end: false, icon: 'statements' },
+  { label: 'Support', shortLabel: 'Support', to: '/account/support', end: false, icon: 'support' },
 ] as const
 
 export function CustomerLayout() {
@@ -74,7 +75,7 @@ export function CustomerLayout() {
 
         <nav
           aria-label="Customer portal mobile navigation"
-          className="fixed inset-x-3 bottom-3 z-20 grid grid-cols-4 rounded-[16px] border border-slate-900/10 bg-[rgba(255,255,255,0.92)] p-1.5 shadow-2xl backdrop-blur-xl md:hidden"
+          className="fixed inset-x-3 bottom-3 z-20 grid grid-cols-5 rounded-[16px] border border-slate-900/10 bg-[rgba(255,255,255,0.92)] p-1.5 shadow-2xl backdrop-blur-xl md:hidden"
         >
           {navItems.map((item) => (
             <NavLink
@@ -207,6 +208,7 @@ function NavIcon({ active, name }: { active: boolean; name: string }) {
     application: <><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v5h5M10 13h5M10 17h5" /></>,
     invoices: <><rect height="15" rx="2" width="18" x="3" y="5" /><path d="M3 10h18M7 15h3" /></>,
     statements: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
+    support: <><path d="M21 12a8 8 0 01-8 8H8l-5 2 2-5a8 8 0 1116-5z" /><path d="M9.5 9a2.5 2.5 0 014.8.9c0 1.8-2.3 2-2.3 3.6M12 17h.01" /></>,
   }
 
   return <svg {...commonProps}>{paths[name]}</svg>
