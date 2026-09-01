@@ -35,6 +35,10 @@ import {
   SupportTicketDetailsPage,
   SupportTicketsPage,
 } from './features/support/SupportTicketsPage'
+import {
+  AdminSupportTicketDetailsPage,
+  AdminSupportTicketsPage,
+} from './features/support/AdminSupportTicketsPage'
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -86,6 +90,8 @@ export function App() {
         <Route path="applications" element={<AdminApplicationsPage />} />
         <Route path="applications/:id" element={<AdminApplicationReviewRoute />} />
         <Route path="billing" element={<AdminBillingPage />} />
+        <Route path="support" element={<AdminSupportTicketsPage />} />
+        <Route path="support/:id" element={<AdminSupportTicketDetailsRoute />} />
       </Route>
       <Route element={<CentredPage><NotFoundPage /></CentredPage>} path="*" />
     </Routes>
@@ -144,6 +150,15 @@ function SupportTicketDetailsRoute() {
   const { id } = useParams()
   return id && uuidPattern.test(id) ? (
     <SupportTicketDetailsPage ticketId={id} />
+  ) : (
+    <NotFoundPage />
+  )
+}
+
+function AdminSupportTicketDetailsRoute() {
+  const { id } = useParams()
+  return id && uuidPattern.test(id) ? (
+    <AdminSupportTicketDetailsPage ticketId={id} />
   ) : (
     <NotFoundPage />
   )

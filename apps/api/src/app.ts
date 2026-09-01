@@ -120,6 +120,20 @@ interface AdminSubscription {
   plan: { id: string; name: string } | null
 }
 
+interface AdminSupportTicketSummary {
+  id: string
+  subject: string
+  status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  created_at: string
+  updated_at: string
+  customer: { full_name: string | null } | null
+}
+
+interface AdminSupportTicketDetail extends AdminSupportTicketSummary {
+  description: string
+  resolved_at: string | null
+}
+
 const availabilitySchema = z.object({
   address: z.string().trim().min(5).max(250),
 })
@@ -1599,6 +1613,104 @@ app.get('/admin/applications/:id', async (request, response) => {
   }
 
   response.status(200).json({ application })
+})
+
+app.get('/admin/support-tickets', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load support tickets' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .select(
+      `
+        id,
+        subject,
+        status,
+        created_at,
+        updated_at,
+        customer:profiles!support_tickets_user_id_fkey(full_name)
+      `,
+    )
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .returns<AdminSupportTicketSummary[]>()
+
+  if (error) {
+    console.error('Failed to load admin support tickets', { code: error.code })
+    response.status(500).json({ error: 'Unable to load support tickets' })
+    return
+  }
+
+  const statusOrder = { open: 0, in_progress: 1, resolved: 2, closed: 3 }
+  const tickets = [...data].sort(
+    (first, second) => statusOrder[first.status] - statusOrder[second.status],
+  )
+
+  response.status(200).json({ tickets })
+})
+
+app.get('/admin/support-tickets/:id', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load support ticket' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = supportTicketIdSchema.safeParse(request.params.id)
+
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid support ticket ID' })
+    return
+  }
+
+  const { data: ticket, error } = await supabase
+    .from('support_tickets')
+    .select(
+      `
+        id,
+        subject,
+        description,
+        status,
+        created_at,
+        updated_at,
+        resolved_at,
+        customer:profiles!support_tickets_user_id_fkey(full_name)
+      `,
+    )
+    .eq('id', idResult.data)
+    .maybeSingle<AdminSupportTicketDetail>()
+
+  if (error) {
+    console.error('Failed to load admin support ticket', { code: error.code })
+    response.status(500).json({ error: 'Unable to load support ticket' })
+    return
+  }
+
+  if (!ticket) {
+    response.status(404).json({ error: 'Support ticket not found' })
+    return
+  }
+
+  response.status(200).json({ ticket })
 })
 
 app.patch('/admin/applications/:id/review', async (request, response) => {
