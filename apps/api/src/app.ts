@@ -220,6 +220,19 @@ interface AdminSupportTicketDetail extends AdminSupportTicketSummary {
   resolved_at: string | null
 }
 
+interface AdminReportsOverview {
+  total_customers: number
+  active_subscriptions: number
+  pending_applications: number
+  open_invoices: number
+  overdue_invoices: number
+  unresolved_support_tickets: number
+  successful_payments: number
+  successful_payment_amount_cents: number
+  payment_period_start: string
+  payment_period_end_exclusive: string
+}
+
 const availabilitySchema = z.object({
   address: z.string().trim().min(5).max(250),
 })
@@ -1455,6 +1468,34 @@ app.get('/admin/access', async (request, response) => {
   }
 
   response.status(200).json({ authorized: true })
+})
+
+app.get('/admin/reports/overview', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load reports overview' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: metrics, error } = await supabase
+    .rpc('get_admin_reports_overview')
+    .single<AdminReportsOverview>()
+
+  if (error) {
+    console.error('Failed to load admin reports overview', { code: error.code })
+    response.status(500).json({ error: 'Unable to load reports overview' })
+    return
+  }
+
+  response.status(200).json({ metrics })
 })
 
 app.get('/admin/plans', async (request, response) => {

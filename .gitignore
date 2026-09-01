@@ -45,3 +45,4 @@ supabase/migrations/202609010003_add_overdue_invoice_email_marker.sql
 supabase/migrations/202609010004_create_support_tickets.sql
 supabase/migrations/202609010005_create_support_ticket_responses.sql
 supabase/migrations/202609010006_add_plan_speed.sql
+supabase/migrations/202609010007_create_admin_reports_overview_function.sql

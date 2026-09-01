@@ -12,6 +12,7 @@ const adminNavItems = [
   { label: 'Subscriptions', mobileLabel: 'Subs', to: '/admin/subscriptions', end: false, icon: 'subscriptions' },
   { label: 'Billing', to: '/admin/billing', end: false, icon: 'billing' },
   { label: 'Support', to: '/admin/support', end: false, icon: 'support' },
+  { label: 'Reports', to: '/admin/reports', end: false, icon: 'reports' },
 ] as const
 
 export function AdminLayout() {
@@ -83,7 +84,7 @@ export function AdminLayout() {
 
         <nav
           aria-label="Admin portal mobile navigation"
-          className="fixed inset-x-3 bottom-3 z-20 grid grid-cols-7 rounded-[14px] border border-white/10 bg-[rgba(17,22,31,0.94)] p-1 shadow-2xl backdrop-blur-xl md:hidden"
+          className="fixed inset-x-3 bottom-3 z-20 grid grid-cols-8 rounded-[14px] border border-white/10 bg-[rgba(17,22,31,0.94)] p-1 shadow-2xl backdrop-blur-xl md:hidden"
         >
           {adminNavItems.map((item) => (
             <NavLink
@@ -205,6 +206,7 @@ function AdminIcon({ active, name }: { active: boolean; name: string }) {
     subscriptions: <><rect height="16" rx="2" width="18" x="3" y="4" /><path d="M7 8h10M7 12h7M7 16h4" /></>,
     billing: <><rect height="15" rx="2" width="18" x="3" y="5" /><path d="M3 10h18M7 15h3M15 15h2" /></>,
     support: <><path d="M21 12a8 8 0 01-8 8H8l-5 2 2-5a8 8 0 1116-5z" /><path d="M9.5 9a2.5 2.5 0 014.8.9c0 1.8-2.3 2-2.3 3.6M12 17h.01" /></>,
+    reports: <><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></>,
   }
 
   return <svg {...commonProps}>{paths[name]}</svg>

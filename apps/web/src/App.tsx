@@ -28,6 +28,7 @@ import {
   AdminCustomersPage,
 } from './features/admin/AdminCustomersPage'
 import { AdminOverviewPage } from './features/admin/AdminOverviewPage'
+import { AdminReportsPage } from './features/admin/AdminReportsPage'
 import { HomePage } from './features/home/HomePage'
 import { AdminBillingPage } from './features/invoices/AdminBillingPage'
 import { InvoiceDetailsPage } from './features/invoices/InvoiceDetailsPage'
@@ -104,6 +105,7 @@ export function App() {
         <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
         <Route path="subscriptions/:id" element={<AdminSubscriptionDetailsRoute />} />
         <Route path="billing" element={<AdminBillingPage />} />
+        <Route path="reports" element={<AdminReportsPage />} />
         <Route path="support" element={<AdminSupportTicketsPage />} />
         <Route path="support/:id" element={<AdminSupportTicketDetailsRoute />} />
       </Route>
