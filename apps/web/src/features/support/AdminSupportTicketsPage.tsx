@@ -8,10 +8,12 @@ import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useAuth } from '../auth/auth-context'
 
+type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
+
 interface AdminSupportTicket {
   id: string
   subject: string
-  status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  status: TicketStatus
   created_at: string
   updated_at: string
   customer: { full_name: string | null } | null
@@ -28,6 +30,13 @@ interface SupportResponse {
   body: string
   created_at: string
   author: { full_name: string | null } | null
+}
+
+interface StatusUpdate {
+  id: string
+  status: TicketStatus
+  updated_at: string
+  resolved_at: string | null
 }
 
 const dateFormatter = new Intl.DateTimeFormat('en-PH', {
@@ -93,6 +102,34 @@ function isSupportResponse(value: unknown): value is SupportResponse {
         'full_name' in author &&
         isNullableString(author.full_name)))
   )
+}
+
+function isStatusUpdate(value: unknown): value is StatusUpdate {
+  if (typeof value !== 'object' || value === null) return false
+
+  const ticket = value as Record<string, unknown>
+  return (
+    typeof ticket.id === 'string' &&
+    (ticket.status === 'open' ||
+      ticket.status === 'in_progress' ||
+      ticket.status === 'resolved' ||
+      ticket.status === 'closed') &&
+    typeof ticket.updated_at === 'string' &&
+    isNullableString(ticket.resolved_at)
+  )
+}
+
+const statusActions: Record<
+  TicketStatus,
+  Array<{ label: string; status: TicketStatus }>
+> = {
+  open: [{ label: 'Start progress', status: 'in_progress' }],
+  in_progress: [{ label: 'Mark resolved', status: 'resolved' }],
+  resolved: [
+    { label: 'Reopen ticket', status: 'in_progress' },
+    { label: 'Close ticket', status: 'closed' },
+  ],
+  closed: [],
 }
 
 export function AdminSupportTicketsPage() {
@@ -204,6 +241,9 @@ export function AdminSupportTicketDetailsPage({ ticketId }: { ticketId: string }
   const [responseError, setResponseError] = useState<string | null>(null)
   const [responseSuccess, setResponseSuccess] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [statusError, setStatusError] = useState<string | null>(null)
+  const [statusSuccess, setStatusSuccess] = useState<string | null>(null)
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
 
   useEffect(() => {
     if (!session) return
@@ -301,6 +341,57 @@ export function AdminSupportTicketDetailsPage({ ticketId }: { ticketId: string }
     }
   }
 
+  async function handleStatusUpdate(status: TicketStatus) {
+    if (!session || !ticket || isUpdatingStatus) return
+
+    setStatusError(null)
+    setStatusSuccess(null)
+    setIsUpdatingStatus(true)
+
+    try {
+      const response = await fetch(
+        `/api/admin/support-tickets/${encodeURIComponent(ticket.id)}/status`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status }),
+        },
+      )
+
+      if (!response.ok) throw new Error('SUPPORT_STATUS_REQUEST_FAILED')
+
+      const result: unknown = await response.json()
+      if (
+        typeof result !== 'object' ||
+        result === null ||
+        !('ticket' in result) ||
+        !isStatusUpdate(result.ticket)
+      ) {
+        throw new Error('INVALID_SUPPORT_STATUS_RESPONSE')
+      }
+
+      const updatedTicket = result.ticket
+      setTicket((current) =>
+        current
+          ? {
+              ...current,
+              status: updatedTicket.status,
+              updated_at: updatedTicket.updated_at,
+              resolved_at: updatedTicket.resolved_at,
+            }
+          : current,
+      )
+      setStatusSuccess(`Ticket marked ${updatedTicket.status.replace('_', ' ')}.`)
+    } catch {
+      setStatusError('We could not update this ticket status. Refresh and try again.')
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
+
   if (error) return <ErrorPanel message={error} title="Support ticket unavailable" />
   if (ticket === undefined) return <PageSkeleton type="detail" />
   if (ticket === null) {
@@ -336,6 +427,28 @@ export function AdminSupportTicketDetailsPage({ ticketId }: { ticketId: string }
             <Detail label="Last updated" value={dateFormatter.format(new Date(ticket.updated_at))} />
             {ticket.resolved_at ? <Detail label="Resolved" value={dateFormatter.format(new Date(ticket.resolved_at))} /> : null}
           </dl>
+          <div className="mt-6 border-t border-white/8 pt-5">
+            <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">Status actions</p>
+            {statusActions[ticket.status].length === 0 ? (
+              <p className="mt-3 text-sm text-slate-500">This ticket is closed.</p>
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {statusActions[ticket.status].map((action) => (
+                  <button
+                    className="min-h-10 rounded-[9px] border border-white/10 bg-white/6 px-3 text-xs font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={isUpdatingStatus}
+                    key={action.status}
+                    onClick={() => void handleStatusUpdate(action.status)}
+                    type="button"
+                  >
+                    {isUpdatingStatus ? 'Updating...' : action.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {statusError ? <p className="mt-3 text-xs text-red-300" role="alert">{statusError}</p> : null}
+            {statusSuccess ? <p className="mt-3 text-xs text-emerald-300" role="status">{statusSuccess}</p> : null}
+          </div>
         </article>
 
         <div className="space-y-5">

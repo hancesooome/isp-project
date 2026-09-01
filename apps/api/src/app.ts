@@ -183,6 +183,12 @@ const supportTicketResponseSchema = z
   })
   .strict()
 
+const adminSupportTicketStatusSchema = z
+  .object({
+    status: z.enum(['open', 'in_progress', 'resolved', 'closed']),
+  })
+  .strict()
+
 const databaseDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -1843,6 +1849,116 @@ app.post('/admin/support-tickets/:id/responses', async (request, response) => {
   }
 
   response.status(201).json({ response: ticketResponse })
+})
+
+app.patch('/admin/support-tickets/:id/status', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to update support ticket' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = supportTicketIdSchema.safeParse(request.params.id)
+  const statusResult = adminSupportTicketStatusSchema.safeParse(request.body)
+
+  if (!idResult.success || !statusResult.success) {
+    response.status(400).json({ error: 'Enter a valid support ticket status' })
+    return
+  }
+
+  type SupportTicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
+
+  const { data: existingTicket, error: lookupError } = await supabase
+    .from('support_tickets')
+    .select('id, status, updated_at, resolved_at')
+    .eq('id', idResult.data)
+    .maybeSingle<{
+      id: string
+      status: SupportTicketStatus
+      updated_at: string
+      resolved_at: string | null
+    }>()
+
+  if (lookupError) {
+    console.error('Failed to load support ticket status', {
+      code: lookupError.code,
+    })
+    response.status(500).json({ error: 'Unable to update support ticket' })
+    return
+  }
+
+  if (!existingTicket) {
+    response.status(404).json({ error: 'Support ticket not found' })
+    return
+  }
+
+  const nextStatus = statusResult.data.status
+
+  if (existingTicket.status === nextStatus) {
+    response.status(200).json({ ticket: existingTicket })
+    return
+  }
+
+  const allowedTransitions: Record<SupportTicketStatus, SupportTicketStatus[]> = {
+    open: ['in_progress'],
+    in_progress: ['resolved'],
+    resolved: ['in_progress', 'closed'],
+    closed: [],
+  }
+
+  if (!allowedTransitions[existingTicket.status].includes(nextStatus)) {
+    response.status(409).json({ error: 'Ticket status transition is not allowed' })
+    return
+  }
+
+  const updatedAt = new Date().toISOString()
+  const resolvedAt =
+    nextStatus === 'resolved'
+      ? updatedAt
+      : nextStatus === 'in_progress'
+        ? null
+        : existingTicket.resolved_at
+
+  const { data: ticket, error } = await supabase
+    .from('support_tickets')
+    .update({
+      status: nextStatus,
+      updated_at: updatedAt,
+      resolved_at: resolvedAt,
+    })
+    .eq('id', existingTicket.id)
+    .eq('status', existingTicket.status)
+    .select('id, status, updated_at, resolved_at')
+    .maybeSingle<{
+      id: string
+      status: SupportTicketStatus
+      updated_at: string
+      resolved_at: string | null
+    }>()
+
+  if (error) {
+    console.error('Failed to update support ticket status', {
+      code: error.code,
+      ticketId: existingTicket.id,
+    })
+    response.status(500).json({ error: 'Unable to update support ticket' })
+    return
+  }
+
+  if (!ticket) {
+    response.status(409).json({ error: 'Support ticket status already changed' })
+    return
+  }
+
+  response.status(200).json({ ticket })
 })
 
 app.patch('/admin/applications/:id/review', async (request, response) => {
