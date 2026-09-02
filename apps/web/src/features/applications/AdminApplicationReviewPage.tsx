@@ -206,7 +206,7 @@ export function AdminApplicationReviewPage({
       const response = await fetch(
         `/api/admin/applications/${encodeURIComponent(application.id)}/review`,
         {
-          method: 'POST',
+          method: 'PATCH',
           headers: {
             Authorization: `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
@@ -218,6 +218,20 @@ export function AdminApplicationReviewPage({
           }),
         },
       )
+
+      if (response.status === 409) {
+        const result: unknown = await response.json()
+        const message =
+          typeof result === 'object' &&
+          result !== null &&
+          'error' in result &&
+          typeof result.error === 'string'
+            ? result.error
+            : 'This application has already been reviewed.'
+
+        setReviewError(message)
+        return
+      }
 
       if (!response.ok) {
         throw new Error('ADMIN_APPLICATION_REVIEW_FAILED')
