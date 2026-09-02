@@ -211,11 +211,11 @@ export function AdminApplicationReviewPage({
             Authorization: `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            status,
-            rejection_reason:
-              status === 'rejected' ? rejectionReason.trim() : null,
-          }),
+          body: JSON.stringify(
+            status === 'approved'
+              ? { status }
+              : { status, rejection_reason: rejectionReason.trim() },
+          ),
         },
       )
 
