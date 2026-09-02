@@ -193,29 +193,53 @@ export function AdminBillingPage() {
   }
 
   return (
-    <section className="w-full max-w-3xl">
+    <section className="w-full max-w-6xl">
       <header>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
-          Admin billing
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-400">
+          Admin / Billing
         </p>
-        <h1 className="mt-2 text-3xl font-bold text-white sm:text-4xl">
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-white sm:text-4xl">
           Create an invoice
         </h1>
-        <p className="mt-3 text-slate-400">
+        <p className="mt-2 text-sm text-slate-400 sm:text-base">
           Manually create an open invoice for a current customer subscription.
         </p>
       </header>
 
-      <form className="mt-8 space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8" noValidate onSubmit={handleSubmit}>
+      <div className="mt-7 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-200" htmlFor="subscriptionId">
+          <form
+            className="overflow-hidden rounded-[14px] border border-white/10 bg-[rgba(17,22,31,0.88)] shadow-[0_16px_45px_rgba(0,0,0,0.18)]"
+            noValidate
+            onSubmit={handleSubmit}
+          >
+            <div className="flex items-center gap-4 border-b border-white/8 px-5 py-5 sm:px-6">
+              <span className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-blue-400/20 bg-blue-500/12 text-blue-300">
+                <InvoiceIcon />
+              </span>
+              <div>
+                <h2 className="font-semibold text-white">Invoice details</h2>
+                <p className="mt-0.5 text-sm text-slate-400">
+                  Enter the billing information below.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-5 p-5 sm:p-6">
+        <div>
+          <label
+            className="mb-2 block text-sm font-medium text-slate-200"
+            htmlFor="subscriptionId"
+          >
             Customer subscription
           </label>
           <select
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-sky-400"
+            className="min-h-11 w-full rounded-[10px] border border-white/10 bg-[#0a0d12] px-3.5 text-sm text-white outline-none transition hover:border-white/15 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={subscriptions === null || loadError !== null}
             id="subscriptionId"
-            onChange={(event) => updateField('subscriptionId', event.target.value)}
+            onChange={(event) =>
+              updateField('subscriptionId', event.target.value)
+            }
             value={values.subscriptionId}
           >
             <option value="">Select a subscription</option>
@@ -225,17 +249,64 @@ export function AdminBillingPage() {
               </option>
             ))}
           </select>
-          {subscriptions === null && !loadError ? <p className="mt-2 text-sm text-slate-400" role="status">Loading subscriptions...</p> : null}
-          {subscriptions?.length === 0 ? <p className="mt-2 text-sm text-slate-400">No current subscriptions are available.</p> : null}
-          {loadError ? <p className="mt-2 text-sm text-red-300" role="alert">{loadError}</p> : null}
+          <p className="mt-2 text-xs text-slate-500">
+            Choose the current customer subscription to bill.
+          </p>
+          {subscriptions === null && !loadError ? (
+            <p className="mt-2 text-sm text-slate-400" role="status">
+              Loading subscriptions...
+            </p>
+          ) : null}
+          {subscriptions?.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-400">
+              No current subscriptions are available.
+            </p>
+          ) : null}
+          {loadError ? (
+            <p className="mt-2 text-sm text-red-300" role="alert">
+              {loadError}
+            </p>
+          ) : null}
         </div>
 
-        <Field id="amountCents" label="Amount (cents)" min="0" onChange={(value) => updateField('amountCents', value)} type="number" value={values.amountCents} />
-        <Field id="dueDate" label="Due date" onChange={(value) => updateField('dueDate', value)} type="date" value={values.dueDate} />
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field id="billingPeriodStart" label="Billing period starts" onChange={(value) => updateField('billingPeriodStart', value)} type="date" value={values.billingPeriodStart} />
-          <Field id="billingPeriodEnd" label="Billing period ends" onChange={(value) => updateField('billingPeriodEnd', value)} type="date" value={values.billingPeriodEnd} />
-        </div>
+        <Field
+          help="Enter the amount in the smallest currency unit, without decimals."
+          id="amountCents"
+          label="Amount (cents)"
+          min="0"
+          onChange={(value) => updateField('amountCents', value)}
+          type="number"
+          value={values.amountCents}
+        />
+        <Field
+          help="The date when payment becomes due."
+          id="dueDate"
+          label="Due date"
+          onChange={(value) => updateField('dueDate', value)}
+          type="date"
+          value={values.dueDate}
+        />
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium text-slate-200">
+            Billing period
+          </legend>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              id="billingPeriodStart"
+              label="Starts"
+              onChange={(value) => updateField('billingPeriodStart', value)}
+              type="date"
+              value={values.billingPeriodStart}
+            />
+            <Field
+              id="billingPeriodEnd"
+              label="Ends"
+              onChange={(value) => updateField('billingPeriodEnd', value)}
+              type="date"
+              value={values.billingPeriodEnd}
+            />
+          </div>
+        </fieldset>
 
         {formError ? <p className="text-sm text-red-300" role="alert">{formError}</p> : null}
         {success ? <p className="text-sm text-emerald-300" role="status">{success}</p> : null}
