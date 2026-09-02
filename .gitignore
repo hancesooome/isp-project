@@ -47,3 +47,4 @@ supabase/migrations/202609010005_create_support_ticket_responses.sql
 supabase/migrations/202609010006_add_plan_speed.sql
 supabase/migrations/202609010007_create_admin_reports_overview_function.sql
 supabase/migrations/202609020001_create_audit_logs.sql
+supabase/migrations/202609020002_harden_rls_policies.sql

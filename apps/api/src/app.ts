@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import express from 'express'
 import { rateLimit } from 'express-rate-limit'
 import { z } from 'zod'
@@ -8,6 +10,7 @@ import { runOverdueInvoiceJob } from './jobs/overdue-invoices.js'
 import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
 import { recordAuditEvent } from './lib/audit.js'
 import { sendEmail } from './lib/email.js'
+import { logger } from './lib/logger.js'
 import { supabase } from './lib/supabase.js'
 import { stripe } from './lib/stripe.js'
 import { statementOfAccountStorage } from './services/statement-of-account-storage.js'
@@ -516,6 +519,14 @@ async function authorizeRole(
 
 export const app = express()
 
+app.use((_request, response, next) => {
+  const requestId = randomUUID()
+
+  response.locals.requestId = requestId
+  response.setHeader('x-request-id', requestId)
+  next()
+})
+
 app.disable('x-powered-by')
 
 if (env.trustProxyHops > 0) {
@@ -613,8 +624,9 @@ app.post(
       checkoutSession.client_reference_id !== invoiceIdResult.data ||
       !paymentIntentReference
     ) {
-      console.warn('Ignored Stripe Checkout Session with invalid references', {
+      logger.warn('Ignored Stripe Checkout Session with invalid references', {
         eventId: event.id,
+        requestId: response.locals.requestId,
       })
       response.status(200).json({ received: true })
       return
@@ -631,9 +643,10 @@ app.post(
       }>()
 
     if (invoiceError) {
-      console.error('Failed to reconcile Stripe payment invoice', {
+      logger.error('Failed to reconcile Stripe payment invoice', {
         code: invoiceError.code,
         eventId: event.id,
+        requestId: response.locals.requestId,
       })
       response.status(500).json({ error: 'Unable to process webhook' })
       return
@@ -644,8 +657,9 @@ app.post(
       checkoutSession.amount_total !== invoice.amount_cents ||
       checkoutSession.currency !== env.stripeCurrency
     ) {
-      console.warn('Ignored Stripe payment that did not match its invoice', {
+      logger.warn('Ignored Stripe payment that did not match its invoice', {
         eventId: event.id,
+        requestId: response.locals.requestId,
       })
       response.status(200).json({ received: true })
       return
@@ -666,9 +680,10 @@ app.post(
         })
 
     if (paymentError) {
-      console.error('Failed to reconcile Stripe payment', {
+      logger.error('Failed to reconcile Stripe payment', {
         code: paymentError.code,
         eventId: event.id,
+        requestId: response.locals.requestId,
       })
       response.status(500).json({ error: 'Unable to process webhook' })
       return
@@ -696,9 +711,10 @@ app.post(
         })
 
       if (receiptClaimError) {
-        console.error('Failed to claim payment receipt email', {
+        logger.error('Failed to claim payment receipt email', {
           code: receiptClaimError.code,
           eventId: event.id,
+          requestId: response.locals.requestId,
         })
       } else if (shouldSendReceipt) {
         const sent = await sendPaymentReceiptEmail(
@@ -717,9 +733,10 @@ app.post(
             .eq('status', 'succeeded')
 
           if (resetError) {
-            console.error('Failed to release payment receipt email claim', {
+            logger.error('Failed to release payment receipt email claim', {
               code: resetError.code,
               eventId: event.id,
+              requestId: response.locals.requestId,
             })
           }
         }
@@ -742,19 +759,28 @@ app.get('/jobs/monthly-billing', async (request, response) => {
     return
   }
 
-  console.info('Monthly billing job started')
+  logger.info('Monthly billing job started', {
+    job: 'monthly-billing',
+    requestId: response.locals.requestId,
+  })
 
   try {
     const result = await runMonthlyBillingJob()
 
-    console.info('Monthly billing job completed', {
+    logger.info('Monthly billing job completed', {
       generatedInvoices: result.generatedInvoices,
+      job: 'monthly-billing',
       processedStatements: result.processedStatements,
+      requestId: response.locals.requestId,
       sentStatementEmails: result.sentStatementEmails,
     })
     response.status(200).json({ success: true, ...result })
-  } catch {
-    console.error('Monthly billing job failed')
+  } catch (error) {
+    logger.error('Monthly billing job failed', {
+      error,
+      job: 'monthly-billing',
+      requestId: response.locals.requestId,
+    })
     response.status(500).json({ error: 'Unable to run monthly billing job' })
   }
 })
@@ -765,15 +791,26 @@ app.get('/jobs/upcoming-due-reminders', async (request, response) => {
     return
   }
 
-  console.info('Upcoming-due reminder job started')
+  logger.info('Upcoming-due reminder job started', {
+    job: 'upcoming-due-reminders',
+    requestId: response.locals.requestId,
+  })
 
   try {
     const result = await runUpcomingDueReminderJob()
 
-    console.info('Upcoming-due reminder job completed', result)
+    logger.info('Upcoming-due reminder job completed', {
+      ...result,
+      job: 'upcoming-due-reminders',
+      requestId: response.locals.requestId,
+    })
     response.status(200).json({ success: true, ...result })
-  } catch {
-    console.error('Upcoming-due reminder job failed')
+  } catch (error) {
+    logger.error('Upcoming-due reminder job failed', {
+      error,
+      job: 'upcoming-due-reminders',
+      requestId: response.locals.requestId,
+    })
     response.status(500).json({ error: 'Unable to run upcoming-due reminders' })
   }
 })
@@ -784,15 +821,26 @@ app.get('/jobs/overdue-invoices', async (request, response) => {
     return
   }
 
-  console.info('Overdue invoice job started')
+  logger.info('Overdue invoice job started', {
+    job: 'overdue-invoices',
+    requestId: response.locals.requestId,
+  })
 
   try {
     const result = await runOverdueInvoiceJob()
 
-    console.info('Overdue invoice job completed', result)
+    logger.info('Overdue invoice job completed', {
+      ...result,
+      job: 'overdue-invoices',
+      requestId: response.locals.requestId,
+    })
     response.status(200).json({ success: true, ...result })
-  } catch {
-    console.error('Overdue invoice job failed')
+  } catch (error) {
+    logger.error('Overdue invoice job failed', {
+      error,
+      job: 'overdue-invoices',
+      requestId: response.locals.requestId,
+    })
     response.status(500).json({ error: 'Unable to mark overdue invoices' })
   }
 })
@@ -3015,5 +3063,28 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
 
   response.status(200).json({ application })
 })
+
+app.use(
+  (
+    error: unknown,
+    request: express.Request,
+    response: express.Response,
+    next: express.NextFunction,
+  ) => {
+    logger.error('Unhandled request error', {
+      error,
+      method: request.method,
+      path: request.path,
+      requestId: response.locals.requestId,
+    })
+
+    if (response.headersSent) {
+      next(error)
+      return
+    }
+
+    response.status(500).json({ error: 'Internal server error' })
+  },
+)
 
 export default app

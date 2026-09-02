@@ -1,4 +1,5 @@
 import { app } from './app.js'
+import { logger } from './lib/logger.js'
 
 const DEFAULT_PORT = 3000
 
@@ -18,6 +19,15 @@ function readPort(value: string | undefined): number {
 
 const port = readPort(process.env.PORT)
 
+process.on('unhandledRejection', (error) => {
+  logger.error('Unhandled promise rejection', { error })
+})
+
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught server exception', { error })
+  process.exit(1)
+})
+
 app.listen(port, () => {
-  console.log(`API listening on http://localhost:${port}`)
+  logger.info('API listening', { port })
 })
