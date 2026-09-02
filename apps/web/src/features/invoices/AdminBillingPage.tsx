@@ -215,7 +215,10 @@ export function AdminBillingPage() {
           >
             <div className="flex items-center gap-4 border-b border-white/8 px-5 py-5 sm:px-6">
               <span className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-blue-400/20 bg-blue-500/12 text-blue-300">
-                <InvoiceIcon />
+                <svg className="h-5 w-5 text-blue-300" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M14 2v6h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </span>
               <div>
                 <h2 className="font-semibold text-white">Invoice details</h2>
@@ -325,21 +328,25 @@ export function AdminBillingPage() {
             <span>Create invoice</span>
           )}
         </button>
-      </form>
-    </section>
+      </div>
+    </form>
+    </div>
+  </div>
+</section>
   )
 }
 
 interface FieldProps {
   id: keyof FormValues
   label: string
+  help?: string
   min?: string
   onChange: (value: string) => void
   type: 'date' | 'number'
   value: string
 }
 
-function Field({ id, label, min, onChange, type, value }: FieldProps) {
+function Field({ id, label, help, min, onChange, type, value }: FieldProps) {
   return (
     <div>
       <label className="mb-2 block text-sm font-medium text-slate-200" htmlFor={id}>{label}</label>
@@ -352,6 +359,7 @@ function Field({ id, label, min, onChange, type, value }: FieldProps) {
         type={type}
         value={value}
       />
+      {help ? <p className="mt-2 text-xs text-slate-400">{help}</p> : null}
     </div>
   )
 }
