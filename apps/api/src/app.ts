@@ -6,6 +6,7 @@ import { env } from './config/env.js'
 import { runMonthlyBillingJob } from './jobs/monthly-billing.js'
 import { runOverdueInvoiceJob } from './jobs/overdue-invoices.js'
 import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
+import { recordAuditEvent } from './lib/audit.js'
 import { sendEmail } from './lib/email.js'
 import { supabase } from './lib/supabase.js'
 import { stripe } from './lib/stripe.js'
@@ -672,6 +673,21 @@ app.post(
       response.status(500).json({ error: 'Unable to process webhook' })
       return
     }
+
+    await recordAuditEvent({
+      actorType: 'system',
+      action: isFailedPayment
+        ? 'payment.webhook_failed'
+        : 'payment.webhook_succeeded',
+      targetType: 'invoice',
+      targetId: invoice.id,
+      source: 'stripe_webhook',
+      metadata: {
+        provider: 'stripe',
+        stripe_event_id: event.id,
+        amount_cents: invoice.amount_cents,
+      },
+    })
 
     if (!isFailedPayment) {
       const { data: shouldSendReceipt, error: receiptClaimError } =
@@ -1611,6 +1627,21 @@ app.post('/admin/plans', async (request, response) => {
     return
   }
 
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'plan.created',
+    targetType: 'plan',
+    targetId: plan.id,
+    source: 'api',
+    metadata: {
+      slug: plan.slug,
+      speed_mbps: plan.speed_mbps,
+      price_cents: plan.price_cents,
+      billing_interval: plan.billing_interval,
+    },
+  })
+
   response.status(201).json({ plan })
 })
 
@@ -1664,6 +1695,21 @@ app.patch('/admin/plans/:id', async (request, response) => {
     return
   }
 
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'plan.updated',
+    targetType: 'plan',
+    targetId: plan.id,
+    source: 'api',
+    metadata: {
+      slug: plan.slug,
+      speed_mbps: plan.speed_mbps,
+      price_cents: plan.price_cents,
+      billing_interval: plan.billing_interval,
+    },
+  })
+
   response.status(200).json({ plan })
 })
 
@@ -1712,6 +1758,16 @@ app.patch('/admin/plans/:id/activation', async (request, response) => {
     response.status(404).json({ error: 'Plan not found' })
     return
   }
+
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'plan.availability_updated',
+    targetType: 'plan',
+    targetId: plan.id,
+    source: 'api',
+    metadata: { is_active: plan.is_active },
+  })
 
   response.status(200).json({ plan })
 })
@@ -1955,6 +2011,20 @@ app.post('/admin/invoices', async (request, response) => {
     return
   }
 
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'invoice.created',
+    targetType: 'invoice',
+    targetId: invoice.id,
+    source: 'api',
+    metadata: {
+      amount_cents: invoice.amount_cents,
+      due_date: invoice.due_date,
+      subscription_id: subscription.id,
+    },
+  })
+
   response.status(201).json({ invoice })
 })
 
@@ -2037,6 +2107,19 @@ app.patch('/admin/invoices/:id/status', async (request, response) => {
     response.status(409).json({ error: 'Invoice status has already changed' })
     return
   }
+
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'invoice.status_updated',
+    targetType: 'invoice',
+    targetId: invoice.id,
+    source: 'api',
+    metadata: {
+      from_status: existingInvoice.status,
+      to_status: invoice.status,
+    },
+  })
 
   response.status(200).json({ invoice })
 })
@@ -2313,6 +2396,19 @@ app.patch('/admin/subscriptions/:id/status', async (request, response) => {
     response.status(409).json({ error: 'Subscription status already changed' })
     return
   }
+
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'subscription.status_updated',
+    targetType: 'subscription',
+    targetId: subscription.id,
+    source: 'api',
+    metadata: {
+      from_status: existingSubscription.status,
+      to_status: subscription.status,
+    },
+  })
 
   response.status(200).json({ subscription })
 })
@@ -2623,6 +2719,16 @@ app.post('/admin/support-tickets/:id/responses', async (request, response) => {
     return
   }
 
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'support_ticket.response_added',
+    targetType: 'support_ticket',
+    targetId: ticket.id,
+    source: 'api',
+    metadata: { response_id: ticketResponse.id },
+  })
+
   response.status(201).json({ response: ticketResponse })
 })
 
@@ -2733,6 +2839,19 @@ app.patch('/admin/support-tickets/:id/status', async (request, response) => {
     return
   }
 
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'support_ticket.status_updated',
+    targetType: 'support_ticket',
+    targetId: ticket.id,
+    source: 'api',
+    metadata: {
+      from_status: existingTicket.status,
+      to_status: ticket.status,
+    },
+  })
+
   response.status(200).json({ ticket })
 })
 
@@ -2813,6 +2932,16 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
       null,
     )
 
+    await recordAuditEvent({
+      actorType: 'admin',
+      actorId: auth.userId,
+      action: 'application.reviewed',
+      targetType: 'application',
+      targetId: application.id,
+      source: 'api',
+      metadata: { decision: 'approved' },
+    })
+
     response.status(200).json({ application })
     return
   }
@@ -2873,6 +3002,16 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
     'rejected',
     application.rejection_reason,
   )
+
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'application.reviewed',
+    targetType: 'application',
+    targetId: application.id,
+    source: 'api',
+    metadata: { decision: 'rejected' },
+  })
 
   response.status(200).json({ application })
 })
