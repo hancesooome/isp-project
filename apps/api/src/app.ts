@@ -252,7 +252,15 @@ const applicationSchema = z
       .max(30)
       .regex(/^[0-9+() -]+$/),
     address: z.string().trim().min(5).max(250),
-    installation_address: z.string().trim().min(5).max(250),
+    installation_region: z.string().trim().min(2).max(100),
+    installation_province: z.string().trim().min(2).max(100),
+    installation_city_municipality: z.string().trim().min(2).max(100),
+    installation_barangay: z.string().trim().min(2).max(100),
+    installation_street_address: z.string().trim().min(3).max(250),
+    installation_postal_code: z.string().trim().regex(/^[0-9]{4}$/),
+    installation_landmark: z.string().trim().max(250).optional(),
+    installation_latitude: z.number().finite().min(-90).max(90).optional(),
+    installation_longitude: z.number().finite().min(-180).max(180).optional(),
   })
   .strict()
 
@@ -366,6 +374,24 @@ function isServiceAvailable(address: string): boolean {
   return env.serviceAreaKeywords.some((area) =>
     normalizedAddress.includes(area),
   )
+}
+
+function formatInstallationAddress(
+  address: z.infer<typeof applicationSchema>,
+): string {
+  return [
+    address.installation_street_address,
+    address.installation_barangay,
+    address.installation_city_municipality,
+    address.installation_province,
+    address.installation_region,
+    address.installation_postal_code,
+    address.installation_landmark
+      ? `Near ${address.installation_landmark}`
+      : null,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(', ')
 }
 
 function escapeHtml(value: string): string {
@@ -905,7 +931,9 @@ app.post('/applications', async (request, response) => {
     return
   }
 
-  if (!isServiceAvailable(result.data.installation_address)) {
+  const installationAddress = formatInstallationAddress(result.data)
+
+  if (!isServiceAvailable(installationAddress)) {
     response.status(422).json({ error: 'Service is unavailable at this address' })
     return
   }
@@ -957,7 +985,17 @@ app.post('/applications', async (request, response) => {
         user_id: auth.userId,
         phone: result.data.phone,
         address: result.data.address,
-        installation_address: result.data.installation_address,
+        installation_address: installationAddress,
+        installation_region: result.data.installation_region,
+        installation_province: result.data.installation_province,
+        installation_city_municipality:
+          result.data.installation_city_municipality,
+        installation_barangay: result.data.installation_barangay,
+        installation_street_address: result.data.installation_street_address,
+        installation_postal_code: result.data.installation_postal_code,
+        installation_landmark: result.data.installation_landmark || null,
+        installation_latitude: result.data.installation_latitude ?? null,
+        installation_longitude: result.data.installation_longitude ?? null,
         updated_at: updatedAt,
       },
       { onConflict: 'user_id' },
@@ -976,7 +1014,17 @@ app.post('/applications', async (request, response) => {
     .insert({
       user_id: auth.userId,
       plan_id: result.data.plan_id,
-      installation_address: result.data.installation_address,
+      installation_address: installationAddress,
+      installation_region: result.data.installation_region,
+      installation_province: result.data.installation_province,
+      installation_city_municipality:
+        result.data.installation_city_municipality,
+      installation_barangay: result.data.installation_barangay,
+      installation_street_address: result.data.installation_street_address,
+      installation_postal_code: result.data.installation_postal_code,
+      installation_landmark: result.data.installation_landmark || null,
+      installation_latitude: result.data.installation_latitude ?? null,
+      installation_longitude: result.data.installation_longitude ?? null,
       status: 'pending',
     })
     .select('id, status, submitted_at')

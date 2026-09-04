@@ -20,7 +20,13 @@ const initialValues: ApplicationFormValues = {
   planId: '',
   phone: '',
   address: '',
-  installationAddress: '',
+  installationRegion: '',
+  installationProvince: '',
+  installationCityMunicipality: '',
+  installationBarangay: '',
+  installationStreetAddress: '',
+  installationPostalCode: '',
+  installationLandmark: '',
 }
 
 function getFieldErrors(
@@ -141,7 +147,14 @@ export function ServiceApplicationForm() {
           plan_id: parsed.data.planId,
           phone: parsed.data.phone,
           address: parsed.data.address,
-          installation_address: parsed.data.installationAddress,
+          installation_region: parsed.data.installationRegion,
+          installation_province: parsed.data.installationProvince,
+          installation_city_municipality:
+            parsed.data.installationCityMunicipality,
+          installation_barangay: parsed.data.installationBarangay,
+          installation_street_address: parsed.data.installationStreetAddress,
+          installation_postal_code: parsed.data.installationPostalCode,
+          installation_landmark: parsed.data.installationLandmark,
         }),
       })
 
@@ -253,14 +266,75 @@ export function ServiceApplicationForm() {
           onChange={(value) => updateField('address', value)}
           value={values.address}
         />
-        <TextAreaField
-          autoComplete="street-address"
-          error={fieldErrors.installationAddress}
-          id="installationAddress"
-          label="Installation address"
-          onChange={(value) => updateField('installationAddress', value)}
-          value={values.installationAddress}
-        />
+        <fieldset className="space-y-5 border-t border-slate-800 pt-5">
+          <legend className="text-sm font-semibold text-slate-200">
+            Installation address
+          </legend>
+          <p className="text-sm text-slate-400">
+            Enter the address where internet service will be installed.
+          </p>
+          <AddressField
+            autoComplete="address-level1"
+            error={fieldErrors.installationRegion}
+            id="installationRegion"
+            label="Region"
+            onChange={(value) => updateField('installationRegion', value)}
+            value={values.installationRegion}
+          />
+          <AddressField
+            autoComplete="address-level1"
+            error={fieldErrors.installationProvince}
+            id="installationProvince"
+            label="Province"
+            onChange={(value) => updateField('installationProvince', value)}
+            value={values.installationProvince}
+          />
+          <AddressField
+            autoComplete="address-level2"
+            error={fieldErrors.installationCityMunicipality}
+            id="installationCityMunicipality"
+            label="City or municipality"
+            onChange={(value) =>
+              updateField('installationCityMunicipality', value)
+            }
+            value={values.installationCityMunicipality}
+          />
+          <AddressField
+            autoComplete="address-level3"
+            error={fieldErrors.installationBarangay}
+            id="installationBarangay"
+            label="Barangay"
+            onChange={(value) => updateField('installationBarangay', value)}
+            value={values.installationBarangay}
+          />
+          <TextAreaField
+            autoComplete="street-address"
+            error={fieldErrors.installationStreetAddress}
+            id="installationStreetAddress"
+            label="Street, house, building, or unit"
+            onChange={(value) =>
+              updateField('installationStreetAddress', value)
+            }
+            value={values.installationStreetAddress}
+          />
+          <AddressField
+            autoComplete="postal-code"
+            error={fieldErrors.installationPostalCode}
+            id="installationPostalCode"
+            inputMode="numeric"
+            label="Postal code"
+            onChange={(value) => updateField('installationPostalCode', value)}
+            value={values.installationPostalCode}
+          />
+          <AddressField
+            autoComplete="off"
+            error={fieldErrors.installationLandmark}
+            id="installationLandmark"
+            label="Landmark (optional)"
+            onChange={(value) => updateField('installationLandmark', value)}
+            value={values.installationLandmark}
+          />
+        </fieldset>
 
         {submissionError ? (
           <p className="text-sm text-red-300" role="alert">
@@ -336,10 +410,64 @@ function TextField({
 interface TextAreaFieldProps {
   autoComplete: string
   error?: string
-  id: 'address' | 'installationAddress'
+  id: 'address' | 'installationStreetAddress'
   label: string
   onChange: (value: string) => void
   value: string
+}
+
+type AddressFieldId =
+  | 'installationRegion'
+  | 'installationProvince'
+  | 'installationCityMunicipality'
+  | 'installationBarangay'
+  | 'installationPostalCode'
+  | 'installationLandmark'
+
+interface AddressFieldProps {
+  autoComplete: string
+  error?: string
+  id: AddressFieldId
+  inputMode?: 'numeric'
+  label: string
+  onChange: (value: string) => void
+  value: string
+}
+
+function AddressField({
+  autoComplete,
+  error,
+  id,
+  inputMode,
+  label,
+  onChange,
+  value,
+}: AddressFieldProps) {
+  const errorId = `${id}-error`
+
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-200" htmlFor={id}>
+        {label}
+      </label>
+      <input
+        aria-describedby={error ? errorId : undefined}
+        aria-invalid={error ? true : undefined}
+        autoComplete={autoComplete}
+        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
+        id={id}
+        inputMode={inputMode}
+        name={id}
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      />
+      {error ? (
+        <p className="mt-1.5 text-sm text-red-300" id={errorId} role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  )
 }
 
 function TextAreaField({
