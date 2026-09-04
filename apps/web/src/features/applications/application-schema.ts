@@ -13,26 +13,17 @@ export const applicationSchema = z.object({
     .trim()
     .min(5, 'Enter your current address')
     .max(250, 'Address must be 250 characters or fewer'),
-  installationRegion: z
+  installationRegionCode: z.string().regex(/^[0-9]{10}$/, 'Select a region'),
+  installationProvinceCode: z.string().refine(
+    (value) => value === '' || /^[0-9]{10}$/.test(value),
+    'Select a province',
+  ),
+  installationCityMunicipalityCode: z
     .string()
-    .trim()
-    .min(2, 'Enter the region')
-    .max(100, 'Region must be 100 characters or fewer'),
-  installationProvince: z
+    .regex(/^[0-9]{10}$/, 'Select a city or municipality'),
+  installationBarangayCode: z
     .string()
-    .trim()
-    .min(2, 'Enter the province')
-    .max(100, 'Province must be 100 characters or fewer'),
-  installationCityMunicipality: z
-    .string()
-    .trim()
-    .min(2, 'Enter the city or municipality')
-    .max(100, 'City or municipality must be 100 characters or fewer'),
-  installationBarangay: z
-    .string()
-    .trim()
-    .min(2, 'Enter the barangay')
-    .max(100, 'Barangay must be 100 characters or fewer'),
+    .regex(/^[0-9]{10}$/, 'Select a barangay'),
   installationStreetAddress: z
     .string()
     .trim()

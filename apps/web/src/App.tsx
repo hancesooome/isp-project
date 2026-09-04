@@ -65,7 +65,7 @@ export function App() {
       <Route
         element={
           <ProtectedRoute>
-            <CentredPage><ServiceApplicationForm /></CentredPage>
+            <LightCentredPage><ServiceApplicationForm /></LightCentredPage>
           </ProtectedRoute>
         }
         path="/apply"

@@ -8,6 +8,7 @@ import {
   applicationSchema,
   type ApplicationFormValues,
 } from './application-schema'
+import { PhilippineLocationFields } from './PhilippineLocationFields'
 
 interface PlanOption {
   id: string
@@ -20,10 +21,10 @@ const initialValues: ApplicationFormValues = {
   planId: '',
   phone: '',
   address: '',
-  installationRegion: '',
-  installationProvince: '',
-  installationCityMunicipality: '',
-  installationBarangay: '',
+  installationRegionCode: '',
+  installationProvinceCode: '',
+  installationCityMunicipalityCode: '',
+  installationBarangayCode: '',
   installationStreetAddress: '',
   installationPostalCode: '',
   installationLandmark: '',
@@ -147,11 +148,12 @@ export function ServiceApplicationForm() {
           plan_id: parsed.data.planId,
           phone: parsed.data.phone,
           address: parsed.data.address,
-          installation_region: parsed.data.installationRegion,
-          installation_province: parsed.data.installationProvince,
-          installation_city_municipality:
-            parsed.data.installationCityMunicipality,
-          installation_barangay: parsed.data.installationBarangay,
+          installation_region_code: parsed.data.installationRegionCode,
+          installation_province_code:
+            parsed.data.installationProvinceCode || null,
+          installation_city_municipality_code:
+            parsed.data.installationCityMunicipalityCode,
+          installation_barangay_code: parsed.data.installationBarangayCode,
           installation_street_address: parsed.data.installationStreetAddress,
           installation_postal_code: parsed.data.installationPostalCode,
           installation_landmark: parsed.data.installationLandmark,
@@ -174,16 +176,16 @@ export function ServiceApplicationForm() {
 
   if (isSubmitted) {
     return (
-      <section className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
+      <section className="w-full max-w-xl rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
           Application received
         </p>
-        <h1 className="mt-3 text-3xl font-bold text-white">Thank you</h1>
-        <p className="mt-4 text-slate-300" role="status">
+        <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Thank you</h1>
+        <p className="mt-4 text-slate-600" role="status">
           Your service application was submitted for review.
         </p>
         <Link
-          className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
+          className="mt-6 inline-flex min-h-11 items-center font-semibold text-blue-700 transition hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           to="/account/application"
         >
           View application status
@@ -193,32 +195,32 @@ export function ServiceApplicationForm() {
   }
 
   return (
-    <section className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
+    <section className="w-full max-w-2xl rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
       <Link
-        className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
+        className="mb-7 inline-flex min-h-11 items-center text-sm font-medium text-slate-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         to="/"
       >
         ← Back to home
       </Link>
-      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
         Service application
       </p>
-      <h1 className="mt-3 text-3xl font-bold text-white">
+      <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">
         Apply for internet service
       </h1>
-      <p className="mt-3 text-slate-400">
+      <p className="mt-3 leading-7 text-slate-600">
         Confirm your plan and provide the addresses needed for installation.
       </p>
 
       <form className="mt-8 space-y-5" noValidate onSubmit={handleSubmit}>
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-200" htmlFor="planId">
+          <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="planId">
             Internet plan
           </label>
           <select
             aria-describedby={fieldErrors.planId ? 'planId-error' : undefined}
             aria-invalid={fieldErrors.planId ? true : undefined}
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
+            className="w-full rounded-[10px] border border-slate-900/14 bg-white px-3.5 py-3 text-slate-950 shadow-inner shadow-slate-950/3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
             disabled={plans === null || plansError !== null}
             id="planId"
             name="planId"
@@ -233,17 +235,17 @@ export function ServiceApplicationForm() {
             ))}
           </select>
           {plans === null && !plansError ? (
-            <p className="mt-1.5 text-sm text-slate-400" role="status">
+            <p className="mt-1.5 text-sm text-slate-500" role="status">
               Loading plans...
             </p>
           ) : null}
           {plansError ? (
-            <p className="mt-1.5 text-sm text-red-300" role="alert">
+            <p className="mt-1.5 text-sm text-red-700" role="alert">
               {plansError}
             </p>
           ) : null}
           {fieldErrors.planId ? (
-            <p className="mt-1.5 text-sm text-red-300" id="planId-error" role="alert">
+            <p className="mt-1.5 text-sm text-red-700" id="planId-error" role="alert">
               {fieldErrors.planId}
             </p>
           ) : null}
@@ -266,46 +268,45 @@ export function ServiceApplicationForm() {
           onChange={(value) => updateField('address', value)}
           value={values.address}
         />
-        <fieldset className="space-y-5 border-t border-slate-800 pt-5">
-          <legend className="text-sm font-semibold text-slate-200">
+        <fieldset className="space-y-5 border-t border-slate-900/10 pt-6">
+          <legend className="text-sm font-semibold text-slate-800">
             Installation address
           </legend>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-600">
             Enter the address where internet service will be installed.
           </p>
-          <AddressField
-            autoComplete="address-level1"
-            error={fieldErrors.installationRegion}
-            id="installationRegion"
-            label="Region"
-            onChange={(value) => updateField('installationRegion', value)}
-            value={values.installationRegion}
-          />
-          <AddressField
-            autoComplete="address-level1"
-            error={fieldErrors.installationProvince}
-            id="installationProvince"
-            label="Province"
-            onChange={(value) => updateField('installationProvince', value)}
-            value={values.installationProvince}
-          />
-          <AddressField
-            autoComplete="address-level2"
-            error={fieldErrors.installationCityMunicipality}
-            id="installationCityMunicipality"
-            label="City or municipality"
-            onChange={(value) =>
-              updateField('installationCityMunicipality', value)
-            }
-            value={values.installationCityMunicipality}
-          />
-          <AddressField
-            autoComplete="address-level3"
-            error={fieldErrors.installationBarangay}
-            id="installationBarangay"
-            label="Barangay"
-            onChange={(value) => updateField('installationBarangay', value)}
-            value={values.installationBarangay}
+          <PhilippineLocationFields
+            errors={{
+              regionCode: fieldErrors.installationRegionCode,
+              provinceCode: fieldErrors.installationProvinceCode,
+              cityMunicipalityCode:
+                fieldErrors.installationCityMunicipalityCode,
+              barangayCode: fieldErrors.installationBarangayCode,
+            }}
+            onChange={(location) => {
+              setValues((current) => ({
+                ...current,
+                installationRegionCode: location.regionCode,
+                installationProvinceCode: location.provinceCode,
+                installationCityMunicipalityCode:
+                  location.cityMunicipalityCode,
+                installationBarangayCode: location.barangayCode,
+              }))
+              setFieldErrors((current) => ({
+                ...current,
+                installationRegionCode: undefined,
+                installationProvinceCode: undefined,
+                installationCityMunicipalityCode: undefined,
+                installationBarangayCode: undefined,
+              }))
+              setSubmissionError(null)
+            }}
+            value={{
+              regionCode: values.installationRegionCode,
+              provinceCode: values.installationProvinceCode,
+              cityMunicipalityCode: values.installationCityMunicipalityCode,
+              barangayCode: values.installationBarangayCode,
+            }}
           />
           <TextAreaField
             autoComplete="street-address"
@@ -337,13 +338,13 @@ export function ServiceApplicationForm() {
         </fieldset>
 
         {submissionError ? (
-          <p className="text-sm text-red-300" role="alert">
+          <p className="text-sm text-red-700" role="alert">
             {submissionError}
           </p>
         ) : null}
 
         <button
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className="public-primary-button flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isSubmitting || plans === null || plansError !== null}
           type="submit"
         >
@@ -384,14 +385,14 @@ function TextField({
 
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-200" htmlFor={id}>
+      <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor={id}>
         {label}
       </label>
       <input
         aria-describedby={error ? errorId : undefined}
         aria-invalid={error ? true : undefined}
         autoComplete={autoComplete}
-        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
+        className="w-full rounded-[10px] border border-slate-900/14 bg-white px-3.5 py-3 text-slate-950 shadow-inner shadow-slate-950/3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
         id={id}
         name={id}
         onChange={(event) => onChange(event.target.value)}
@@ -399,7 +400,7 @@ function TextField({
         value={value}
       />
       {error ? (
-        <p className="mt-1.5 text-sm text-red-300" id={errorId} role="alert">
+        <p className="mt-1.5 text-sm text-red-700" id={errorId} role="alert">
           {error}
         </p>
       ) : null}
@@ -417,10 +418,6 @@ interface TextAreaFieldProps {
 }
 
 type AddressFieldId =
-  | 'installationRegion'
-  | 'installationProvince'
-  | 'installationCityMunicipality'
-  | 'installationBarangay'
   | 'installationPostalCode'
   | 'installationLandmark'
 
@@ -447,14 +444,14 @@ function AddressField({
 
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-200" htmlFor={id}>
+      <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor={id}>
         {label}
       </label>
       <input
         aria-describedby={error ? errorId : undefined}
         aria-invalid={error ? true : undefined}
         autoComplete={autoComplete}
-        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
+        className="w-full rounded-[10px] border border-slate-900/14 bg-white px-3.5 py-3 text-slate-950 shadow-inner shadow-slate-950/3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
         id={id}
         inputMode={inputMode}
         name={id}
@@ -462,7 +459,7 @@ function AddressField({
         value={value}
       />
       {error ? (
-        <p className="mt-1.5 text-sm text-red-300" id={errorId} role="alert">
+        <p className="mt-1.5 text-sm text-red-700" id={errorId} role="alert">
           {error}
         </p>
       ) : null}
@@ -482,21 +479,21 @@ function TextAreaField({
 
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-200" htmlFor={id}>
+      <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor={id}>
         {label}
       </label>
       <textarea
         aria-describedby={error ? errorId : undefined}
         aria-invalid={error ? true : undefined}
         autoComplete={autoComplete}
-        className="min-h-24 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
+        className="min-h-24 w-full resize-y rounded-[10px] border border-slate-900/14 bg-white px-3.5 py-3 text-slate-950 shadow-inner shadow-slate-950/3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
         id={id}
         name={id}
         onChange={(event) => onChange(event.target.value)}
         value={value}
       />
       {error ? (
-        <p className="mt-1.5 text-sm text-red-300" id={errorId} role="alert">
+        <p className="mt-1.5 text-sm text-red-700" id={errorId} role="alert">
           {error}
         </p>
       ) : null}

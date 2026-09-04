@@ -50,3 +50,4 @@ supabase/migrations/202609020001_create_audit_logs.sql
 supabase/migrations/202609020002_harden_rls_policies.sql
 ISP_Expansion_Detailed_Tickets_074-130.md
 supabase/migrations/202609040001_add_structured_ph_installation_addresses.sql
+supabase/migrations/202609040002_add_installation_psgc_codes.sql

@@ -88,6 +88,9 @@ export const env = {
   emailFrom: readRequiredEnv('EMAIL_FROM'),
   cronSecret: readRequiredEnv('CRON_SECRET'),
   appUrl: readUrl('APP_URL'),
+  psgcApiUrl: new URL(
+    process.env.PSGC_API_URL?.trim() || 'https://psgc.cloud/api/v2/',
+  ).toString(),
   dueReminderDays: readNonNegativeInteger('DUE_REMINDER_DAYS', 3),
   trustProxyHops: readIntegerInRange(
     'TRUST_PROXY_HOPS',

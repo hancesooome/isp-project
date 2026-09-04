@@ -238,9 +238,19 @@ interface AdminReportsOverview {
   payment_period_end_exclusive: string
 }
 
-const availabilitySchema = z.object({
-  address: z.string().trim().min(5).max(250),
+const psgcCodeSchema = z.string().regex(/^[0-9]{10}$/)
+
+const structuredAddressSchema = z.object({
+  region_code: psgcCodeSchema,
+  province_code: psgcCodeSchema.nullable(),
+  city_municipality_code: psgcCodeSchema,
+  barangay_code: psgcCodeSchema,
+  street_address: z.string().trim().min(3).max(250),
+  postal_code: z.string().trim().regex(/^[0-9]{4}$/),
+  landmark: z.string().trim().max(250).optional(),
 })
+
+const availabilitySchema = structuredAddressSchema.strict()
 
 const applicationSchema = z
   .object({
@@ -252,10 +262,10 @@ const applicationSchema = z
       .max(30)
       .regex(/^[0-9+() -]+$/),
     address: z.string().trim().min(5).max(250),
-    installation_region: z.string().trim().min(2).max(100),
-    installation_province: z.string().trim().min(2).max(100),
-    installation_city_municipality: z.string().trim().min(2).max(100),
-    installation_barangay: z.string().trim().min(2).max(100),
+    installation_region_code: psgcCodeSchema,
+    installation_province_code: psgcCodeSchema.nullable(),
+    installation_city_municipality_code: psgcCodeSchema,
+    installation_barangay_code: psgcCodeSchema,
     installation_street_address: z.string().trim().min(3).max(250),
     installation_postal_code: z.string().trim().regex(/^[0-9]{4}$/),
     installation_landmark: z.string().trim().max(250).optional(),
@@ -376,21 +386,107 @@ function isServiceAvailable(address: string): boolean {
   )
 }
 
+const psgcResponseSchema = z.object({
+  data: z.array(
+    z.object({
+      code: psgcCodeSchema,
+      name: z.string().trim().min(1),
+      type: z.string().optional(),
+    }),
+  ),
+})
+
+type PsgcOption = z.infer<typeof psgcResponseSchema>['data'][number]
+
+interface ResolvedAddress {
+  region: PsgcOption
+  province: PsgcOption | null
+  cityMunicipality: PsgcOption
+  barangay: PsgcOption
+}
+
+async function getPsgcOptions(path: string): Promise<PsgcOption[]> {
+  const response = await fetch(new URL(path, env.psgcApiUrl), {
+    signal: AbortSignal.timeout(8_000),
+  })
+
+  if (!response.ok) {
+    throw new Error(`PSGC request failed with status ${response.status}`)
+  }
+
+  const parsed = psgcResponseSchema.safeParse(await response.json())
+
+  if (!parsed.success) {
+    throw new Error('PSGC returned an invalid response')
+  }
+
+  return parsed.data.data
+}
+
+async function resolvePsgcAddress(input: {
+  region_code: string
+  province_code: string | null
+  city_municipality_code: string
+  barangay_code: string
+}): Promise<ResolvedAddress | null> {
+  const regions = await getPsgcOptions('regions')
+  const region = regions.find((item) => item.code === input.region_code)
+
+  if (!region) return null
+
+  const provinces = await getPsgcOptions(
+    `regions/${input.region_code}/provinces`,
+  )
+  const province = input.province_code
+    ? provinces.find((item) => item.code === input.province_code) ?? null
+    : null
+
+  if ((provinces.length > 0 && !province) || (provinces.length === 0 && input.province_code)) {
+    return null
+  }
+
+  const cityPath = province
+    ? `regions/${input.region_code}/provinces/${province.code}/cities-municipalities`
+    : `regions/${input.region_code}/cities-municipalities`
+  const cities = (await getPsgcOptions(cityPath)).filter(
+    (item) => item.type === 'City' || item.type === 'Mun',
+  )
+  const cityMunicipality = cities.find(
+    (item) => item.code === input.city_municipality_code,
+  )
+
+  if (!cityMunicipality) return null
+
+  const barangays = await getPsgcOptions(
+    `cities-municipalities/${cityMunicipality.code}/barangays`,
+  )
+  const barangay = barangays.find((item) => item.code === input.barangay_code)
+
+  if (!barangay) return null
+
+  return { region, province, cityMunicipality, barangay }
+}
+
 function formatInstallationAddress(
-  address: z.infer<typeof applicationSchema>,
+  address: {
+    street_address: string
+    postal_code: string
+    landmark?: string
+  },
+  location: ResolvedAddress,
 ): string {
   return [
-    address.installation_street_address,
-    address.installation_barangay,
-    address.installation_city_municipality,
-    address.installation_province,
-    address.installation_region,
-    address.installation_postal_code,
-    address.installation_landmark
-      ? `Near ${address.installation_landmark}`
+    address.street_address,
+    location.barangay.name,
+    location.cityMunicipality.name,
+    location.province?.name,
+    location.region.name,
+    address.postal_code,
+    address.landmark
+      ? `Near ${address.landmark}`
       : null,
   ]
-    .filter((part): part is string => part !== null)
+    .filter((part): part is string => typeof part === 'string')
     .join(', ')
 }
 
@@ -893,7 +989,89 @@ app.get('/plans', async (_request, response) => {
   response.status(200).json({ plans: data })
 })
 
-app.post('/service-availability', availabilityRateLimiter, (request, response) => {
+app.get('/locations/regions', async (_request, response) => {
+  try {
+    response.status(200).json({ locations: await getPsgcOptions('regions') })
+  } catch (error) {
+    console.error('Failed to load PSGC regions', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+    response.status(502).json({ error: 'Unable to load locations' })
+  }
+})
+
+app.get('/locations/regions/:regionCode/provinces', async (request, response) => {
+  const code = psgcCodeSchema.safeParse(request.params.regionCode)
+
+  if (!code.success) {
+    response.status(400).json({ error: 'Invalid region code' })
+    return
+  }
+
+  try {
+    response.status(200).json({
+      locations: await getPsgcOptions(`regions/${code.data}/provinces`),
+    })
+  } catch (error) {
+    console.error('Failed to load PSGC provinces', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+    response.status(502).json({ error: 'Unable to load locations' })
+  }
+})
+
+app.get('/locations/regions/:regionCode/cities-municipalities', async (request, response) => {
+  const regionCode = psgcCodeSchema.safeParse(request.params.regionCode)
+  const provinceCode = z
+    .object({ province_code: psgcCodeSchema.optional() })
+    .strict()
+    .safeParse(request.query)
+
+  if (!regionCode.success || !provinceCode.success) {
+    response.status(400).json({ error: 'Invalid location code' })
+    return
+  }
+
+  const path = provinceCode.data.province_code
+    ? `regions/${regionCode.data}/provinces/${provinceCode.data.province_code}/cities-municipalities`
+    : `regions/${regionCode.data}/cities-municipalities`
+
+  try {
+    const locations = (await getPsgcOptions(path)).filter(
+      (item) => item.type === 'City' || item.type === 'Mun',
+    )
+    response.status(200).json({ locations })
+  } catch (error) {
+    console.error('Failed to load PSGC cities and municipalities', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+    response.status(502).json({ error: 'Unable to load locations' })
+  }
+})
+
+app.get('/locations/cities-municipalities/:cityCode/barangays', async (request, response) => {
+  const code = psgcCodeSchema.safeParse(request.params.cityCode)
+
+  if (!code.success) {
+    response.status(400).json({ error: 'Invalid city or municipality code' })
+    return
+  }
+
+  try {
+    response.status(200).json({
+      locations: await getPsgcOptions(
+        `cities-municipalities/${code.data}/barangays`,
+      ),
+    })
+  } catch (error) {
+    console.error('Failed to load PSGC barangays', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+    response.status(502).json({ error: 'Unable to load locations' })
+  }
+})
+
+app.post('/service-availability', availabilityRateLimiter, async (request, response) => {
   const result = availabilitySchema.safeParse(request.body)
 
   if (!result.success) {
@@ -901,9 +1079,22 @@ app.post('/service-availability', availabilityRateLimiter, (request, response) =
     return
   }
 
-  response.status(200).json({
-    available: isServiceAvailable(result.data.address),
-  })
+  try {
+    const location = await resolvePsgcAddress(result.data)
+
+    if (!location) {
+      response.status(400).json({ error: 'Select a valid installation address' })
+      return
+    }
+
+    const address = formatInstallationAddress(result.data, location)
+    response.status(200).json({ available: isServiceAvailable(address) })
+  } catch (error) {
+    console.error('Failed to validate service address', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+    response.status(502).json({ error: 'Unable to check service availability' })
+  }
 })
 
 app.post('/applications', async (request, response) => {
@@ -931,7 +1122,36 @@ app.post('/applications', async (request, response) => {
     return
   }
 
-  const installationAddress = formatInstallationAddress(result.data)
+  let location: ResolvedAddress | null
+
+  try {
+    location = await resolvePsgcAddress({
+      region_code: result.data.installation_region_code,
+      province_code: result.data.installation_province_code,
+      city_municipality_code: result.data.installation_city_municipality_code,
+      barangay_code: result.data.installation_barangay_code,
+    })
+  } catch (error) {
+    console.error('Failed to validate application address', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+    response.status(502).json({ error: 'Unable to validate installation address' })
+    return
+  }
+
+  if (!location) {
+    response.status(400).json({ error: 'Select a valid installation address' })
+    return
+  }
+
+  const installationAddress = formatInstallationAddress(
+    {
+      street_address: result.data.installation_street_address,
+      postal_code: result.data.installation_postal_code,
+      landmark: result.data.installation_landmark,
+    },
+    location,
+  )
 
   if (!isServiceAvailable(installationAddress)) {
     response.status(422).json({ error: 'Service is unavailable at this address' })
@@ -986,11 +1206,14 @@ app.post('/applications', async (request, response) => {
         phone: result.data.phone,
         address: result.data.address,
         installation_address: installationAddress,
-        installation_region: result.data.installation_region,
-        installation_province: result.data.installation_province,
-        installation_city_municipality:
-          result.data.installation_city_municipality,
-        installation_barangay: result.data.installation_barangay,
+        installation_region: location.region.name,
+        installation_province: location.province?.name ?? null,
+        installation_city_municipality: location.cityMunicipality.name,
+        installation_barangay: location.barangay.name,
+        installation_region_code: location.region.code,
+        installation_province_code: location.province?.code ?? null,
+        installation_city_municipality_code: location.cityMunicipality.code,
+        installation_barangay_code: location.barangay.code,
         installation_street_address: result.data.installation_street_address,
         installation_postal_code: result.data.installation_postal_code,
         installation_landmark: result.data.installation_landmark || null,
@@ -1015,11 +1238,14 @@ app.post('/applications', async (request, response) => {
       user_id: auth.userId,
       plan_id: result.data.plan_id,
       installation_address: installationAddress,
-      installation_region: result.data.installation_region,
-      installation_province: result.data.installation_province,
-      installation_city_municipality:
-        result.data.installation_city_municipality,
-      installation_barangay: result.data.installation_barangay,
+      installation_region: location.region.name,
+      installation_province: location.province?.name ?? null,
+      installation_city_municipality: location.cityMunicipality.name,
+      installation_barangay: location.barangay.name,
+      installation_region_code: location.region.code,
+      installation_province_code: location.province?.code ?? null,
+      installation_city_municipality_code: location.cityMunicipality.code,
+      installation_barangay_code: location.barangay.code,
       installation_street_address: result.data.installation_street_address,
       installation_postal_code: result.data.installation_postal_code,
       installation_landmark: result.data.installation_landmark || null,
