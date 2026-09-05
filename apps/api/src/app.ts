@@ -24,6 +24,10 @@ interface Plan {
   billing_interval: 'monthly' | 'yearly'
 }
 
+interface CoveragePlanRelation {
+  plan: Plan | null
+}
+
 interface AdminPlan extends Plan {
   speed_mbps: number | null
   is_active: boolean
@@ -1167,7 +1171,26 @@ app.post('/service-availability', availabilityRateLimiter, async (request, respo
       result.data.latitude,
       result.data.longitude,
     )
-    response.status(200).json({ available: coverageAreaId !== null })
+    if (coverageAreaId === null) {
+      response.status(200).json({ available: false, plans: [] })
+      return
+    }
+
+    const { data: planRelations, error: plansError } = await supabase
+      .from('coverage_area_plans')
+      .select('plan:plans(id, name, slug, description, price_cents, billing_interval)')
+      .eq('coverage_area_id', coverageAreaId)
+      .eq('plans.is_active', true)
+      .returns<CoveragePlanRelation[]>()
+
+    if (plansError) throw plansError
+
+    const plans = planRelations
+      .map(({ plan }) => plan)
+      .filter((plan): plan is Plan => plan !== null)
+      .sort((first, second) => first.price_cents - second.price_cents || first.name.localeCompare(second.name))
+
+    response.status(200).json({ available: true, plans })
   } catch (error) {
     console.error('Failed to validate service address', {
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -1232,15 +1255,17 @@ app.post('/applications', async (request, response) => {
     location,
   )
 
+  let coverageAreaId: string
   try {
-    const coverageAreaId = await findServiceCoverageArea(
+    const matchedCoverageAreaId = await findServiceCoverageArea(
       result.data.installation_latitude,
       result.data.installation_longitude,
     )
-    if (coverageAreaId === null) {
+    if (matchedCoverageAreaId === null) {
       response.status(422).json({ error: 'Service is unavailable at this location' })
       return
     }
+    coverageAreaId = matchedCoverageAreaId
   } catch (error) {
     console.error('Failed to validate application coverage', {
       code: typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined,
@@ -1264,6 +1289,24 @@ app.post('/applications', async (request, response) => {
 
   if (!plan) {
     response.status(400).json({ error: 'Select an available plan' })
+    return
+  }
+
+  const { data: coveragePlan, error: coveragePlanError } = await supabase
+    .from('coverage_area_plans')
+    .select('coverage_area_id')
+    .eq('coverage_area_id', coverageAreaId)
+    .eq('plan_id', result.data.plan_id)
+    .maybeSingle<{ coverage_area_id: string }>()
+
+  if (coveragePlanError) {
+    console.error('Failed to verify coverage plan', { code: coveragePlanError.code })
+    response.status(500).json({ error: 'Unable to submit application' })
+    return
+  }
+
+  if (!coveragePlan) {
+    response.status(422).json({ error: 'Selected plan is unavailable at this location' })
     return
   }
 

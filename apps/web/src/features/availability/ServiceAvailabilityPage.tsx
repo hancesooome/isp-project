@@ -7,6 +7,7 @@ import {
   type PhilippineLocationValue,
 } from '../applications/PhilippineLocationFields'
 import { InstallationLocationMap } from '../applications/InstallationLocationMap'
+import { saveAvailabilityContext } from './availability-context'
 
 const availabilitySchema = z.object({
   regionCode: z.string().regex(/^[0-9]{10}$/, 'Select a region'),
@@ -28,12 +29,30 @@ const availabilitySchema = z.object({
 })
 
 type AvailabilityValues = z.infer<typeof availabilitySchema>
-type AvailabilityResult = 'available' | 'unavailable' | null
+interface AvailablePlan {
+  id: string
+  name: string
+  description: string | null
+  price_cents: number
+  billing_interval: 'monthly' | 'yearly'
+}
+type AvailabilityResult = { available: boolean; plans: AvailablePlan[] } | null
 type FieldErrors = Partial<Record<keyof AvailabilityValues, string>>
 
 const initialValues: AvailabilityValues = {
   regionCode: '', provinceCode: '', cityMunicipalityCode: '', barangayCode: '',
   streetAddress: '', postalCode: '', landmark: '', latitude: null, longitude: null,
+}
+
+const priceFormatter = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
+
+function isAvailablePlan(value: unknown): value is AvailablePlan {
+  if (typeof value !== 'object' || value === null) return false
+  const plan = value as Record<string, unknown>
+  return typeof plan.id === 'string' && typeof plan.name === 'string' &&
+    (typeof plan.description === 'string' || plan.description === null) &&
+    typeof plan.price_cents === 'number' &&
+    (plan.billing_interval === 'monthly' || plan.billing_interval === 'yearly')
 }
 
 export function ServiceAvailabilityPage() {
@@ -104,10 +123,11 @@ export function ServiceAvailabilityPage() {
 
       if (!response.ok) throw new Error('AVAILABILITY_REQUEST_FAILED')
       const data: unknown = await response.json()
-      if (typeof data !== 'object' || data === null || !('available' in data) || typeof data.available !== 'boolean') {
+      if (typeof data !== 'object' || data === null || !('available' in data) || typeof data.available !== 'boolean' ||
+        !('plans' in data) || !Array.isArray(data.plans) || !data.plans.every(isAvailablePlan)) {
         throw new Error('INVALID_AVAILABILITY_RESPONSE')
       }
-      setResult(data.available ? 'available' : 'unavailable')
+      setResult({ available: data.available, plans: data.plans })
     } catch {
       setRequestError('We could not check this address right now. Please try again later.')
     } finally {
@@ -141,8 +161,23 @@ export function ServiceAvailabilityPage() {
         </button>
       </form>
 
-      {result === 'available' ? <div className="mt-6 rounded-[12px] border border-emerald-200 bg-emerald-50 p-5" role="status"><p className="font-semibold text-emerald-800">Service is available at this address.</p><Link className="mt-4 inline-flex min-h-11 items-center rounded-[10px] bg-emerald-700 px-4 py-2 font-semibold text-white transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2" to={selectedPlanId ? `/apply?plan=${encodeURIComponent(selectedPlanId)}` : '/plans'}>{selectedPlanId ? 'Continue application' : 'View available plans'}</Link></div> : null}
-      {result === 'unavailable' ? <p className="mt-6 rounded-[12px] border border-amber-200 bg-amber-50 p-5 text-amber-800" role="status">Service is not currently available at this address.</p> : null}
+      {result?.available ? (
+        <div className="mt-6 rounded-[12px] border border-emerald-200 bg-emerald-50 p-5" role="status">
+          <p className="font-semibold text-emerald-800">Service is available at the selected map location.</p>
+          {result.plans.length === 0 ? <p className="mt-2 text-sm text-emerald-800">No plans are assigned to this area yet.</p> : (
+            <div className="mt-4 grid gap-3">
+              {result.plans.map((plan) => {
+                const wasSelected = plan.id === selectedPlanId
+                return <article className={`rounded-[10px] border bg-white p-4 ${wasSelected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-emerald-200'}`} key={plan.id}>
+                  <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold text-slate-950">{plan.name}</h2><p className="mt-1 text-sm text-slate-600">{plan.description ?? 'Reliable internet service for your home.'}</p></div><p className="font-semibold text-slate-950">{priceFormatter.format(plan.price_cents / 100)}<span className="text-xs font-normal text-slate-500">/{plan.billing_interval === 'monthly' ? 'month' : 'year'}</span></p></div>
+                  <Link className="mt-3 inline-flex min-h-11 items-center rounded-[9px] bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800" onClick={() => saveAvailabilityContext({ ...values, latitude: values.latitude!, longitude: values.longitude!, eligiblePlanIds: result.plans.map(({ id }) => id) })} to={`/apply?plan=${encodeURIComponent(plan.id)}`}>{wasSelected ? 'Continue with this plan' : 'Choose this plan'}</Link>
+                </article>
+              })}
+            </div>
+          )}
+        </div>
+      ) : null}
+      {result && !result.available ? <p className="mt-6 rounded-[12px] border border-amber-200 bg-amber-50 p-5 text-amber-800" role="status">Service is not currently available at the selected map location.</p> : null}
       {requestError ? <div className="mt-6 rounded-[12px] border border-red-200 bg-red-50 p-5" role="alert"><p className="font-semibold text-red-900">Check failed</p><p className="mt-2 text-sm text-red-700">{requestError}</p></div> : null}
     </section>
   )

@@ -10,6 +10,7 @@ import {
 } from './application-schema'
 import { PhilippineLocationFields } from './PhilippineLocationFields'
 import { InstallationLocationMap } from './InstallationLocationMap'
+import { loadAvailabilityContext } from '../availability/availability-context'
 
 interface PlanOption {
   id: string
@@ -61,9 +62,21 @@ function isPlanOption(value: unknown): value is PlanOption {
 export function ServiceApplicationForm() {
   const [searchParams] = useSearchParams()
   const { session } = useAuth()
+  const [availabilityContext] = useState(loadAvailabilityContext)
   const [values, setValues] = useState(() => ({
     ...initialValues,
     planId: searchParams.get('plan') ?? '',
+    ...(availabilityContext ? {
+      installationRegionCode: availabilityContext.regionCode,
+      installationProvinceCode: availabilityContext.provinceCode,
+      installationCityMunicipalityCode: availabilityContext.cityMunicipalityCode,
+      installationBarangayCode: availabilityContext.barangayCode,
+      installationStreetAddress: availabilityContext.streetAddress,
+      installationPostalCode: availabilityContext.postalCode,
+      installationLandmark: availabilityContext.landmark,
+      installationLatitude: availabilityContext.latitude,
+      installationLongitude: availabilityContext.longitude,
+    } : {}),
   }))
   const [plans, setPlans] = useState<PlanOption[] | null>(null)
   const [plansError, setPlansError] = useState<string | null>(null)
@@ -104,7 +117,9 @@ export function ServiceApplicationForm() {
           throw new Error('INVALID_PLANS_RESPONSE')
         }
 
-        setPlans(result.plans)
+        setPlans(availabilityContext
+          ? result.plans.filter((plan) => availabilityContext.eligiblePlanIds.includes(plan.id))
+          : result.plans)
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           return
@@ -116,7 +131,7 @@ export function ServiceApplicationForm() {
 
     void loadPlans()
     return () => controller.abort()
-  }, [])
+  }, [availabilityContext])
 
   function updateField(field: keyof ApplicationFormValues, value: string) {
     setValues((current) => ({
