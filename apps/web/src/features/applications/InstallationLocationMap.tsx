@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
-import type { LeafletMouseEvent, Marker as LeafletMarker } from 'leaflet'
+import { Icon, type LeafletMouseEvent, type Marker as LeafletMarker } from 'leaflet'
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import markerIconUrl from 'leaflet/dist/images/marker-icon.png'
+import markerIconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
+import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png'
 import 'leaflet/dist/leaflet.css'
 
 export interface InstallationCoordinates {
@@ -15,6 +18,16 @@ interface InstallationLocationMapProps {
 }
 
 const philippinesCenter: [number, number] = [12.8797, 121.774]
+
+const installationMarkerIcon = new Icon({
+  iconUrl: markerIconUrl,
+  iconRetinaUrl: markerIconRetinaUrl,
+  shadowUrl: markerShadowUrl,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+})
 
 export function InstallationLocationMap({
   error,
@@ -97,6 +110,7 @@ export function InstallationLocationMap({
                   })
                 },
               }}
+              icon={installationMarkerIcon}
               position={[value.latitude, value.longitude]}
             />
           ) : null}
