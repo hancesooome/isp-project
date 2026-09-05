@@ -39,6 +39,7 @@ import { PlansPage } from './features/plans/PlansPage'
 import { AdminPlansPage } from './features/plans/AdminPlansPage'
 import { StatementsPage } from './features/statements/StatementsPage'
 import { CustomerDashboard } from './features/subscriptions/CustomerDashboard'
+import { ChangePlanPage } from './features/subscriptions/ChangePlanPage'
 import {
   AdminSubscriptionDetailsPage,
   AdminSubscriptionsPage,
@@ -83,6 +84,7 @@ export function App() {
         path="/account"
       >
         <Route index element={<CustomerDashboard />} />
+        <Route path="change-plan" element={<ChangePlanPage />} />
         <Route path="application" element={<ApplicationStatusPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="invoices/:id" element={<InvoiceDetailsRoute />} />

@@ -207,6 +207,7 @@ export function CustomerDashboard() {
             <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase" id="account-actions-heading">Account actions</p>
             <nav className="mt-4 divide-y divide-slate-900/8" aria-label="Account actions">
               <ActionLink label="Application status" to="/account/application" />
+              <ActionLink label="Change plan" to="/account/change-plan" />
               <ActionLink label="View invoices" to="/account/invoices" />
               <ActionLink label="Download statements" to="/account/statements" />
             </nav>

@@ -28,6 +28,24 @@ interface CoveragePlanRelation {
   plan: Plan | null
 }
 
+interface ChangePlanOption extends Plan {
+  speed_mbps: number | null
+}
+
+interface ChangePlanSubscription {
+  id: string
+  status: 'active' | 'past_due'
+  plan: ChangePlanOption | null
+  application: {
+    installation_latitude: number | null
+    installation_longitude: number | null
+  } | null
+}
+
+interface CoverageChangePlanRelation {
+  plan: ChangePlanOption | null
+}
+
 interface AdminPlan extends Plan {
   speed_mbps: number | null
   is_active: boolean
@@ -1645,6 +1663,92 @@ app.get('/subscription', async (request, response) => {
   }
 
   response.status(200).json({ subscription })
+})
+
+app.get('/subscription/change-options', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load plan options' })
+      return
+    }
+    const message = auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: subscription, error: subscriptionError } = await supabase
+    .from('subscriptions')
+    .select(`
+      id,
+      status,
+      plan:plans(id, name, slug, description, speed_mbps, price_cents, billing_interval),
+      application:applications(installation_latitude, installation_longitude)
+    `)
+    .eq('user_id', auth.userId)
+    .in('status', ['active', 'past_due'])
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle<ChangePlanSubscription>()
+
+  if (subscriptionError) {
+    console.error('Failed to load subscription plan options', { code: subscriptionError.code })
+    response.status(500).json({ error: 'Unable to load plan options' })
+    return
+  }
+
+  if (!subscription?.plan) {
+    response.status(404).json({ error: 'Active subscription not found' })
+    return
+  }
+
+  const latitude = subscription.application?.installation_latitude
+  const longitude = subscription.application?.installation_longitude
+  if (latitude === null || latitude === undefined || longitude === null || longitude === undefined) {
+    response.status(409).json({ error: 'Subscription installation location is unavailable' })
+    return
+  }
+
+  try {
+    const coverageAreaId = await findServiceCoverageArea(latitude, longitude)
+    if (coverageAreaId === null) {
+      response.status(200).json({ current_plan: subscription.plan, alternatives: [] })
+      return
+    }
+
+    const { data: relations, error: plansError } = await supabase
+      .from('coverage_area_plans')
+      .select('plan:plans(id, name, slug, description, speed_mbps, price_cents, billing_interval)')
+      .eq('coverage_area_id', coverageAreaId)
+      .eq('plans.is_active', true)
+      .returns<CoverageChangePlanRelation[]>()
+
+    if (plansError) throw plansError
+
+    const currentPlan = subscription.plan
+    const currentMonthlyPrice = currentPlan.price_cents / (currentPlan.billing_interval === 'yearly' ? 12 : 1)
+    const alternatives = relations
+      .map(({ plan }) => plan)
+      .filter((plan): plan is ChangePlanOption => plan !== null && plan.id !== currentPlan.id)
+      .map((plan) => {
+        const monthlyPrice = plan.price_cents / (plan.billing_interval === 'yearly' ? 12 : 1)
+        const hasDifferentSpeeds = plan.speed_mbps !== null && currentPlan.speed_mbps !== null &&
+          plan.speed_mbps !== currentPlan.speed_mbps
+        const isUpgrade = hasDifferentSpeeds
+          ? plan.speed_mbps! > currentPlan.speed_mbps!
+          : monthlyPrice > currentMonthlyPrice
+        return { ...plan, change_type: isUpgrade ? 'upgrade' as const : 'downgrade' as const }
+      })
+      .sort((first, second) => (first.speed_mbps ?? 0) - (second.speed_mbps ?? 0) || first.price_cents - second.price_cents)
+
+    response.status(200).json({ current_plan: currentPlan, alternatives })
+  } catch (error) {
+    console.error('Failed to load coverage plan options', {
+      code: typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined,
+    })
+    response.status(500).json({ error: 'Unable to load plan options' })
+  }
 })
 
 app.get('/invoices', async (request, response) => {
