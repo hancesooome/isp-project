@@ -302,6 +302,7 @@ const adminApplicationsQuerySchema = z
   .strict()
 
 const applicationIdSchema = z.string().uuid()
+const coverageAreaIdSchema = z.string().uuid()
 const customerIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
 const planIdSchema = z.string().uuid()
@@ -372,6 +373,50 @@ const adminPlanSchema = z
 const adminPlanActivationSchema = z
   .object({
     is_active: z.boolean(),
+  })
+  .strict()
+
+const coveragePositionSchema = z.tuple([
+  z.number().finite().min(-180).max(180),
+  z.number().finite().min(-90).max(90),
+])
+
+const coverageRingSchema = z
+  .array(coveragePositionSchema)
+  .min(4)
+  .max(500)
+  .refine(
+    (ring) => {
+      const first = ring[0]
+      const last = ring.at(-1)
+      return first !== undefined && last !== undefined && first[0] === last[0] && first[1] === last[1]
+    },
+    { message: 'Polygon rings must be closed' },
+  )
+  .refine(
+    (ring) => new Set(ring.slice(0, -1).map(([longitude, latitude]) => `${longitude},${latitude}`)).size >= 3,
+    { message: 'Polygon rings need at least three distinct points' },
+  )
+
+const adminCoverageSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120),
+    region_code: psgcCodeSchema.nullable(),
+    region_name: z.string().trim().max(100).nullable(),
+    province_code: psgcCodeSchema.nullable(),
+    province_name: z.string().trim().max(100).nullable(),
+    city_municipality_code: psgcCodeSchema.nullable(),
+    city_municipality_name: z.string().trim().max(100).nullable(),
+    barangay_code: psgcCodeSchema.nullable(),
+    barangay_name: z.string().trim().max(100).nullable(),
+    is_active: z.boolean(),
+    boundary: z
+      .object({
+        type: z.literal('Polygon'),
+        coordinates: z.array(coverageRingSchema).min(1).max(20),
+      })
+      .strict(),
+    plan_ids: z.array(z.string().uuid()).max(100),
   })
   .strict()
 
@@ -1918,6 +1963,135 @@ app.get('/admin/coverage', async (request, response) => {
   }))
 
   response.status(200).json({ coverage_areas: coverageAreas })
+})
+
+app.post('/admin/coverage', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to create coverage area' : message,
+    })
+    return
+  }
+
+  const result = adminCoverageSchema.safeParse(request.body)
+  if (!result.success) {
+    response.status(400).json({ error: 'Invalid coverage area details' })
+    return
+  }
+
+  const coverage = result.data
+  const { data: coverageAreaId, error } = await supabase.rpc(
+    'save_coverage_area',
+    {
+      p_area_id: null,
+      p_name: coverage.name,
+      p_region_code: coverage.region_code,
+      p_region_name: coverage.region_name,
+      p_province_code: coverage.province_code,
+      p_province_name: coverage.province_name,
+      p_city_municipality_code: coverage.city_municipality_code,
+      p_city_municipality_name: coverage.city_municipality_name,
+      p_barangay_code: coverage.barangay_code,
+      p_barangay_name: coverage.barangay_name,
+      p_is_active: coverage.is_active,
+      p_boundary: coverage.boundary,
+      p_plan_ids: coverage.plan_ids,
+    },
+  )
+
+  if (error || typeof coverageAreaId !== 'string') {
+    if (error?.code === '22023' || error?.code === '23503') {
+      response.status(400).json({ error: 'Invalid coverage boundary or plan selection' })
+      return
+    }
+
+    console.error('Failed to create coverage area', { code: error?.code })
+    response.status(500).json({ error: 'Unable to create coverage area' })
+    return
+  }
+
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'coverage_area.created',
+    targetType: 'coverage_area',
+    targetId: coverageAreaId,
+    source: 'api',
+    metadata: { is_active: coverage.is_active, plan_count: coverage.plan_ids.length },
+  })
+
+  response.status(201).json({ coverage_area_id: coverageAreaId })
+})
+
+app.patch('/admin/coverage/:id', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to update coverage area' : message,
+    })
+    return
+  }
+
+  const idResult = coverageAreaIdSchema.safeParse(request.params.id)
+  const coverageResult = adminCoverageSchema.safeParse(request.body)
+  if (!idResult.success || !coverageResult.success) {
+    response.status(400).json({ error: 'Invalid coverage area details' })
+    return
+  }
+
+  const coverage = coverageResult.data
+  const { data: coverageAreaId, error } = await supabase.rpc(
+    'save_coverage_area',
+    {
+      p_area_id: idResult.data,
+      p_name: coverage.name,
+      p_region_code: coverage.region_code,
+      p_region_name: coverage.region_name,
+      p_province_code: coverage.province_code,
+      p_province_name: coverage.province_name,
+      p_city_municipality_code: coverage.city_municipality_code,
+      p_city_municipality_name: coverage.city_municipality_name,
+      p_barangay_code: coverage.barangay_code,
+      p_barangay_name: coverage.barangay_name,
+      p_is_active: coverage.is_active,
+      p_boundary: coverage.boundary,
+      p_plan_ids: coverage.plan_ids,
+    },
+  )
+
+  if (error || typeof coverageAreaId !== 'string') {
+    if (error?.code === 'P0002') {
+      response.status(404).json({ error: 'Coverage area not found' })
+      return
+    }
+    if (error?.code === '22023' || error?.code === '23503') {
+      response.status(400).json({ error: 'Invalid coverage boundary or plan selection' })
+      return
+    }
+
+    console.error('Failed to update coverage area', { code: error?.code })
+    response.status(500).json({ error: 'Unable to update coverage area' })
+    return
+  }
+
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'coverage_area.updated',
+    targetType: 'coverage_area',
+    targetId: coverageAreaId,
+    source: 'api',
+    metadata: { is_active: coverage.is_active, plan_count: coverage.plan_ids.length },
+  })
+
+  response.status(200).json({ coverage_area_id: coverageAreaId })
 })
 
 app.get('/admin/reports/overview', async (request, response) => {

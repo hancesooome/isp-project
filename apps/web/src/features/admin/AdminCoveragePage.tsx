@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { GeoJSON, MapContainer, TileLayer, useMap } from 'react-leaflet'
 import { latLngBounds } from 'leaflet'
 import type { Feature, Polygon } from 'geojson'
@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { useAuth } from '../auth/auth-context'
+import { CoverageAreaEditor } from './CoverageAreaEditor'
 
 interface CoverageArea {
   id: string
@@ -89,53 +90,62 @@ export function AdminCoveragePage() {
   const [areas, setAreas] = useState<CoverageArea[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [editorMode, setEditorMode] = useState<'create' | 'edit' | null>(null)
+
+  const loadCoverage = useCallback(async (signal?: AbortSignal) => {
+    if (!session) return
+    try {
+      const response = await fetch('/api/admin/coverage', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        signal,
+      })
+      if (!response.ok) throw new Error('COVERAGE_REQUEST_FAILED')
+
+      const result: unknown = await response.json()
+      if (typeof result !== 'object' || result === null || !('coverage_areas' in result)) throw new Error('INVALID_COVERAGE_RESPONSE')
+      const coverageAreas = result.coverage_areas
+      if (!Array.isArray(coverageAreas) || !coverageAreas.every(isCoverageArea)) throw new Error('INVALID_COVERAGE_RESPONSE')
+
+      setAreas(coverageAreas)
+      setError(null)
+      setSelectedId((current) => coverageAreas.some((area) => area.id === current) ? current : coverageAreas[0]?.id ?? null)
+    } catch (requestError) {
+      if (requestError instanceof Error && requestError.name === 'AbortError') return
+      setError('We could not load coverage areas. Please try again later.')
+    }
+  }, [session])
 
   useEffect(() => {
     if (!session) return
     const controller = new AbortController()
-
-    async function loadCoverage() {
-      try {
-        const response = await fetch('/api/admin/coverage', {
-          headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
-          signal: controller.signal,
-        })
-        if (!response.ok) throw new Error('COVERAGE_REQUEST_FAILED')
-
-        const result: unknown = await response.json()
-        if (
-          typeof result !== 'object' ||
-          result === null ||
-          !('coverage_areas' in result) ||
-          !Array.isArray(result.coverage_areas) ||
-          !result.coverage_areas.every(isCoverageArea)
-        ) {
-          throw new Error('INVALID_COVERAGE_RESPONSE')
-        }
-
-        setAreas(result.coverage_areas)
-        setSelectedId(result.coverage_areas[0]?.id ?? null)
-      } catch (requestError) {
-        if (requestError instanceof Error && requestError.name === 'AbortError') return
-        setError('We could not load coverage areas. Please try again later.')
-      }
+    const request = window.setTimeout(() => void loadCoverage(controller.signal), 0)
+    return () => {
+      window.clearTimeout(request)
+      controller.abort()
     }
-
-    void loadCoverage()
-    return () => controller.abort()
-  }, [session])
+  }, [loadCoverage, session])
 
   const selectedArea = areas?.find((area) => area.id === selectedId) ?? null
 
   return (
     <section className="w-full">
-      <header>
-        <p className="text-xs font-semibold tracking-[0.18em] text-blue-400 uppercase">Admin portal</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-white">Coverage</h1>
-        <p className="mt-2 text-sm text-slate-400">Inspect service boundaries and their available plans.</p>
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold tracking-[0.18em] text-blue-400 uppercase">Admin portal</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-white">Coverage</h1>
+          <p className="mt-2 text-sm text-slate-400">Manage service boundaries and their available plans.</p>
+        </div>
+        {editorMode === null ? <button className="min-h-11 rounded-[9px] bg-white px-4 text-sm font-semibold text-slate-950 hover:bg-slate-100" onClick={() => setEditorMode('create')} type="button">Create coverage area</button> : null}
       </header>
 
-      <div className="mt-7">
+      {editorMode ? (
+        <CoverageAreaEditor
+          accessToken={session?.access_token ?? ''}
+          area={editorMode === 'edit' ? selectedArea : null}
+          onCancel={() => setEditorMode(null)}
+          onSaved={() => { setEditorMode(null); void loadCoverage() }}
+        />
+      ) : <div className="mt-7">
         {error ? (
           <ErrorPanel message={error} title="Coverage unavailable" />
         ) : areas === null ? (
@@ -176,7 +186,7 @@ export function AdminCoveragePage() {
             </div>
 
             <aside className="rounded-[14px] border border-white/8 bg-[#11161f] p-5" aria-live="polite">
-              {selectedArea ? <CoverageDetails area={selectedArea} /> : null}
+              {selectedArea ? <CoverageDetails area={selectedArea} onEdit={() => setEditorMode('edit')} /> : null}
               <div className="mt-6 border-t border-white/8 pt-4">
                 <p className="text-xs font-semibold tracking-[0.12em] text-slate-500 uppercase">All areas</p>
                 <div className="mt-3 grid gap-1">
@@ -198,12 +208,12 @@ export function AdminCoveragePage() {
             </aside>
           </div>
         )}
-      </div>
+      </div>}
     </section>
   )
 }
 
-function CoverageDetails({ area }: { area: CoverageArea }) {
+function CoverageDetails({ area, onEdit }: { area: CoverageArea; onEdit: () => void }) {
   const location = [
     area.barangay_name,
     area.city_municipality_name,
@@ -223,6 +233,7 @@ function CoverageDetails({ area }: { area: CoverageArea }) {
         <Detail label="Geographic area" value={location || 'Not specified'} />
         <Detail label="Assigned plans" value={area.plans.length > 0 ? area.plans.map((plan) => plan.name).join(', ') : 'No plans assigned'} />
       </dl>
+      <button className="mt-5 min-h-11 w-full rounded-[9px] border border-white/10 text-sm font-semibold text-white hover:bg-white/5" onClick={onEdit} type="button">Edit area</button>
     </div>
   )
 }
