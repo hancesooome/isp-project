@@ -6,6 +6,7 @@ import {
   PhilippineLocationFields,
   type PhilippineLocationValue,
 } from '../applications/PhilippineLocationFields'
+import { InstallationLocationMap } from '../applications/InstallationLocationMap'
 
 const availabilitySchema = z.object({
   regionCode: z.string().regex(/^[0-9]{10}$/, 'Select a region'),
@@ -18,6 +19,12 @@ const availabilitySchema = z.object({
   streetAddress: z.string().trim().min(3, 'Enter the street address').max(250),
   postalCode: z.string().trim().regex(/^[0-9]{4}$/, 'Enter a valid 4-digit postal code'),
   landmark: z.string().trim().max(250),
+  latitude: z.number().min(-90).max(90).nullable(),
+  longitude: z.number().min(-180).max(180).nullable(),
+}).superRefine((values, context) => {
+  if (values.latitude === null || values.longitude === null) {
+    context.addIssue({ code: 'custom', message: 'Confirm the installation point on the map', path: ['latitude'] })
+  }
 })
 
 type AvailabilityValues = z.infer<typeof availabilitySchema>
@@ -26,7 +33,7 @@ type FieldErrors = Partial<Record<keyof AvailabilityValues, string>>
 
 const initialValues: AvailabilityValues = {
   regionCode: '', provinceCode: '', cityMunicipalityCode: '', barangayCode: '',
-  streetAddress: '', postalCode: '', landmark: '',
+  streetAddress: '', postalCode: '', landmark: '', latitude: null, longitude: null,
 }
 
 export function ServiceAvailabilityPage() {
@@ -39,14 +46,18 @@ export function ServiceAvailabilityPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   function updateField(field: 'streetAddress' | 'postalCode' | 'landmark', value: string) {
-    setValues((current) => ({ ...current, [field]: value }))
+    setValues((current) => ({
+      ...current,
+      [field]: value,
+      ...(field === 'streetAddress' ? { latitude: null, longitude: null } : {}),
+    }))
     setFieldErrors((current) => ({ ...current, [field]: undefined }))
     setRequestError(null)
     setResult(null)
   }
 
   function updateLocation(location: PhilippineLocationValue) {
-    setValues((current) => ({ ...current, ...location }))
+    setValues((current) => ({ ...current, ...location, latitude: null, longitude: null }))
     setFieldErrors({})
     setRequestError(null)
     setResult(null)
@@ -86,6 +97,8 @@ export function ServiceAvailabilityPage() {
           street_address: parsed.data.streetAddress,
           postal_code: parsed.data.postalCode,
           landmark: parsed.data.landmark,
+          latitude: parsed.data.latitude,
+          longitude: parsed.data.longitude,
         }),
       })
 
@@ -113,6 +126,16 @@ export function ServiceAvailabilityPage() {
         <AddressInput error={fieldErrors.streetAddress} id="streetAddress" label="Street, house, building, or unit" onChange={updateField} value={values.streetAddress} />
         <AddressInput error={fieldErrors.postalCode} id="postalCode" inputMode="numeric" label="Postal code" onChange={updateField} value={values.postalCode} />
         <AddressInput error={fieldErrors.landmark} id="landmark" label="Landmark (optional)" onChange={updateField} value={values.landmark} />
+        <InstallationLocationMap
+          error={fieldErrors.latitude}
+          onChange={(coordinates) => {
+            setValues((current) => ({ ...current, ...coordinates }))
+            setFieldErrors((current) => ({ ...current, latitude: undefined }))
+            setRequestError(null)
+            setResult(null)
+          }}
+          value={values.latitude !== null && values.longitude !== null ? { latitude: values.latitude, longitude: values.longitude } : null}
+        />
         <button className="public-primary-button flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoading} type="submit">
           {isLoading ? <><LoadingSpinner size="sm" /><span>Checking availability...</span></> : <span>Check availability</span>}
         </button>

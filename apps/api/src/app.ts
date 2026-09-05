@@ -271,7 +271,10 @@ const structuredAddressSchema = z.object({
   landmark: z.string().trim().max(250).optional(),
 })
 
-const availabilitySchema = structuredAddressSchema.strict()
+const availabilitySchema = structuredAddressSchema.extend({
+  latitude: z.number().finite().min(-90).max(90),
+  longitude: z.number().finite().min(-180).max(180),
+}).strict()
 
 const applicationSchema = z
   .object({
@@ -445,11 +448,18 @@ const applicationReviewSchema = z.discriminatedUnion('status', [
     .strict(),
 ])
 
-function isServiceAvailable(address: string): boolean {
-  const normalizedAddress = address.toLowerCase()
-  return env.serviceAreaKeywords.some((area) =>
-    normalizedAddress.includes(area),
-  )
+async function findServiceCoverageArea(latitude: number, longitude: number) {
+  const { data, error } = await supabase.rpc('find_service_coverage_area', {
+    p_latitude: latitude,
+    p_longitude: longitude,
+  })
+
+  if (error) throw error
+  if (data !== null && typeof data !== 'string') {
+    throw new Error('Invalid coverage check response')
+  }
+
+  return data
 }
 
 const psgcResponseSchema = z.object({
@@ -1153,8 +1163,11 @@ app.post('/service-availability', availabilityRateLimiter, async (request, respo
       return
     }
 
-    const address = formatInstallationAddress(result.data, location)
-    response.status(200).json({ available: isServiceAvailable(address) })
+    const coverageAreaId = await findServiceCoverageArea(
+      result.data.latitude,
+      result.data.longitude,
+    )
+    response.status(200).json({ available: coverageAreaId !== null })
   } catch (error) {
     console.error('Failed to validate service address', {
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -1219,8 +1232,20 @@ app.post('/applications', async (request, response) => {
     location,
   )
 
-  if (!isServiceAvailable(installationAddress)) {
-    response.status(422).json({ error: 'Service is unavailable at this address' })
+  try {
+    const coverageAreaId = await findServiceCoverageArea(
+      result.data.installation_latitude,
+      result.data.installation_longitude,
+    )
+    if (coverageAreaId === null) {
+      response.status(422).json({ error: 'Service is unavailable at this location' })
+      return
+    }
+  } catch (error) {
+    console.error('Failed to validate application coverage', {
+      code: typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined,
+    })
+    response.status(500).json({ error: 'Unable to validate service coverage' })
     return
   }
 
