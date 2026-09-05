@@ -99,21 +99,21 @@ export function ChangePlanPage() {
       }
       if (typeof result !== 'object' || result === null || !('valid' in result) || result.valid !== true) throw new Error('The validation response was invalid.')
 
-      if (selectedPlan.change_type === 'upgrade') {
-        const createResponse = await fetch('/api/subscription/change-plan/upgrade', {
+      {
+        const createResponse = await fetch(`/api/subscription/change-plan/${selectedPlan.change_type}`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ subscription_id: subscriptionId, requested_plan_id: selectedPlan.id, reason: reason.trim() || null }),
         })
         const createResult: unknown = await createResponse.json().catch(() => null)
         if (!createResponse.ok) {
-          const message = typeof createResult === 'object' && createResult !== null && 'error' in createResult && typeof createResult.error === 'string' ? createResult.error : 'The upgrade request could not be created.'
+          const message = typeof createResult === 'object' && createResult !== null && 'error' in createResult && typeof createResult.error === 'string' ? createResult.error : 'The plan-change request could not be created.'
           throw new Error(message)
         }
         if (typeof createResult !== 'object' || createResult === null || !('plan_change_request' in createResult) ||
           typeof createResult.plan_change_request !== 'object' || createResult.plan_change_request === null ||
           !('effective_at' in createResult.plan_change_request) || typeof createResult.plan_change_request.effective_at !== 'string') {
-          throw new Error('The upgrade response was invalid.')
+          throw new Error('The plan-change response was invalid.')
         }
         setEffectiveAt(createResult.plan_change_request.effective_at)
       }
@@ -158,7 +158,7 @@ export function ChangePlanPage() {
         )}
       </div>
 
-      {confirmedPlan ? <p className="mt-6 rounded-[12px] border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900" role="status">{confirmedPlan.change_type === 'upgrade' && effectiveAt ? <>Your upgrade to {confirmedPlan.name} is scheduled for {new Intl.DateTimeFormat('en-PH', { dateStyle: 'long' }).format(new Date(effectiveAt))}. Your current plan remains active until then.</> : <>You reviewed {confirmedPlan.name}. Your current plan has not changed; downgrade submission will be enabled by the next workflow ticket.</>}</p> : null}
+      {confirmedPlan && effectiveAt ? <p className="mt-6 rounded-[12px] border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900" role="status">Your {confirmedPlan.change_type} to {confirmedPlan.name} is scheduled for {new Intl.DateTimeFormat('en-PH', { dateStyle: 'long' }).format(new Date(effectiveAt))}. Your current plan remains active until then.</p> : null}
 
       {selectedPlan ? (
         <div aria-labelledby="change-review-title" aria-modal="true" className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/60 p-4" role="dialog">
@@ -167,10 +167,10 @@ export function ChangePlanPage() {
             <h2 className="mt-2 text-2xl font-semibold text-slate-950" id="change-review-title">{options.current_plan.name} → {selectedPlan.name}</h2>
             <div className="mt-6 grid gap-3 sm:grid-cols-2"><ComparisonCard label="Current" plan={options.current_plan} /><ComparisonCard label="Requested" plan={selectedPlan} /></div>
             <div className="mt-5 rounded-[10px] bg-slate-100 p-4 text-sm leading-6 text-slate-700"><strong>Expected timing:</strong> after review, an approved change is expected at the start of your next billing cycle. There is no immediate switch or mid-cycle proration.</div>
-            {selectedPlan.change_type === 'upgrade' ? <label className="mt-5 block text-sm font-medium text-slate-700">Reason (optional)<textarea className="mt-2 min-h-24 w-full rounded-[10px] border border-slate-900/15 p-3 font-normal outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15" maxLength={1000} onChange={(event) => setReason(event.target.value)} value={reason} /></label> : null}
+            <label className="mt-5 block text-sm font-medium text-slate-700">Reason (optional)<textarea className="mt-2 min-h-24 w-full rounded-[10px] border border-slate-900/15 p-3 font-normal outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15" maxLength={1000} onChange={(event) => setReason(event.target.value)} value={reason} /></label>
             <label className="mt-5 flex items-start gap-3 text-sm leading-6 text-slate-700"><input checked={acknowledged} className="mt-1" onChange={(event) => setAcknowledged(event.target.checked)} type="checkbox" /><span>I understand this review does not instantly change my current service.</span></label>
             {validationError ? <p className="mt-4 rounded-[9px] border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{validationError}</p> : null}
-            <div className="mt-6 flex gap-3"><button className="min-h-11 flex-1 rounded-[10px] border border-slate-900/15 font-semibold text-slate-700 hover:bg-slate-50" disabled={isValidating} onClick={() => setSelectedPlan(null)} type="button">Cancel</button><button className="min-h-11 flex-1 rounded-[10px] bg-slate-950 font-semibold text-white disabled:opacity-40" disabled={!acknowledged || isValidating} onClick={() => void confirmPlanChoice(options.subscription_id)} type="button">{isValidating ? 'Validating…' : selectedPlan.change_type === 'upgrade' ? 'Schedule upgrade' : 'Confirm plan choice'}</button></div>
+            <div className="mt-6 flex gap-3"><button className="min-h-11 flex-1 rounded-[10px] border border-slate-900/15 font-semibold text-slate-700 hover:bg-slate-50" disabled={isValidating} onClick={() => setSelectedPlan(null)} type="button">Cancel</button><button className="min-h-11 flex-1 rounded-[10px] bg-slate-950 font-semibold text-white capitalize disabled:opacity-40" disabled={!acknowledged || isValidating} onClick={() => void confirmPlanChoice(options.subscription_id)} type="button">{isValidating ? 'Validating…' : `Schedule ${selectedPlan.change_type}`}</button></div>
           </div>
         </div>
       ) : null}

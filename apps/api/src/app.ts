@@ -1952,6 +1952,67 @@ app.post('/subscription/change-plan/upgrade', async (request, response) => {
   response.status(201).json({ plan_change_request: changeRequest })
 })
 
+app.post('/subscription/change-plan/downgrade', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to request plan downgrade' })
+      return
+    }
+    const message = auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const result = upgradeRequestSchema.safeParse(request.body)
+  if (!result.success) {
+    response.status(400).json({ error: 'Enter a valid downgrade request' })
+    return
+  }
+
+  const { data: changeRequest, error } = await supabase
+    .rpc('create_scheduled_downgrade_request', {
+      p_subscription_id: result.data.subscription_id,
+      p_user_id: auth.userId,
+      p_requested_plan_id: result.data.requested_plan_id,
+      p_reason: result.data.reason ?? null,
+    })
+    .single<{
+      id: string
+      subscription_id: string
+      requested_plan_id: string
+      change_type: 'downgrade'
+      status: 'scheduled'
+      effective_at: string
+    }>()
+
+  if (error || !changeRequest) {
+    if (error?.code === 'P0002') {
+      response.status(404).json({ error: 'Subscription not found' })
+      return
+    }
+    if (error?.code === 'P0001') {
+      response.status(409).json({ error: 'Only active subscriptions can change plans' })
+      return
+    }
+    if (error?.code === '23505') {
+      response.status(409).json({ error: 'A plan change is already in progress' })
+      return
+    }
+    if (error?.code === '22023') {
+      response.status(422).json({ error: error.message })
+      return
+    }
+
+    console.error('Failed to create downgrade request', { code: error?.code })
+    response.status(500).json({ error: 'Unable to request plan downgrade' })
+    return
+  }
+
+  response.status(201).json({ plan_change_request: changeRequest })
+})
+
 app.get('/invoices', async (request, response) => {
   const auth = await authorizeRole(
     request.header('authorization'),
