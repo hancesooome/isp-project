@@ -132,6 +132,19 @@ body {
   box-shadow: 0 18px 50px rgba(18, 25, 38, 0.12);
 }
 
+.admin-coverage-map .leaflet-tile-pane {
+  filter: grayscale(0.45) brightness(0.68) contrast(1.1);
+}
+
+.admin-coverage-map .leaflet-control-attribution {
+  background: rgba(10, 13, 18, 0.82);
+  color: #aab2c0;
+}
+
+.admin-coverage-map .leaflet-control-attribution a {
+  color: #93c5fd;
+}
+
 /* Existing customer pages predate the light portal shell. Keep their markup and
    behavior intact while presenting those surfaces consistently inside the shell. */
 .customer-portal-content .text-white { color: #111318; }

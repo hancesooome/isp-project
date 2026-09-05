@@ -29,6 +29,7 @@ import {
 } from './features/admin/AdminCustomersPage'
 import { AdminOverviewPage } from './features/admin/AdminOverviewPage'
 import { AdminReportsPage } from './features/admin/AdminReportsPage'
+import { AdminCoveragePage } from './features/admin/AdminCoveragePage'
 import { HomePage } from './features/home/HomePage'
 import { PublicLayout } from './features/home/PublicLayout'
 import { AdminBillingPage } from './features/invoices/AdminBillingPage'
@@ -105,6 +106,7 @@ export function App() {
         <Route path="customers" element={<AdminCustomersPage />} />
         <Route path="customers/:id" element={<AdminCustomerDetailsRoute />} />
         <Route path="plans" element={<AdminPlansPage />} />
+        <Route path="coverage" element={<AdminCoveragePage />} />
         <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
         <Route path="subscriptions/:id" element={<AdminSubscriptionDetailsRoute />} />
         <Route path="billing" element={<AdminBillingPage />} />

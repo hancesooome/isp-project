@@ -238,6 +238,27 @@ interface AdminReportsOverview {
   payment_period_end_exclusive: string
 }
 
+interface AdminCoverageArea {
+  id: string
+  name: string
+  region_code: string | null
+  region_name: string | null
+  province_code: string | null
+  province_name: string | null
+  city_municipality_code: string | null
+  city_municipality_name: string | null
+  barangay_code: string | null
+  barangay_name: string | null
+  is_active: boolean
+  boundary: {
+    type: 'Polygon'
+    coordinates: number[][][]
+  }
+  coverage_area_plans: Array<{
+    plan: { id: string; name: string } | null
+  }>
+}
+
 const psgcCodeSchema = z.string().regex(/^[0-9]{10}$/)
 
 const structuredAddressSchema = z.object({
@@ -1844,6 +1865,59 @@ app.get('/admin/access', async (request, response) => {
   }
 
   response.status(200).json({ authorized: true })
+})
+
+app.get('/admin/coverage', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load coverage areas' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('coverage_areas')
+    .select(`
+      id,
+      name,
+      region_code,
+      region_name,
+      province_code,
+      province_name,
+      city_municipality_code,
+      city_municipality_name,
+      barangay_code,
+      barangay_name,
+      is_active,
+      boundary,
+      coverage_area_plans(plan:plans(id, name))
+    `)
+    .order('is_active', { ascending: false })
+    .order('name')
+    .order('id')
+    .returns<AdminCoverageArea[]>()
+
+  if (error) {
+    console.error('Failed to load coverage areas', { code: error.code })
+    response.status(500).json({ error: 'Unable to load coverage areas' })
+    return
+  }
+
+  const coverageAreas = data.map(({ coverage_area_plans, ...area }) => ({
+    ...area,
+    plans: coverage_area_plans
+      .map(({ plan }) => plan)
+      .filter((plan): plan is { id: string; name: string } => plan !== null),
+  }))
+
+  response.status(200).json({ coverage_areas: coverageAreas })
 })
 
 app.get('/admin/reports/overview', async (request, response) => {
