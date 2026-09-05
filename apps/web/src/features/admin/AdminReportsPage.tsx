@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { useAuth } from '../auth/auth-context'
+import { moneyFormatter as currencyFormatter } from '../../lib/money'
 
 interface ReportsOverview {
   total_customers: number
@@ -17,10 +18,6 @@ interface ReportsOverview {
   payment_period_end_exclusive: string
 }
 
-const currencyFormatter = new Intl.NumberFormat('en-PH', {
-  style: 'currency',
-  currency: 'PHP',
-})
 const periodFormatter = new Intl.DateTimeFormat('en-PH', {
   month: 'long',
   year: 'numeric',

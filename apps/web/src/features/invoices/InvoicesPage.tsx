@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/auth-context'
+import { moneyFormatter as priceFormatter } from '../../lib/money'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
@@ -16,11 +17,6 @@ interface Invoice {
   billing_period_end: string
   created_at: string
 }
-
-const priceFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-})
 
 const dateFormatter = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',

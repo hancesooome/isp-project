@@ -11,6 +11,7 @@ interface BillingSubscription {
   plan: {
     price_cents: unknown
     billing_interval: unknown
+    currency: unknown
   }
 }
 
@@ -24,6 +25,9 @@ interface MonthlyBillingResult {
 export function calculateMonthlyCharge(
   plan: BillingSubscription['plan'],
 ): number {
+  if (plan.currency !== 'PHP') {
+    throw new Error('MONTHLY_BILLING_CURRENCY_INVALID')
+  }
   if (plan.billing_interval !== 'monthly') {
     throw new Error('MONTHLY_BILLING_INTERVAL_INVALID')
   }
@@ -84,7 +88,7 @@ export async function runMonthlyBillingJob(
   const { data: subscriptions, error: subscriptionError } = await supabase
     .from('subscriptions')
     .select(
-      'id, user_id, started_at, plan:plans!inner(price_cents, billing_interval)',
+      'id, user_id, started_at, plan:plans!inner(price_cents, billing_interval, currency)',
     )
     .eq('status', 'active')
     .eq('plan.billing_interval', 'monthly')
@@ -122,6 +126,7 @@ export async function runMonthlyBillingJob(
           user_id: subscription.user_id,
           subscription_id: subscription.id,
           amount_cents: amountCents,
+          currency: subscription.plan.currency,
           due_date: toDatabaseDate(dueDate),
           status: 'open',
           billing_period_start: toDatabaseDate(periodStart),

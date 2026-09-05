@@ -1,5 +1,6 @@
 import { env } from '../config/env.js'
 import { sendEmail } from '../lib/email.js'
+import { formatMoney } from '../lib/money.js'
 import { supabase } from '../lib/supabase.js'
 
 interface OverdueInvoiceResult {
@@ -121,10 +122,7 @@ async function sendOverdueNotifications() {
     }
 
     const reference = invoice.id.slice(0, 8).toUpperCase()
-    const amount = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: env.stripeCurrency.toUpperCase(),
-    }).format(invoice.amount_cents / 100)
+    const amount = formatMoney(invoice.amount_cents)
     const invoiceUrl = new URL(
       `/account/invoices/${encodeURIComponent(invoice.id)}`,
       env.appUrl,

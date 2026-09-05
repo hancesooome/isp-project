@@ -5,6 +5,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { moneyFormatter as currencyFormatter } from '../../lib/money'
 import { useAuth } from '../auth/auth-context'
 
 type SubscriptionStatus = 'active' | 'past_due' | 'canceled'
@@ -63,11 +64,6 @@ interface StatusUpdate {
 }
 
 const dateFormatter = new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium' })
-const currencyFormatter = new Intl.NumberFormat('en-PH', {
-  style: 'currency',
-  currency: 'PHP',
-})
-
 const statusActions: Record<
   SubscriptionStatus,
   Array<{ label: string; status: SubscriptionStatus }>

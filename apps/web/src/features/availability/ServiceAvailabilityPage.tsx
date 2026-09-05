@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { moneyFormatter as priceFormatter } from '../../lib/money'
 import {
   PhilippineLocationFields,
   type PhilippineLocationValue,
@@ -43,8 +44,6 @@ const initialValues: AvailabilityValues = {
   regionCode: '', provinceCode: '', cityMunicipalityCode: '', barangayCode: '',
   streetAddress: '', postalCode: '', landmark: '', latitude: null, longitude: null,
 }
-
-const priceFormatter = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
 
 function isAvailablePlan(value: unknown): value is AvailablePlan {
   if (typeof value !== 'object' || value === null) return false

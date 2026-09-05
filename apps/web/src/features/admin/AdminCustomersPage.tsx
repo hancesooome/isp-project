@@ -5,6 +5,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { moneyFormatter as currencyFormatter } from '../../lib/money'
 import { useAuth } from '../auth/auth-context'
 
 interface AdminCustomerSummary {
@@ -55,11 +56,6 @@ interface AdminCustomerDetail {
 }
 
 const dateFormatter = new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium' })
-const currencyFormatter = new Intl.NumberFormat('en-PH', {
-  style: 'currency',
-  currency: 'PHP',
-})
-
 function isNullableString(value: unknown): value is string | null {
   return typeof value === 'string' || value === null
 }

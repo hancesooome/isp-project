@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { moneyFormatter as priceFormatter } from '../../lib/money'
 
 interface Plan {
   id: string
@@ -9,11 +10,6 @@ interface Plan {
   price_cents: number
   billing_interval: 'monthly' | 'yearly'
 }
-
-const priceFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-})
 
 function isPlan(value: unknown): value is Plan {
   if (typeof value !== 'object' || value === null) {

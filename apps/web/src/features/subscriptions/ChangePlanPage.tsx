@@ -4,6 +4,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { useAuth } from '../auth/auth-context'
+import { moneyFormatter as priceFormatter } from '../../lib/money'
 
 interface Plan {
   id: string
@@ -23,8 +24,6 @@ interface ChangeOptions {
   current_plan: Plan
   alternatives: AlternativePlan[]
 }
-
-const priceFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
 function isPlan(value: unknown): value is Plan {
   if (typeof value !== 'object' || value === null) return false

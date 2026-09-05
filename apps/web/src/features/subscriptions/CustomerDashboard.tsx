@@ -6,6 +6,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { moneyFormatter as priceFormatter } from '../../lib/money'
 
 interface CustomerSubscription {
   id: string
@@ -27,11 +28,6 @@ interface CustomerApplication {
   rejection_reason: string | null
   plan: { name: string } | null
 }
-
-const priceFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-})
 
 const dateFormatter = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',

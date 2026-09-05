@@ -29,16 +29,6 @@ function readServiceAreas(value: string | undefined): string[] {
     .filter((area) => area.length > 0)
 }
 
-function readCurrency(name: string): string {
-  const value = readRequiredEnv(name).toLowerCase()
-
-  if (!/^[a-z]{3}$/.test(value)) {
-    throw new Error(`${name} must be a three-letter currency code`)
-  }
-
-  return value
-}
-
 function readNonNegativeInteger(name: string, fallback: number): number {
   const value = process.env[name]?.trim()
 
@@ -83,7 +73,6 @@ export const env = {
   serviceAreaKeywords: readServiceAreas(process.env.SERVICE_AREA_KEYWORDS),
   stripeSecretKey: readRequiredEnv('STRIPE_SECRET_KEY'),
   stripeWebhookSecret: readRequiredEnv('STRIPE_WEBHOOK_SECRET'),
-  stripeCurrency: readCurrency('STRIPE_CURRENCY'),
   resendApiKey: readRequiredEnv('RESEND_API_KEY'),
   emailFrom: readRequiredEnv('EMAIL_FROM'),
   cronSecret: readRequiredEnv('CRON_SECRET'),

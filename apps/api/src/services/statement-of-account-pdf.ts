@@ -6,7 +6,7 @@ import {
   type PDFPage,
 } from 'pdf-lib'
 
-import { env } from '../config/env.js'
+import { formatMoney } from '../lib/money.js'
 import {
   generateStatementOfAccount,
   type StatementOfAccount,
@@ -18,14 +18,6 @@ const MARGIN = 48
 
 function safePdfText(value: string): string {
   return value.replace(/[^\x20-\x7E]/g, '?')
-}
-
-function formatMoney(amountCents: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: env.stripeCurrency.toUpperCase(),
-    currencyDisplay: 'code',
-  }).format(amountCents / 100)
 }
 
 function formatDate(value: string): string {
@@ -195,7 +187,7 @@ export async function renderStatementOfAccountPdf(
       const period = `${invoice.billing_period_start} - ${invoice.billing_period_end}`.padEnd(32)
       const due = invoice.due_date.padEnd(13)
       const status = invoice.status.toUpperCase().padEnd(13)
-      line(`${reference}${period}${due}${status}${formatMoney(invoice.amount_cents)}`, {
+      line(`${reference}${period}${due}${status}${formatMoney(invoice.amount_cents, 'code')}`, {
         size: 8,
         font: mono,
         gap: 5,
@@ -216,7 +208,7 @@ export async function renderStatementOfAccountPdf(
     for (const payment of statement.payments) {
       const paidAt = formatTimestamp(payment.paid_at).padEnd(26)
       const invoiceReference = payment.invoice_id.slice(0, 8).toUpperCase().padEnd(14)
-      line(`${paidAt}${invoiceReference}${formatMoney(payment.amount_cents)}`, {
+      line(`${paidAt}${invoiceReference}${formatMoney(payment.amount_cents, 'code')}`, {
         size: 8,
         font: mono,
         gap: 5,
@@ -225,9 +217,9 @@ export async function renderStatementOfAccountPdf(
   }
 
   section('Totals')
-  wrappedLine('Total invoiced', formatMoney(statement.totals.invoiced_cents))
-  wrappedLine('Total paid', formatMoney(statement.totals.paid_cents))
-  wrappedLine('Balance', formatMoney(statement.totals.balance_cents))
+  wrappedLine('Total invoiced', formatMoney(statement.totals.invoiced_cents, 'code'))
+  wrappedLine('Total paid', formatMoney(statement.totals.paid_cents, 'code'))
+  wrappedLine('Balance', formatMoney(statement.totals.balance_cents, 'code'))
 
   for (const [index, currentPage] of document.getPages().entries()) {
     currentPage.drawText(`Page ${index + 1} of ${document.getPageCount()}`, {

@@ -12,9 +12,11 @@ import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
 import { recordAuditEvent } from './lib/audit.js'
 import { sendEmail } from './lib/email.js'
 import { logger } from './lib/logger.js'
+import { formatMoney, PAYMENT_CURRENCY } from './lib/money.js'
 import { supabase } from './lib/supabase.js'
 import { stripe } from './lib/stripe.js'
 import { statementOfAccountStorage } from './services/statement-of-account-storage.js'
+import { stripePaymentProvider } from './services/stripe-payment-provider.js'
 
 interface Plan {
   id: string
@@ -695,10 +697,7 @@ async function sendPaymentReceiptEmail(
   }
 
   const invoiceReference = invoiceId.slice(0, 8).toUpperCase()
-  const amount = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: env.stripeCurrency.toUpperCase(),
-  }).format(amountCents / 100)
+  const amount = formatMoney(amountCents)
   const paymentDate = new Intl.DateTimeFormat('en-PH', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -894,12 +893,13 @@ app.post(
 
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select('id, user_id, amount_cents')
+      .select('id, user_id, amount_cents, currency')
       .eq('id', invoiceIdResult.data)
       .maybeSingle<{
         id: string
         user_id: string
         amount_cents: number
+        currency: string
       }>()
 
     if (invoiceError) {
@@ -915,7 +915,8 @@ app.post(
     if (
       !invoice ||
       checkoutSession.amount_total !== invoice.amount_cents ||
-      checkoutSession.currency !== env.stripeCurrency
+      checkoutSession.currency !== invoice.currency.toLowerCase() ||
+      checkoutSession.currency !== PAYMENT_CURRENCY
     ) {
       logger.warn('Ignored Stripe payment that did not match its invoice', {
         eventId: event.id,
@@ -2342,12 +2343,13 @@ app.post('/invoices/:id/checkout-session', async (request, response) => {
 
   const { data: invoice, error } = await supabase
     .from('invoices')
-    .select('id, amount_cents, status')
+    .select('id, amount_cents, currency, status')
     .eq('id', idResult.data)
     .eq('user_id', auth.userId)
     .maybeSingle<{
       id: string
       amount_cents: number
+      currency: string
       status: 'open' | 'paid' | 'overdue'
     }>()
 
@@ -2374,40 +2376,14 @@ app.post('/invoices/:id/checkout-session', async (request, response) => {
   cancelUrl.searchParams.set('checkout', 'canceled')
 
   try {
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      success_url: successUrl.toString(),
-      cancel_url: cancelUrl.toString(),
-      client_reference_id: invoice.id,
-      metadata: {
-        invoice_id: invoice.id,
-      },
-      payment_intent_data: {
-        metadata: {
-          invoice_id: invoice.id,
-        },
-      },
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: env.stripeCurrency,
-            unit_amount: invoice.amount_cents,
-            product_data: {
-              name: `ISP invoice #${invoice.id.slice(0, 8).toUpperCase()}`,
-            },
-          },
-        },
-      ],
+    const checkout = await stripePaymentProvider.createCheckout({
+      invoiceId: invoice.id,
+      amountCents: invoice.amount_cents,
+      currency: invoice.currency.toLowerCase(),
+      successUrl: successUrl.toString(),
+      cancelUrl: cancelUrl.toString(),
     })
-
-    if (!session.url) {
-      console.error('Stripe Checkout Session did not include a URL')
-      response.status(500).json({ error: 'Unable to start checkout' })
-      return
-    }
-
-    response.status(201).json({ checkout_url: session.url })
+    response.status(201).json({ checkout_url: checkout.url })
   } catch {
     console.error('Failed to create Stripe Checkout Session')
     response.status(502).json({ error: 'Unable to start checkout' })

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { moneyFormatter as priceFormatter } from '../../lib/money'
 
 interface Plan {
   id: string
@@ -14,12 +15,6 @@ const benefits = [
   ['02', 'Apply with clarity', 'Select an active plan, submit your application online, and follow its status.'],
   ['03', 'Manage service online', 'Access your plan, invoices, payments, and available statements from one account.'],
 ]
-
-const priceFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
 
 const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
 

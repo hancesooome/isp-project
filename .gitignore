@@ -58,3 +58,4 @@ supabase/migrations/202609050004_create_plan_change_requests.sql
 supabase/migrations/202609050005_create_upgrade_request_function.sql
 supabase/migrations/202609050006_create_downgrade_request_function.sql
 supabase/migrations/202609050007_apply_scheduled_plan_changes.sql
+supabase/migrations/202609050008_normalize_php_currency.sql

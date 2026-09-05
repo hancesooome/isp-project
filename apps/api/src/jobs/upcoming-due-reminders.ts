@@ -1,5 +1,6 @@
 import { env } from '../config/env.js'
 import { sendEmail } from '../lib/email.js'
+import { formatMoney } from '../lib/money.js'
 import { supabase } from '../lib/supabase.js'
 
 interface EligibleInvoice {
@@ -17,13 +18,6 @@ interface UpcomingDueReminderResult {
 
 function toDatabaseDate(date: Date): string {
   return date.toISOString().slice(0, 10)
-}
-
-function formatAmount(amountCents: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: env.stripeCurrency.toUpperCase(),
-  }).format(amountCents / 100)
 }
 
 export async function runUpcomingDueReminderJob(
@@ -100,7 +94,7 @@ export async function runUpcomingDueReminderJob(
       `/account/invoices/${encodeURIComponent(invoice.id)}`,
       env.appUrl,
     ).toString()
-    const amount = formatAmount(invoice.amount_cents)
+    const amount = formatMoney(invoice.amount_cents)
     const result = await sendEmail({
       to: email,
       subject: `Payment reminder: ${amount} due ${invoice.due_date}`,
