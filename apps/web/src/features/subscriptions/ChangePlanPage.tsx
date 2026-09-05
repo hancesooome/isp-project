@@ -19,6 +19,7 @@ interface AlternativePlan extends Plan {
 }
 
 interface ChangeOptions {
+  subscription_id: string
   current_plan: Plan
   alternatives: AlternativePlan[]
 }
@@ -38,7 +39,7 @@ function isPlan(value: unknown): value is Plan {
 function isChangeOptions(value: unknown): value is ChangeOptions {
   if (typeof value !== 'object' || value === null) return false
   const result = value as Record<string, unknown>
-  return isPlan(result.current_plan) && Array.isArray(result.alternatives) &&
+  return typeof result.subscription_id === 'string' && isPlan(result.current_plan) && Array.isArray(result.alternatives) &&
     result.alternatives.every((plan) => isPlan(plan) && 'change_type' in plan &&
       (plan.change_type === 'upgrade' || plan.change_type === 'downgrade'))
 }
@@ -49,6 +50,8 @@ export function ChangePlanPage() {
   const [selectedPlan, setSelectedPlan] = useState<AlternativePlan | null>(null)
   const [confirmedPlan, setConfirmedPlan] = useState<AlternativePlan | null>(null)
   const [acknowledged, setAcknowledged] = useState(false)
+  const [isValidating, setIsValidating] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -77,6 +80,31 @@ export function ChangePlanPage() {
   if (options === undefined) return <PageSkeleton count={3} type="list" />
   if (options === null) return <EmptyState description="An active subscription is required before changing plans." title="No active subscription" />
 
+  async function confirmPlanChoice(subscriptionId: string) {
+    if (!selectedPlan || !session) return
+    setIsValidating(true)
+    setValidationError(null)
+    try {
+      const response = await fetch('/api/subscription/change-plan/validate', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription_id: subscriptionId, requested_plan_id: selectedPlan.id }),
+      })
+      const result: unknown = await response.json().catch(() => null)
+      if (!response.ok) {
+        const message = typeof result === 'object' && result !== null && 'error' in result && typeof result.error === 'string' ? result.error : 'The plan change could not be validated.'
+        throw new Error(message)
+      }
+      if (typeof result !== 'object' || result === null || !('valid' in result) || result.valid !== true) throw new Error('The validation response was invalid.')
+      setConfirmedPlan(selectedPlan)
+      setSelectedPlan(null)
+    } catch (requestError) {
+      setValidationError(requestError instanceof Error ? requestError.message : 'The plan change could not be validated.')
+    } finally {
+      setIsValidating(false)
+    }
+  }
+
   return (
     <section className="w-full">
       <header>
@@ -102,7 +130,7 @@ export function ChangePlanPage() {
                 <div className="flex items-start justify-between gap-3"><div><span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${plan.change_type === 'upgrade' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{plan.change_type}</span><h3 className="mt-4 text-xl font-semibold text-slate-950">{plan.name}</h3></div><Price plan={plan} /></div>
                 <p className="mt-4 font-medium text-slate-800">{speedLabel(plan)}</p>
                 <p className="mt-2 flex-1 text-sm leading-6 text-slate-600">{plan.description ?? 'Reliable internet service for your home.'}</p>
-                <button className="mt-6 min-h-11 rounded-[10px] border border-slate-900 bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800" onClick={() => { setSelectedPlan(plan); setAcknowledged(false); setConfirmedPlan(null) }} type="button">Review change</button>
+                <button className="mt-6 min-h-11 rounded-[10px] border border-slate-900 bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800" onClick={() => { setSelectedPlan(plan); setAcknowledged(false); setConfirmedPlan(null); setValidationError(null) }} type="button">Review change</button>
               </article>
             ))}
           </div>
@@ -119,7 +147,8 @@ export function ChangePlanPage() {
             <div className="mt-6 grid gap-3 sm:grid-cols-2"><ComparisonCard label="Current" plan={options.current_plan} /><ComparisonCard label="Requested" plan={selectedPlan} /></div>
             <div className="mt-5 rounded-[10px] bg-slate-100 p-4 text-sm leading-6 text-slate-700"><strong>Expected timing:</strong> after review, an approved change is expected at the start of your next billing cycle. There is no immediate switch or mid-cycle proration.</div>
             <label className="mt-5 flex items-start gap-3 text-sm leading-6 text-slate-700"><input checked={acknowledged} className="mt-1" onChange={(event) => setAcknowledged(event.target.checked)} type="checkbox" /><span>I understand this review does not instantly change my current service.</span></label>
-            <div className="mt-6 flex gap-3"><button className="min-h-11 flex-1 rounded-[10px] border border-slate-900/15 font-semibold text-slate-700 hover:bg-slate-50" onClick={() => setSelectedPlan(null)} type="button">Cancel</button><button className="min-h-11 flex-1 rounded-[10px] bg-slate-950 font-semibold text-white disabled:opacity-40" disabled={!acknowledged} onClick={() => { setConfirmedPlan(selectedPlan); setSelectedPlan(null) }} type="button">Confirm plan choice</button></div>
+            {validationError ? <p className="mt-4 rounded-[9px] border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{validationError}</p> : null}
+            <div className="mt-6 flex gap-3"><button className="min-h-11 flex-1 rounded-[10px] border border-slate-900/15 font-semibold text-slate-700 hover:bg-slate-50" disabled={isValidating} onClick={() => setSelectedPlan(null)} type="button">Cancel</button><button className="min-h-11 flex-1 rounded-[10px] bg-slate-950 font-semibold text-white disabled:opacity-40" disabled={!acknowledged || isValidating} onClick={() => void confirmPlanChoice(options.subscription_id)} type="button">{isValidating ? 'Validating…' : 'Confirm plan choice'}</button></div>
           </div>
         </div>
       ) : null}

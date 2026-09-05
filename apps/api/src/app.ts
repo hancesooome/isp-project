@@ -34,7 +34,7 @@ interface ChangePlanOption extends Plan {
 
 interface ChangePlanSubscription {
   id: string
-  status: 'active' | 'past_due'
+  status: 'active' | 'past_due' | 'canceled'
   plan: ChangePlanOption | null
   application: {
     installation_latitude: number | null
@@ -335,6 +335,13 @@ const statementIdSchema = z.string().uuid()
 const subscriptionIdSchema = z.string().uuid()
 const supportTicketIdSchema = z.string().uuid()
 
+const planChangeValidationSchema = z
+  .object({
+    subscription_id: z.string().uuid(),
+    requested_plan_id: z.string().uuid(),
+  })
+  .strict()
+
 const supportTicketSchema = z
   .object({
     subject: z.string().trim().min(3).max(200),
@@ -482,6 +489,18 @@ async function findServiceCoverageArea(latitude: number, longitude: number) {
   }
 
   return data
+}
+
+function getMonthlyPlanPrice(plan: Pick<Plan, 'price_cents' | 'billing_interval'>) {
+  return plan.price_cents / (plan.billing_interval === 'yearly' ? 12 : 1)
+}
+
+function getPlanChangeType(currentPlan: ChangePlanOption, requestedPlan: ChangePlanOption) {
+  const hasDifferentSpeeds = requestedPlan.speed_mbps !== null && currentPlan.speed_mbps !== null &&
+    requestedPlan.speed_mbps !== currentPlan.speed_mbps
+  return hasDifferentSpeeds
+    ? requestedPlan.speed_mbps! > currentPlan.speed_mbps! ? 'upgrade' as const : 'downgrade' as const
+    : getMonthlyPlanPrice(requestedPlan) > getMonthlyPlanPrice(currentPlan) ? 'upgrade' as const : 'downgrade' as const
 }
 
 const psgcResponseSchema = z.object({
@@ -1713,7 +1732,7 @@ app.get('/subscription/change-options', async (request, response) => {
   try {
     const coverageAreaId = await findServiceCoverageArea(latitude, longitude)
     if (coverageAreaId === null) {
-      response.status(200).json({ current_plan: subscription.plan, alternatives: [] })
+      response.status(200).json({ subscription_id: subscription.id, current_plan: subscription.plan, alternatives: [] })
       return
     }
 
@@ -1727,27 +1746,144 @@ app.get('/subscription/change-options', async (request, response) => {
     if (plansError) throw plansError
 
     const currentPlan = subscription.plan
-    const currentMonthlyPrice = currentPlan.price_cents / (currentPlan.billing_interval === 'yearly' ? 12 : 1)
     const alternatives = relations
       .map(({ plan }) => plan)
       .filter((plan): plan is ChangePlanOption => plan !== null && plan.id !== currentPlan.id)
-      .map((plan) => {
-        const monthlyPrice = plan.price_cents / (plan.billing_interval === 'yearly' ? 12 : 1)
-        const hasDifferentSpeeds = plan.speed_mbps !== null && currentPlan.speed_mbps !== null &&
-          plan.speed_mbps !== currentPlan.speed_mbps
-        const isUpgrade = hasDifferentSpeeds
-          ? plan.speed_mbps! > currentPlan.speed_mbps!
-          : monthlyPrice > currentMonthlyPrice
-        return { ...plan, change_type: isUpgrade ? 'upgrade' as const : 'downgrade' as const }
-      })
+      .map((plan) => ({ ...plan, change_type: getPlanChangeType(currentPlan, plan) }))
       .sort((first, second) => (first.speed_mbps ?? 0) - (second.speed_mbps ?? 0) || first.price_cents - second.price_cents)
 
-    response.status(200).json({ current_plan: currentPlan, alternatives })
+    response.status(200).json({ subscription_id: subscription.id, current_plan: currentPlan, alternatives })
   } catch (error) {
     console.error('Failed to load coverage plan options', {
       code: typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined,
     })
     response.status(500).json({ error: 'Unable to load plan options' })
+  }
+})
+
+app.post('/subscription/change-plan/validate', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to validate plan change' })
+      return
+    }
+    const message = auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const result = planChangeValidationSchema.safeParse(request.body)
+  if (!result.success) {
+    response.status(400).json({ error: 'Select a valid subscription and plan' })
+    return
+  }
+
+  const { data: subscription, error: subscriptionError } = await supabase
+    .from('subscriptions')
+    .select(`
+      id,
+      status,
+      plan:plans(id, name, slug, description, speed_mbps, price_cents, billing_interval),
+      application:applications(installation_latitude, installation_longitude)
+    `)
+    .eq('id', result.data.subscription_id)
+    .eq('user_id', auth.userId)
+    .maybeSingle<ChangePlanSubscription>()
+
+  if (subscriptionError) {
+    console.error('Failed to validate plan change subscription', { code: subscriptionError.code })
+    response.status(500).json({ error: 'Unable to validate plan change' })
+    return
+  }
+  if (!subscription?.plan) {
+    response.status(404).json({ error: 'Subscription not found' })
+    return
+  }
+  if (subscription.status !== 'active') {
+    response.status(409).json({ error: 'Only active subscriptions can change plans' })
+    return
+  }
+  if (subscription.plan.id === result.data.requested_plan_id) {
+    response.status(422).json({ error: 'Choose a different plan' })
+    return
+  }
+
+  const { data: requestedPlan, error: planError } = await supabase
+    .from('plans')
+    .select('id, name, slug, description, speed_mbps, price_cents, billing_interval')
+    .eq('id', result.data.requested_plan_id)
+    .eq('is_active', true)
+    .maybeSingle<ChangePlanOption>()
+
+  if (planError) {
+    console.error('Failed to validate requested plan', { code: planError.code })
+    response.status(500).json({ error: 'Unable to validate plan change' })
+    return
+  }
+  if (!requestedPlan) {
+    response.status(422).json({ error: 'Requested plan is not active' })
+    return
+  }
+
+  const { data: openRequest, error: requestError } = await supabase
+    .from('plan_change_requests')
+    .select('id')
+    .eq('subscription_id', subscription.id)
+    .in('status', ['pending', 'approved', 'scheduled'])
+    .limit(1)
+    .maybeSingle<{ id: string }>()
+
+  if (requestError) {
+    console.error('Failed to check open plan change requests', { code: requestError.code })
+    response.status(500).json({ error: 'Unable to validate plan change' })
+    return
+  }
+  if (openRequest) {
+    response.status(409).json({ error: 'A plan change is already in progress' })
+    return
+  }
+
+  const latitude = subscription.application?.installation_latitude
+  const longitude = subscription.application?.installation_longitude
+  if (latitude === null || latitude === undefined || longitude === null || longitude === undefined) {
+    response.status(409).json({ error: 'Subscription installation location is unavailable' })
+    return
+  }
+
+  try {
+    const coverageAreaId = await findServiceCoverageArea(latitude, longitude)
+    if (coverageAreaId === null) {
+      response.status(422).json({ error: 'Service is unavailable at the installation location' })
+      return
+    }
+
+    const { data: coveragePlan, error: coverageError } = await supabase
+      .from('coverage_area_plans')
+      .select('coverage_area_id')
+      .eq('coverage_area_id', coverageAreaId)
+      .eq('plan_id', requestedPlan.id)
+      .maybeSingle<{ coverage_area_id: string }>()
+
+    if (coverageError) throw coverageError
+    if (!coveragePlan) {
+      response.status(422).json({ error: 'Requested plan is unavailable at the installation location' })
+      return
+    }
+
+    response.status(200).json({
+      valid: true,
+      subscription_id: subscription.id,
+      current_plan: subscription.plan,
+      requested_plan: requestedPlan,
+      change_type: getPlanChangeType(subscription.plan, requestedPlan),
+    })
+  } catch (error) {
+    console.error('Failed to validate plan coverage', {
+      code: typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined,
+    })
+    response.status(500).json({ error: 'Unable to validate plan change' })
   }
 })
 
