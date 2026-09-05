@@ -22,12 +22,15 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
     approved: 'border-emerald-700 bg-emerald-950/60 text-emerald-200',
     paid: 'border-emerald-700 bg-emerald-950/60 text-emerald-200',
     resolved: 'border-emerald-700 bg-emerald-950/60 text-emerald-200',
+    applied: 'border-emerald-700 bg-emerald-950/60 text-emerald-200',
 
     pending: 'border-amber-700 bg-amber-950/60 text-amber-200',
     open: 'border-amber-700 bg-amber-950/60 text-amber-200',
 
     in_progress: 'border-blue-700 bg-blue-950/60 text-blue-200',
+    scheduled: 'border-blue-700 bg-blue-950/60 text-blue-200',
     closed: 'border-slate-600 bg-slate-800/80 text-slate-200',
+    canceled: 'border-slate-600 bg-slate-800/80 text-slate-200',
 
     rejected: 'border-red-800 bg-red-950/60 text-red-200',
     overdue: 'border-red-800 bg-red-950/60 text-red-200',
@@ -44,11 +47,11 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
     >
       <span
         className={`mr-1.5 size-1.5 rounded-full ${
-          status === 'active' || status === 'approved' || status === 'paid' || status === 'resolved'
+          status === 'active' || status === 'approved' || status === 'paid' || status === 'resolved' || status === 'applied'
             ? 'bg-emerald-400'
             : status === 'pending' || status === 'open'
               ? 'bg-amber-400'
-              : status === 'in_progress'
+              : status === 'in_progress' || status === 'scheduled'
                 ? 'bg-blue-400'
                 : status === 'closed'
                   ? 'bg-slate-400'

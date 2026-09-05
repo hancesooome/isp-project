@@ -47,6 +47,22 @@ interface CoverageChangePlanRelation {
   plan: ChangePlanOption | null
 }
 
+interface PlanChangeHistoryRow {
+  id: string
+  change_type: 'upgrade' | 'downgrade'
+  status: 'pending' | 'approved' | 'rejected' | 'canceled' | 'scheduled' | 'applied'
+  reason: string | null
+  requested_at: string
+  effective_at: string | null
+  review_notes: string | null
+  current_plan: { id: string; name: string } | null
+  requested_plan: { id: string; name: string } | null
+}
+
+interface AdminPlanChangeHistoryRow extends PlanChangeHistoryRow {
+  customer: { id: string; full_name: string | null } | null
+}
+
 interface AdminPlan extends Plan {
   speed_mbps: number | null
   is_active: boolean
@@ -2043,6 +2059,46 @@ app.post('/subscription/change-plan/downgrade', async (request, response) => {
   response.status(201).json({ plan_change_request: changeRequest })
 })
 
+app.get('/subscription/plan-changes', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load plan-change history' })
+      return
+    }
+    const message = auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: planChanges, error } = await supabase
+    .from('plan_change_requests')
+    .select(`
+      id,
+      change_type,
+      status,
+      reason,
+      requested_at,
+      effective_at,
+      review_notes,
+      current_plan:plans!plan_change_requests_current_plan_id_fkey(id, name),
+      requested_plan:plans!plan_change_requests_requested_plan_id_fkey(id, name)
+    `)
+    .eq('user_id', auth.userId)
+    .order('requested_at', { ascending: false })
+    .order('id', { ascending: false })
+    .returns<PlanChangeHistoryRow[]>()
+
+  if (error) {
+    console.error('Failed to load customer plan-change history', { code: error.code })
+    response.status(500).json({ error: 'Unable to load plan-change history' })
+    return
+  }
+
+  response.status(200).json({ plan_changes: planChanges })
+})
+
 app.get('/invoices', async (request, response) => {
   const auth = await authorizeRole(
     request.header('authorization'),
@@ -3156,6 +3212,46 @@ app.patch('/admin/invoices/:id/status', async (request, response) => {
   })
 
   response.status(200).json({ invoice })
+})
+
+app.get('/admin/plan-changes', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load plan-change history' })
+      return
+    }
+    const message = auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: planChanges, error } = await supabase
+    .from('plan_change_requests')
+    .select(`
+      id,
+      change_type,
+      status,
+      reason,
+      requested_at,
+      effective_at,
+      review_notes,
+      customer:profiles!plan_change_requests_user_id_fkey(id, full_name),
+      current_plan:plans!plan_change_requests_current_plan_id_fkey(id, name),
+      requested_plan:plans!plan_change_requests_requested_plan_id_fkey(id, name)
+    `)
+    .order('requested_at', { ascending: false })
+    .order('id', { ascending: false })
+    .returns<AdminPlanChangeHistoryRow[]>()
+
+  if (error) {
+    console.error('Failed to load admin plan-change history', { code: error.code })
+    response.status(500).json({ error: 'Unable to load plan-change history' })
+    return
+  }
+
+  response.status(200).json({ plan_changes: planChanges })
 })
 
 app.get('/admin/subscriptions', async (request, response) => {

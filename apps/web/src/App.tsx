@@ -30,6 +30,7 @@ import {
 import { AdminOverviewPage } from './features/admin/AdminOverviewPage'
 import { AdminReportsPage } from './features/admin/AdminReportsPage'
 import { AdminCoveragePage } from './features/admin/AdminCoveragePage'
+import { AdminPlanChangesPage } from './features/admin/AdminPlanChangesPage'
 import { HomePage } from './features/home/HomePage'
 import { PublicLayout } from './features/home/PublicLayout'
 import { AdminBillingPage } from './features/invoices/AdminBillingPage'
@@ -40,6 +41,7 @@ import { AdminPlansPage } from './features/plans/AdminPlansPage'
 import { StatementsPage } from './features/statements/StatementsPage'
 import { CustomerDashboard } from './features/subscriptions/CustomerDashboard'
 import { ChangePlanPage } from './features/subscriptions/ChangePlanPage'
+import { PlanChangeHistoryPage } from './features/subscriptions/PlanChangeHistoryPage'
 import {
   AdminSubscriptionDetailsPage,
   AdminSubscriptionsPage,
@@ -85,6 +87,7 @@ export function App() {
       >
         <Route index element={<CustomerDashboard />} />
         <Route path="change-plan" element={<ChangePlanPage />} />
+        <Route path="plan-changes" element={<PlanChangeHistoryPage />} />
         <Route path="application" element={<ApplicationStatusPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="invoices/:id" element={<InvoiceDetailsRoute />} />
@@ -109,6 +112,7 @@ export function App() {
         <Route path="customers/:id" element={<AdminCustomerDetailsRoute />} />
         <Route path="plans" element={<AdminPlansPage />} />
         <Route path="coverage" element={<AdminCoveragePage />} />
+        <Route path="plan-changes" element={<AdminPlanChangesPage />} />
         <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
         <Route path="subscriptions/:id" element={<AdminSubscriptionDetailsRoute />} />
         <Route path="billing" element={<AdminBillingPage />} />
