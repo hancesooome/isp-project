@@ -86,37 +86,43 @@ export function SignupForm() {
 
   if (successMessage) {
     return (
-      <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
+      <section className="w-full max-w-md rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
         <Link
-          className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
+          className="mb-7 inline-flex min-h-11 items-center text-sm font-medium text-slate-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           to="/"
         >
           ← Back to home
         </Link>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
           Account created
         </p>
-        <h1 className="mt-3 text-3xl font-bold text-white">Check your email</h1>
-        <p className="mt-4 leading-7 text-slate-300" role="status">
+        <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Check your email</h1>
+        <p className="mt-4 leading-7 text-slate-600" role="status">
           {successMessage}
         </p>
+        <Link
+          className="public-primary-button mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          to="/login"
+        >
+          Continue to sign in
+        </Link>
       </section>
     )
   }
 
   return (
-    <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
+    <section className="w-full max-w-md rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
       <Link
-        className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
+        className="mb-7 inline-flex min-h-11 items-center text-sm font-medium text-slate-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         to="/"
       >
         ← Back to home
       </Link>
-      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
         ISP Platform
       </p>
-      <h1 className="mt-3 text-3xl font-bold text-white">Create your account</h1>
-      <p className="mt-2 text-slate-400">
+      <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Create your account</h1>
+      <p className="mt-2 leading-7 text-slate-600">
         Register to manage your internet service account.
       </p>
 
@@ -143,6 +149,7 @@ export function SignupForm() {
           error={fieldErrors.password}
           id="password"
           label="Password"
+          helpText="Use at least 8 characters."
           onChange={(value) => updateField('password', value)}
           type="password"
           value={values.password}
@@ -158,13 +165,13 @@ export function SignupForm() {
         />
 
         {submissionError ? (
-          <p className="text-sm text-red-300" role="alert">
+          <p className="rounded-[10px] border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
             {submissionError}
           </p>
         ) : null}
 
         <button
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className="public-primary-button flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isSubmitting}
           type="submit"
         >
@@ -178,9 +185,9 @@ export function SignupForm() {
           )}
         </button>
 
-        <p className="text-center text-sm text-slate-400">
+        <p className="text-center text-sm text-slate-600">
           Already have an account?{' '}
-          <Link className="font-medium text-sky-400 hover:text-sky-300" to="/login">
+          <Link className="font-semibold text-blue-700 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/login">
             Sign in
           </Link>
         </p>
@@ -193,6 +200,7 @@ interface FieldProps {
   autoComplete: string
   error?: string
   id: keyof SignupFormValues
+  helpText?: string
   label: string
   onChange: (value: string) => void
   type?: 'email' | 'password' | 'text'
@@ -203,31 +211,38 @@ function Field({
   autoComplete,
   error,
   id,
+  helpText,
   label,
   onChange,
   type = 'text',
   value,
 }: FieldProps) {
   const errorId = `${id}-error`
+  const helpId = `${id}-help`
 
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-200" htmlFor={id}>
+      <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor={id}>
         {label}
       </label>
       <input
-        aria-describedby={error ? errorId : undefined}
+        aria-describedby={error ? errorId : helpText ? helpId : undefined}
         aria-invalid={error ? true : undefined}
         autoComplete={autoComplete}
-        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
+        className="min-h-12 w-full rounded-[10px] border border-slate-900/14 bg-white px-3.5 py-2.5 text-slate-950 shadow-inner shadow-slate-950/3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
         id={id}
         name={id}
         onChange={(event) => onChange(event.target.value)}
         type={type}
         value={value}
       />
+      {helpText && !error ? (
+        <p className="mt-1.5 text-sm text-slate-500" id={helpId}>
+          {helpText}
+        </p>
+      ) : null}
       {error ? (
-        <p className="mt-1.5 text-sm text-red-300" id={errorId} role="alert">
+        <p className="mt-1.5 text-sm text-red-700" id={errorId} role="alert">
           {error}
         </p>
       ) : null}

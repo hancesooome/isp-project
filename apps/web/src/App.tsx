@@ -58,7 +58,7 @@ export function App() {
     <Routes>
       <Route element={<HomePage />} path="/" />
       <Route element={<LightCentredPage><LoginPage /></LightCentredPage>} path="/login" />
-      <Route element={<CentredPage><SignupForm /></CentredPage>} path="/signup" />
+      <Route element={<LightCentredPage><SignupForm /></LightCentredPage>} path="/signup" />
       <Route element={<CentredPage><PasswordResetPlaceholder /></CentredPage>} path="/forgot-password" />
       <Route element={<LightCentredPage><ServiceAvailabilityPage /></LightCentredPage>} path="/availability" />
       <Route element={<LightCentredPage><PlansPage /></LightCentredPage>} path="/plans" />
