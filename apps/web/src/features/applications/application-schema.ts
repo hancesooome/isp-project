@@ -37,6 +37,16 @@ export const applicationSchema = z.object({
     .string()
     .trim()
     .max(250, 'Landmark must be 250 characters or fewer'),
+  installationLatitude: z.number().min(-90).max(90).nullable(),
+  installationLongitude: z.number().min(-180).max(180).nullable(),
+}).superRefine((values, context) => {
+  if (values.installationLatitude === null || values.installationLongitude === null) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Confirm the requested installation point on the map',
+      path: ['installationLatitude'],
+    })
+  }
 })
 
 export type ApplicationFormValues = z.infer<typeof applicationSchema>

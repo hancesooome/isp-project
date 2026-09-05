@@ -9,6 +9,7 @@ import {
   type ApplicationFormValues,
 } from './application-schema'
 import { PhilippineLocationFields } from './PhilippineLocationFields'
+import { InstallationLocationMap } from './InstallationLocationMap'
 
 interface PlanOption {
   id: string
@@ -28,6 +29,8 @@ const initialValues: ApplicationFormValues = {
   installationStreetAddress: '',
   installationPostalCode: '',
   installationLandmark: '',
+  installationLatitude: null,
+  installationLongitude: null,
 }
 
 function getFieldErrors(
@@ -68,6 +71,13 @@ export function ServiceApplicationForm() {
   const [submissionError, setSubmissionError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const canConfirmInstallationLocation = Boolean(
+    values.installationRegionCode &&
+      values.installationCityMunicipalityCode &&
+      values.installationBarangayCode &&
+      values.installationStreetAddress.trim() &&
+      values.installationPostalCode.trim(),
+  )
 
   useEffect(() => {
     const controller = new AbortController()
@@ -109,7 +119,13 @@ export function ServiceApplicationForm() {
   }, [])
 
   function updateField(field: keyof ApplicationFormValues, value: string) {
-    setValues((current) => ({ ...current, [field]: value }))
+    setValues((current) => ({
+      ...current,
+      [field]: value,
+      ...(field.startsWith('installation')
+        ? { installationLatitude: null, installationLongitude: null }
+        : {}),
+    }))
     setFieldErrors((current) => ({ ...current, [field]: undefined }))
     setSubmissionError(null)
   }
@@ -130,6 +146,13 @@ export function ServiceApplicationForm() {
 
     if (!session) {
       setSubmissionError('Your session has expired. Please sign in again.')
+      return
+    }
+
+    if (
+      parsed.data.installationLatitude === null ||
+      parsed.data.installationLongitude === null
+    ) {
       return
     }
 
@@ -157,6 +180,8 @@ export function ServiceApplicationForm() {
           installation_street_address: parsed.data.installationStreetAddress,
           installation_postal_code: parsed.data.installationPostalCode,
           installation_landmark: parsed.data.installationLandmark,
+          installation_latitude: parsed.data.installationLatitude,
+          installation_longitude: parsed.data.installationLongitude,
         }),
       })
 
@@ -291,6 +316,8 @@ export function ServiceApplicationForm() {
                 installationCityMunicipalityCode:
                   location.cityMunicipalityCode,
                 installationBarangayCode: location.barangayCode,
+                installationLatitude: null,
+                installationLongitude: null,
               }))
               setFieldErrors((current) => ({
                 ...current,
@@ -335,6 +362,37 @@ export function ServiceApplicationForm() {
             onChange={(value) => updateField('installationLandmark', value)}
             value={values.installationLandmark}
           />
+          {canConfirmInstallationLocation ? (
+            <InstallationLocationMap
+              error={fieldErrors.installationLatitude}
+              onChange={(coordinates) => {
+                setValues((current) => ({
+                  ...current,
+                  installationLatitude: coordinates.latitude,
+                  installationLongitude: coordinates.longitude,
+                }))
+                setFieldErrors((current) => ({
+                  ...current,
+                  installationLatitude: undefined,
+                  installationLongitude: undefined,
+                }))
+                setSubmissionError(null)
+              }}
+              value={
+                values.installationLatitude !== null &&
+                values.installationLongitude !== null
+                  ? {
+                      latitude: values.installationLatitude,
+                      longitude: values.installationLongitude,
+                    }
+                  : null
+              }
+            />
+          ) : (
+            <p className="rounded-[10px] border border-slate-900/10 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+              Complete the structured installation address to open the location map.
+            </p>
+          )}
         </fieldset>
 
         {submissionError ? (

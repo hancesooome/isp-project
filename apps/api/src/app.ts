@@ -269,8 +269,8 @@ const applicationSchema = z
     installation_street_address: z.string().trim().min(3).max(250),
     installation_postal_code: z.string().trim().regex(/^[0-9]{4}$/),
     installation_landmark: z.string().trim().max(250).optional(),
-    installation_latitude: z.number().finite().min(-90).max(90).optional(),
-    installation_longitude: z.number().finite().min(-180).max(180).optional(),
+    installation_latitude: z.number().finite().min(-90).max(90),
+    installation_longitude: z.number().finite().min(-180).max(180),
   })
   .strict()
 
