@@ -2,6 +2,7 @@ import { env } from '../config/env.js'
 import { sendEmail } from '../lib/email.js'
 import { supabase } from '../lib/supabase.js'
 import { generateAndStoreStatementOfAccountPdf } from '../services/statement-of-account-storage.js'
+import { applyScheduledPlanChanges } from './apply-plan-changes.js'
 
 interface BillingSubscription {
   id: string
@@ -72,6 +73,8 @@ async function sendStatementReadyEmail(
 export async function runMonthlyBillingJob(
   now = new Date(),
 ): Promise<MonthlyBillingResult> {
+  await applyScheduledPlanChanges(now)
+
   const year = now.getUTCFullYear()
   const month = now.getUTCMonth()
   const periodStart = new Date(Date.UTC(year, month, 1))

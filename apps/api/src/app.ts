@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { env } from './config/env.js'
 import { runMonthlyBillingJob } from './jobs/monthly-billing.js'
+import { applyScheduledPlanChanges } from './jobs/apply-plan-changes.js'
 import { runOverdueInvoiceJob } from './jobs/overdue-invoices.js'
 import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
 import { recordAuditEvent } from './lib/audit.js'
@@ -1025,6 +1026,35 @@ app.get('/jobs/monthly-billing', async (request, response) => {
       requestId: response.locals.requestId,
     })
     response.status(500).json({ error: 'Unable to run monthly billing job' })
+  }
+})
+
+app.get('/jobs/plan-changes', async (request, response) => {
+  if (request.header('authorization') !== `Bearer ${env.cronSecret}`) {
+    response.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+
+  logger.info('Scheduled plan-change job started', {
+    job: 'plan-changes',
+    requestId: response.locals.requestId,
+  })
+
+  try {
+    const result = await applyScheduledPlanChanges()
+    logger.info('Scheduled plan-change job completed', {
+      ...result,
+      job: 'plan-changes',
+      requestId: response.locals.requestId,
+    })
+    response.status(200).json({ success: true, ...result })
+  } catch (error) {
+    logger.error('Scheduled plan-change job failed', {
+      error,
+      job: 'plan-changes',
+      requestId: response.locals.requestId,
+    })
+    response.status(500).json({ error: 'Unable to apply scheduled plan changes' })
   }
 })
 
