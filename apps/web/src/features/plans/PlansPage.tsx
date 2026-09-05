@@ -89,12 +89,6 @@ export function PlansPage() {
         <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-600">
           Compare our currently available internet service plans.
         </p>
-        <Link
-          className="mt-5 inline-flex min-h-11 items-center font-semibold text-blue-700 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          to="/availability"
-        >
-          Check service availability <span aria-hidden="true" className="ml-2">→</span>
-        </Link>
       </header>
 
       <div className="mt-12">
@@ -135,7 +129,7 @@ export function PlansPage() {
                 className="public-primary-button mt-auto inline-flex min-h-12 items-center justify-center rounded-[10px] px-5 text-sm font-semibold text-white shadow-lg shadow-blue-950/10 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 to={`/availability?plan=${encodeURIComponent(plan.id)}`}
               >
-                Check availability
+                Choose this plan
               </Link>
             </article>
           ))}

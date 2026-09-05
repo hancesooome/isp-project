@@ -19,15 +19,11 @@ export function PublicLayout() {
         <Outlet />
       </main>
       <footer className="border-t border-slate-900/10 px-5 py-10 sm:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mx-auto max-w-7xl">
           <div>
             <Brand />
             <p className="mt-4 max-w-sm text-sm leading-6 text-slate-500">Internet service applications and account management in one clear platform.</p>
           </div>
-          <nav aria-label="Footer navigation" className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-            {navigation.map(({ to, label }) => <Link key={to} to={to} className={`inline-flex min-h-11 items-center text-slate-600 hover:text-slate-950 ${focusClass}`}>{label}</Link>)}
-            <AccountLinks />
-          </nav>
         </div>
         <p className="mx-auto mt-8 max-w-7xl border-t border-slate-900/10 pt-6 text-sm text-slate-500">&copy; {new Date().getFullYear()} ISP Platform</p>
       </footer>
