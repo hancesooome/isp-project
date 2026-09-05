@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/auth-context'
@@ -13,18 +13,33 @@ const navItems = [
 ] as const
 
 export function CustomerLayout() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [signOutError, setSignOutError] = useState<string | null>(null)
   const email = user?.email ?? null
 
   async function handleSignOut() {
     if (isSigningOut) return
     setIsSigningOut(true)
-    await supabase.auth.signOut()
+    setSignOutError(null)
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      navigate('/', { replace: true })
+    } catch {
+      setSignOutError('We could not sign you out. Please try again.')
+      setIsSigningOut(false)
+    }
   }
 
   return (
     <div className="min-h-screen bg-[#f7f8fb] text-[#111318]">
+      {signOutError ? (
+        <p role="alert" className="fixed inset-x-4 top-4 z-50 mx-auto max-w-md rounded-xl border border-red-300 p-4 shadow-lg bg-white text-red-700">
+          {signOutError}
+        </p>
+      ) : null}
       <aside
         aria-label="Customer portal navigation"
         className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-900/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(238,241,247,0.94))] px-3 py-4 text-slate-950 shadow-[8px_0_30px_rgba(2,6,23,0.12)] md:flex"

@@ -30,6 +30,7 @@ import {
 import { AdminOverviewPage } from './features/admin/AdminOverviewPage'
 import { AdminReportsPage } from './features/admin/AdminReportsPage'
 import { HomePage } from './features/home/HomePage'
+import { PublicLayout } from './features/home/PublicLayout'
 import { AdminBillingPage } from './features/invoices/AdminBillingPage'
 import { InvoiceDetailsPage } from './features/invoices/InvoiceDetailsPage'
 import { InvoicesPage } from './features/invoices/InvoicesPage'
@@ -56,12 +57,14 @@ const uuidPattern =
 export function App() {
   return (
     <Routes>
-      <Route element={<HomePage />} path="/" />
+      <Route element={<PublicLayout />}>
+        <Route element={<HomePage />} path="/" />
+        <Route element={<ServiceAvailabilityPage />} path="/availability" />
+        <Route element={<PlansPage />} path="/plans" />
+      </Route>
       <Route element={<LightCentredPage><LoginPage /></LightCentredPage>} path="/login" />
       <Route element={<LightCentredPage><SignupForm /></LightCentredPage>} path="/signup" />
       <Route element={<CentredPage><PasswordResetPlaceholder /></CentredPage>} path="/forgot-password" />
-      <Route element={<LightCentredPage><ServiceAvailabilityPage /></LightCentredPage>} path="/availability" />
-      <Route element={<LightCentredPage><PlansPage /></LightCentredPage>} path="/plans" />
       <Route
         element={
           <ProtectedRoute>
@@ -124,7 +127,7 @@ function CentredPage({ children }: { children: React.ReactNode }) {
 
 function LightCentredPage({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f7f8fb] px-5 py-12">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f7f8fb] px-5 py-12 [color-scheme:light]">
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
       {children}
     </div>

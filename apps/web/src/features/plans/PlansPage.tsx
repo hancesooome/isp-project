@@ -78,14 +78,8 @@ export function PlansPage() {
   }, [])
 
   return (
-    <section className="w-full max-w-7xl py-6 text-slate-950 sm:py-10">
+    <section className="w-full text-slate-950">
       <header className="text-center">
-        <Link
-          className="mb-7 inline-flex min-h-11 items-center text-sm font-medium text-slate-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          to="/"
-        >
-          &larr; Back to home
-        </Link>
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
           Internet plans
         </p>

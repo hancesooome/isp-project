@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/auth-context'
@@ -16,18 +16,33 @@ const adminNavItems = [
 ] as const
 
 export function AdminLayout() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [signOutError, setSignOutError] = useState<string | null>(null)
   const email = user?.email ?? null
 
   async function handleSignOut() {
     if (isSigningOut) return
     setIsSigningOut(true)
-    await supabase.auth.signOut()
+    setSignOutError(null)
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      navigate('/', { replace: true })
+    } catch {
+      setSignOutError('We could not sign you out. Please try again.')
+      setIsSigningOut(false)
+    }
   }
 
   return (
     <div className="min-h-screen bg-[#0a0d12] text-slate-100">
+      {signOutError ? (
+        <p role="alert" className="fixed inset-x-4 top-4 z-50 mx-auto max-w-md rounded-xl border border-red-300 p-4 shadow-lg bg-slate-900 text-red-300">
+          {signOutError}
+        </p>
+      ) : null}
       <aside
         aria-label="Admin portal navigation"
         className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-white/8 bg-[linear-gradient(155deg,#11161f,#0a0d12)] px-3 py-4 shadow-[8px_0_30px_rgba(0,0,0,0.2)] md:flex"

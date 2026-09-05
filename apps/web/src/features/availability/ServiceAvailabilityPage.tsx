@@ -103,8 +103,7 @@ export function ServiceAvailabilityPage() {
   }
 
   return (
-    <section className="w-full max-w-2xl rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
-      <Link className="mb-7 inline-flex min-h-11 items-center text-sm font-medium text-slate-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/">&larr; Back to home</Link>
+    <section className="mx-auto w-full max-w-2xl rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">Service availability</p>
       <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Check your address</h1>
       <p className="mt-3 leading-7 text-slate-600">Select your official Philippine location so spelling mistakes do not affect the check.</p>

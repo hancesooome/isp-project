@@ -58,38 +58,10 @@ export function HomePage() {
   }, [])
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#f7f8fb] text-[#111318]">
-      <header className="absolute inset-x-0 top-0 z-20 px-4 pt-4 sm:px-6 lg:px-8">
-        <div className="public-glass mx-auto flex max-w-7xl items-center justify-between rounded-[14px] px-4 py-3 sm:px-5">
-          <Brand />
-          <nav aria-label="Public navigation" className="hidden items-center gap-7 text-sm font-medium text-slate-700 md:flex">
-            <Link className={`transition hover:text-slate-950 ${focusClass}`} to="/plans">Plans</Link>
-            <Link className={`transition hover:text-slate-950 ${focusClass}`} to="/availability">Coverage</Link>
-            <a className={`transition hover:text-slate-950 ${focusClass}`} href="#why-isp">Why ISP</a>
-          </nav>
-          <div className="hidden items-center gap-2 md:flex">
-            <Link className={`rounded-[10px] px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-white/70 ${focusClass}`} to="/login">Log in</Link>
-            <Link className={`rounded-[10px] border border-slate-900/10 bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 ${focusClass}`} to="/signup">Sign up</Link>
-          </div>
-          <details className="public-mobile-menu relative md:hidden">
-            <summary className={`grid size-11 cursor-pointer list-none place-items-center rounded-[10px] border border-slate-900/10 bg-white/70 text-slate-950 ${focusClass}`}>
-              <span className="sr-only">Open navigation</span>
-              <span aria-hidden="true" className="space-y-1.5"><span className="block h-px w-5 bg-current" /><span className="block h-px w-5 bg-current" /><span className="block h-px w-5 bg-current" /></span>
-            </summary>
-            <nav aria-label="Mobile public navigation" className="public-glass absolute right-0 mt-2 grid w-56 gap-1 rounded-[14px] p-2 text-sm font-medium shadow-xl">
-              <Link className={`rounded-lg px-3 py-3 hover:bg-white/80 ${focusClass}`} to="/plans">Plans</Link>
-              <Link className={`rounded-lg px-3 py-3 hover:bg-white/80 ${focusClass}`} to="/availability">Coverage</Link>
-              <a className={`rounded-lg px-3 py-3 hover:bg-white/80 ${focusClass}`} href="#why-isp">Why ISP</a>
-              <div className="my-1 border-t border-slate-900/10" />
-              <Link className={`rounded-lg px-3 py-3 hover:bg-white/80 ${focusClass}`} to="/login">Log in</Link>
-              <Link className={`rounded-lg bg-slate-950 px-3 py-3 text-center text-white ${focusClass}`} to="/signup">Sign up</Link>
-            </nav>
-          </details>
-        </div>
-      </header>
+    <div className="overflow-hidden">
 
-      <main>
-        <section className="public-hero-grid relative min-h-[760px] border-b border-slate-900/10 px-5 pb-16 pt-32 sm:px-8 sm:pt-40 lg:min-h-[800px] lg:px-10">
+      <div>
+        <section className="public-hero-grid relative min-h-[760px] border-b border-slate-900/10 px-5 pb-16 pt-16 sm:px-8 sm:pt-24 lg:min-h-[800px] lg:px-10">
           <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
             <div className="relative z-10 max-w-3xl">
               <p className="text-xs font-semibold tracking-[0.16em] text-slate-500 uppercase">Connected living, made simple</p>
@@ -160,20 +132,8 @@ export function HomePage() {
             <div className="border-t border-white/10 p-8 sm:p-12 lg:border-t-0 lg:border-l lg:p-14"><Link className={`public-primary-button inline-flex min-h-12 w-full items-center justify-center rounded-[10px] px-6 text-sm font-semibold text-white transition hover:brightness-110 lg:w-auto ${focusClass}`} to="/availability">Check availability →</Link></div>
           </div>
         </section>
-      </main>
+      </div>
 
-      <footer className="border-t border-slate-900/10 bg-[#f7f8fb] px-5 py-12 sm:px-8 lg:px-10">
-        <div className="mx-auto grid max-w-7xl gap-9 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto] lg:items-start lg:gap-16">
-          <div><Brand /><p className="mt-4 max-w-sm text-sm leading-6 text-slate-500">Internet service applications and account management in one clear platform.</p></div>
-          <nav aria-label="Footer service navigation" className="grid gap-3 text-sm"><p className="mb-1 font-semibold text-slate-950">Explore</p><Link className={`text-slate-600 hover:text-slate-950 ${focusClass}`} to="/plans">Plans</Link><Link className={`text-slate-600 hover:text-slate-950 ${focusClass}`} to="/availability">Availability</Link></nav>
-          <nav aria-label="Footer account navigation" className="grid gap-3 text-sm"><p className="mb-1 font-semibold text-slate-950">Account</p><Link className={`text-slate-600 hover:text-slate-950 ${focusClass}`} to="/login">Log in</Link><Link className={`text-slate-600 hover:text-slate-950 ${focusClass}`} to="/signup">Sign up</Link></nav>
-        </div>
-        <div className="mx-auto mt-10 max-w-7xl border-t border-slate-900/10 pt-6 text-sm text-slate-500">© {new Date().getFullYear()} ISP Platform</div>
-      </footer>
     </div>
   )
-}
-
-function Brand() {
-  return <Link className={`inline-flex items-center gap-2.5 rounded-md font-semibold tracking-[-0.02em] text-slate-950 ${focusClass}`} to="/"><span aria-hidden="true" className="relative grid size-8 place-items-center rounded-[9px] bg-slate-950 text-white"><span className="absolute h-3.5 w-1 rotate-[-24deg] rounded-full bg-gradient-to-b from-cyan-300 via-blue-500 to-violet-500" /><span className="ml-2 h-2 w-1 rotate-[-24deg] rounded-full bg-white/90" /></span><span>ISP Platform</span></Link>
 }
