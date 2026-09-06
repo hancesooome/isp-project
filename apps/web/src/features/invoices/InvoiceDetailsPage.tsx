@@ -23,6 +23,8 @@ interface InvoiceDetailsPageProps {
   invoiceId: string
 }
 
+type PaymentOption = 'card' | 'gcash' | 'maya'
+
 const dateFormatter = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',
 })
@@ -51,11 +53,12 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
   const checkoutOutcome = searchParams.get('checkout')
   const payMongoOutcome = searchParams.get('paymongo')
   const paymentIntentId = searchParams.get('payment_intent_id')
+  const returnedWallet = searchParams.get('wallet') === 'maya' ? 'Maya' : 'GCash'
   const [invoice, setInvoice] = useState<Invoice | null>()
   const [error, setError] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
-  const [redirectProvider, setRedirectProvider] = useState<'card' | 'gcash' | null>(null)
+  const [redirectProvider, setRedirectProvider] = useState<PaymentOption | null>(null)
   const [payMongoReturnStatus, setPayMongoReturnStatus] = useState<
     'checking' | 'canceled_or_failed' | 'pending_confirmation' | null
   >(payMongoOutcome === 'returned' ? 'checking' : null)
@@ -198,16 +201,16 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
     }
   }
 
-  async function handleGcashPayment() {
+  async function handleEwalletPayment(wallet: 'gcash' | 'maya') {
     if (!session || !invoice || isRedirecting) return
 
     setCheckoutError(null)
     setIsRedirecting(true)
-    setRedirectProvider('gcash')
+    setRedirectProvider(wallet)
 
     try {
       const response = await fetch(
-        `/api/invoices/${encodeURIComponent(invoice.id)}/paymongo/gcash`,
+        `/api/invoices/${encodeURIComponent(invoice.id)}/paymongo/${wallet}`,
         {
           method: 'POST',
           headers: {
@@ -216,7 +219,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
         },
       )
 
-      if (!response.ok) throw new Error('GCASH_REQUEST_FAILED')
+      if (!response.ok) throw new Error('EWALLET_REQUEST_FAILED')
 
       const result: unknown = await response.json()
 
@@ -226,18 +229,19 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
         !('redirect_url' in result) ||
         typeof result.redirect_url !== 'string'
       ) {
-        throw new Error('INVALID_GCASH_RESPONSE')
+        throw new Error('INVALID_EWALLET_RESPONSE')
       }
 
       const redirectUrl = new URL(result.redirect_url)
 
       if (redirectUrl.protocol !== 'https:') {
-        throw new Error('INVALID_GCASH_REDIRECT')
+        throw new Error('INVALID_EWALLET_REDIRECT')
       }
 
       window.location.assign(redirectUrl.toString())
     } catch {
-      setCheckoutError('We could not open GCash. Please try again later.')
+      const walletName = wallet === 'maya' ? 'Maya' : 'GCash'
+      setCheckoutError(`We could not open ${walletName}. Please try again later.`)
       setIsRedirecting(false)
       setRedirectProvider(null)
     }
@@ -283,7 +287,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
             className="mb-6 rounded-lg border border-amber-800 bg-amber-950/50 p-4 text-sm text-amber-200"
             role="status"
           >
-            The GCash payment was canceled or could not be completed. Your
+            The {returnedWallet} payment was canceled or could not be completed. Your
             invoice is still unpaid, and you can try again.
           </p>
         ) : payMongoReturnStatus && invoice.status !== 'paid' ? (
@@ -292,8 +296,8 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
             role="status"
           >
             {payMongoReturnStatus === 'checking'
-              ? 'Checking your GCash payment status...'
-              : 'Your GCash payment is pending confirmation. This invoice will update only after PayMongo confirms the payment.'}
+              ? `Checking your ${returnedWallet} payment status...`
+              : `Your ${returnedWallet} payment is pending confirmation. This invoice will update only after PayMongo confirms the payment.`}
           </p>
         ) : checkoutOutcome === 'canceled' ? (
           <p
@@ -348,7 +352,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
             <button
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isRedirecting}
-              onClick={() => void handleGcashPayment()}
+              onClick={() => void handleEwalletPayment('gcash')}
               type="button"
             >
               {redirectProvider === 'gcash' ? (
@@ -363,6 +367,21 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
             <p className="mt-3 text-center text-sm text-slate-400">
               You will be redirected to GCash to authorize the payment.
             </p>
+            <button
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-sky-500 px-4 py-3 font-semibold text-sky-300 transition hover:bg-sky-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isRedirecting}
+              onClick={() => void handleEwalletPayment('maya')}
+              type="button"
+            >
+              {redirectProvider === 'maya' ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  <span>Opening Maya...</span>
+                </>
+              ) : (
+                <span>Pay with Maya</span>
+              )}
+            </button>
             <button
               className="mt-4 w-full rounded-lg border border-slate-700 px-4 py-3 font-semibold text-white transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isRedirecting}

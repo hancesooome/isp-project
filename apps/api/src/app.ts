@@ -357,6 +357,7 @@ const coverageAreaIdSchema = z.string().uuid()
 const customerIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
 const payMongoPaymentIntentIdSchema = z.string().regex(/^pi_[A-Za-z0-9]+$/)
+const payMongoEwalletSchema = z.enum(['gcash', 'maya'])
 const planIdSchema = z.string().uuid()
 const statementIdSchema = z.string().uuid()
 const subscriptionIdSchema = z.string().uuid()
@@ -2501,7 +2502,7 @@ app.post('/invoices/:id/paymongo/payment-intent', async (request, response) => {
   }
 })
 
-app.post('/invoices/:id/paymongo/gcash', async (request, response) => {
+app.post('/invoices/:id/paymongo/:wallet', async (request, response) => {
   const auth = await authorizeRole(
     request.header('authorization'),
     'customer',
@@ -2509,7 +2510,7 @@ app.post('/invoices/:id/paymongo/gcash', async (request, response) => {
 
   if (auth.status !== 200 || !auth.userId) {
     if (auth.status === 500) {
-      response.status(500).json({ error: 'Unable to start GCash payment' })
+      response.status(500).json({ error: 'Unable to start e-wallet payment' })
       return
     }
 
@@ -2520,16 +2521,20 @@ app.post('/invoices/:id/paymongo/gcash', async (request, response) => {
   }
 
   if (!isPayMongoEnabled()) {
-    response.status(503).json({ error: 'GCash payments are unavailable' })
+    response.status(503).json({ error: 'E-wallet payments are unavailable' })
     return
   }
 
   const idResult = invoiceIdSchema.safeParse(request.params.id)
+  const walletResult = payMongoEwalletSchema.safeParse(request.params.wallet)
 
-  if (!idResult.success) {
-    response.status(400).json({ error: 'Invalid invoice ID' })
+  if (!idResult.success || !walletResult.success) {
+    response.status(400).json({ error: 'Invalid payment request' })
     return
   }
+
+  const wallet = walletResult.data
+  const providerPaymentMethod = wallet === 'maya' ? 'paymaya' : 'gcash'
 
   const { data: invoice, error } = await supabase
     .from('invoices')
@@ -2544,8 +2549,8 @@ app.post('/invoices/:id/paymongo/gcash', async (request, response) => {
     }>()
 
   if (error) {
-    console.error('Failed to load GCash invoice', { code: error.code })
-    response.status(500).json({ error: 'Unable to start GCash payment' })
+    console.error('Failed to load e-wallet invoice', { code: error.code })
+    response.status(500).json({ error: 'Unable to start e-wallet payment' })
     return
   }
 
@@ -2560,7 +2565,7 @@ app.post('/invoices/:id/paymongo/gcash', async (request, response) => {
     invoice.amount_cents > 10_000_000 ||
     invoice.currency !== 'PHP'
   ) {
-    response.status(409).json({ error: 'Invoice is not eligible for GCash payment' })
+    response.status(409).json({ error: 'Invoice is not eligible for e-wallet payment' })
     return
   }
 
@@ -2571,7 +2576,7 @@ app.post('/invoices/:id/paymongo/gcash', async (request, response) => {
       invoiceId: invoice.id,
       amountCents: invoice.amount_cents,
       currency: invoice.currency,
-      paymentMethods: ['gcash'],
+      paymentMethods: [providerPaymentMethod],
     })
     paymentIntentReference = paymentIntent.id
 
@@ -2587,20 +2592,23 @@ app.post('/invoices/:id/paymongo/gcash', async (request, response) => {
     )
 
     if (paymentError) {
-      console.error('Failed to persist GCash Payment Intent', {
+      console.error('Failed to persist e-wallet Payment Intent', {
         code: paymentError.code,
       })
       const status = ['P0001', 'P0002'].includes(paymentError.code) ? 409 : 500
-      response.status(status).json({ error: 'Unable to start GCash payment' })
+      response.status(status).json({ error: 'Unable to start e-wallet payment' })
       return
     }
 
-    const paymentMethodId = await createPayMongoEwalletPaymentMethod('gcash')
+    const paymentMethodId = await createPayMongoEwalletPaymentMethod(
+      providerPaymentMethod,
+    )
     const returnUrl = new URL(
       `/account/invoices/${encodeURIComponent(invoice.id)}`,
       env.appUrl,
     )
     returnUrl.searchParams.set('paymongo', 'returned')
+    returnUrl.searchParams.set('wallet', wallet)
     returnUrl.searchParams.set('payment_intent_id', paymentIntent.id)
 
     const attachedIntent = await attachPayMongoPaymentMethod({
@@ -2614,10 +2622,10 @@ app.post('/invoices/:id/paymongo/gcash', async (request, response) => {
       attachedIntent.status !== 'awaiting_next_action' ||
       !attachedIntent.redirectUrl
     ) {
-      console.error('GCash Payment Intent did not return a redirect', {
+      console.error('E-wallet Payment Intent did not return a redirect', {
         status: attachedIntent.status,
       })
-      throw new Error('GCASH_REDIRECT_MISSING')
+      throw new Error('EWALLET_REDIRECT_MISSING')
     }
 
     response.status(201).json({
@@ -2636,7 +2644,7 @@ app.post('/invoices/:id/paymongo/gcash', async (request, response) => {
         .eq('status', 'pending')
 
       if (updateError) {
-        console.error('Failed to mark GCash initiation as failed', {
+        console.error('Failed to mark e-wallet initiation as failed', {
           code: updateError.code,
         })
       }
@@ -2645,8 +2653,8 @@ app.post('/invoices/:id/paymongo/gcash', async (request, response) => {
     const reason = error instanceof z.ZodError
       ? 'invalid_provider_response'
       : 'provider_request_failed'
-    console.error('Failed to initiate GCash payment', { reason })
-    response.status(502).json({ error: 'Unable to start GCash payment' })
+    console.error('Failed to initiate e-wallet payment', { reason })
+    response.status(502).json({ error: 'Unable to start e-wallet payment' })
   }
 })
 
@@ -2691,7 +2699,7 @@ app.get(
       .maybeSingle<{ id: string }>()
 
     if (error) {
-      console.error('Failed to load GCash payment reference', { code: error.code })
+      console.error('Failed to load PayMongo payment reference', { code: error.code })
       response.status(500).json({ error: 'Unable to check payment status' })
       return
     }
@@ -2715,7 +2723,7 @@ app.get(
       const reason = error instanceof z.ZodError
         ? 'invalid_provider_response'
         : 'provider_request_failed'
-      console.error('Failed to retrieve GCash Payment Intent', { reason })
+      console.error('Failed to retrieve PayMongo Payment Intent', { reason })
       response.status(502).json({ error: 'Unable to check payment status' })
     }
   },
