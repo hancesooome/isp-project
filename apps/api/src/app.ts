@@ -968,18 +968,17 @@ app.post(
     }
 
     const paidAt = new Date(event.created * 1000).toISOString()
-    const { error: paymentError } = isFailedPayment
-      ? await supabase.rpc('record_failed_stripe_payment', {
-          p_invoice_id: invoice.id,
-          p_provider_reference: paymentIntentReference,
-          p_amount_cents: invoice.amount_cents,
-        })
-      : await supabase.rpc('record_stripe_payment', {
-          p_invoice_id: invoice.id,
-          p_provider_reference: paymentIntentReference,
-          p_amount_cents: invoice.amount_cents,
-          p_paid_at: paidAt,
-        })
+    const { data: processed, error: paymentError } = await supabase.rpc(
+      'process_stripe_payment_event',
+      {
+        p_event_id: event.id,
+        p_event_outcome: isFailedPayment ? 'failed' : 'succeeded',
+        p_invoice_id: invoice.id,
+        p_provider_reference: paymentIntentReference,
+        p_amount_cents: invoice.amount_cents,
+        p_paid_at: isFailedPayment ? null : paidAt,
+      },
+    )
 
     if (paymentError) {
       logger.error('Failed to reconcile Stripe payment', {
@@ -988,6 +987,11 @@ app.post(
         requestId: response.locals.requestId,
       })
       response.status(500).json({ error: 'Unable to process webhook' })
+      return
+    }
+
+    if (!processed) {
+      response.status(200).json({ received: true })
       return
     }
 
