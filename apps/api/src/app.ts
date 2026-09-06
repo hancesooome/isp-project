@@ -13,10 +13,12 @@ import { recordAuditEvent } from './lib/audit.js'
 import { sendEmail } from './lib/email.js'
 import { logger } from './lib/logger.js'
 import { formatMoney, PAYMENT_CURRENCY } from './lib/money.js'
+import { isPayMongoEnabled } from './lib/paymongo.js'
 import { supabase } from './lib/supabase.js'
 import { stripe } from './lib/stripe.js'
 import { statementOfAccountStorage } from './services/statement-of-account-storage.js'
 import { stripePaymentProvider } from './services/stripe-payment-provider.js'
+import { createPayMongoPaymentIntent } from './services/paymongo-payment-provider.js'
 
 interface Plan {
   id: string
@@ -2387,6 +2389,109 @@ app.post('/invoices/:id/checkout-session', async (request, response) => {
   } catch {
     console.error('Failed to create Stripe Checkout Session')
     response.status(502).json({ error: 'Unable to start checkout' })
+  }
+})
+
+app.post('/invoices/:id/paymongo/payment-intent', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to start payment' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  if (!isPayMongoEnabled()) {
+    response.status(503).json({ error: 'PayMongo payments are unavailable' })
+    return
+  }
+
+  const idResult = invoiceIdSchema.safeParse(request.params.id)
+
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid invoice ID' })
+    return
+  }
+
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .select('id, amount_cents, currency, status')
+    .eq('id', idResult.data)
+    .eq('user_id', auth.userId)
+    .maybeSingle<{
+      id: string
+      amount_cents: number
+      currency: string
+      status: 'open' | 'paid' | 'overdue'
+    }>()
+
+  if (error) {
+    console.error('Failed to load PayMongo invoice', { code: error.code })
+    response.status(500).json({ error: 'Unable to start payment' })
+    return
+  }
+
+  if (!invoice) {
+    response.status(404).json({ error: 'Invoice not found' })
+    return
+  }
+
+  if (
+    !['open', 'overdue'].includes(invoice.status) ||
+    invoice.amount_cents <= 0 ||
+    invoice.currency !== 'PHP'
+  ) {
+    response.status(409).json({ error: 'Invoice is not eligible for payment' })
+    return
+  }
+
+  try {
+    const paymentIntent = await createPayMongoPaymentIntent({
+      invoiceId: invoice.id,
+      amountCents: invoice.amount_cents,
+      currency: invoice.currency,
+    })
+
+    const { error: paymentError } = await supabase.rpc(
+      'record_pending_paymongo_payment',
+      {
+        p_invoice_id: invoice.id,
+        p_user_id: auth.userId,
+        p_provider_reference: paymentIntent.id,
+        p_amount_cents: invoice.amount_cents,
+        p_currency: invoice.currency,
+      },
+    )
+
+    if (paymentError) {
+      console.error('Failed to persist PayMongo Payment Intent', {
+        code: paymentError.code,
+      })
+      const status = ['P0001', 'P0002'].includes(paymentError.code) ? 409 : 500
+      response.status(status).json({ error: 'Unable to start payment' })
+      return
+    }
+
+    response.status(201).json({
+      payment_intent_id: paymentIntent.id,
+      client_key: paymentIntent.clientKey,
+      status: paymentIntent.status,
+    })
+  } catch (error) {
+    const reason = error instanceof z.ZodError
+      ? 'invalid_provider_response'
+      : 'provider_request_failed'
+    console.error('Failed to create PayMongo Payment Intent', { reason })
+    response.status(502).json({ error: 'Unable to start payment' })
   }
 })
 
