@@ -64,3 +64,4 @@ supabase/migrations/202609060002_process_paymongo_payment_events.sql
 supabase/migrations/202609060003_harden_payment_webhook_idempotency.sql
 supabase/migrations/202609060004_unify_payment_records.sql
 PRIVACY_STORAGE_AUDIT.md
+supabase/migrations/202609060005_create_faq_articles.sql

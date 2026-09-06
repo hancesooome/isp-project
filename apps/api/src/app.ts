@@ -83,6 +83,18 @@ interface AdminPlan extends Plan {
   updated_at: string
 }
 
+interface FaqArticle {
+  id: string
+  category: string
+  question: string
+  answer: string
+  slug: string | null
+  sort_order: number
+  is_published: boolean
+  created_at: string
+  updated_at: string
+}
+
 type UserRole = 'customer' | 'admin'
 
 interface AuthorizationResult {
@@ -398,6 +410,7 @@ const planIdSchema = z.string().uuid()
 const statementIdSchema = z.string().uuid()
 const subscriptionIdSchema = z.string().uuid()
 const supportTicketIdSchema = z.string().uuid()
+const faqArticleIdSchema = z.string().uuid()
 
 const planChangeValidationSchema = z
   .object({
@@ -476,6 +489,40 @@ const adminPlanActivationSchema = z
   })
   .strict()
 
+const faqCategorySchema = z.string().trim().min(1).max(100)
+const faqContentSchema = z
+  .object({
+    category: faqCategorySchema,
+    question: z.string().trim().min(1).max(300),
+    answer: z.string().trim().min(1).max(20_000),
+    slug: z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .nullable()
+      .optional(),
+    sort_order: z.number().int().min(0).max(1_000_000),
+  })
+  .strict()
+
+const faqUpdateSchema = faqContentSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0)
+
+const faqPublicationSchema = z
+  .object({
+    is_published: z.boolean(),
+  })
+  .strict()
+
+const faqQuerySchema = z
+  .object({
+    category: faqCategorySchema.optional(),
+  })
+  .strict()
+
 const coveragePositionSchema = z.tuple([
   z.number().finite().min(-180).max(180),
   z.number().finite().min(-90).max(90),
@@ -534,6 +581,8 @@ const adminSubscriptionStatusSchema = z
 
 const adminPlanSelect =
   'id, name, slug, description, speed_mbps, price_cents, billing_interval, is_active, created_at, updated_at'
+const faqArticleSelect =
+  'id, category, question, answer, slug, sort_order, is_published, created_at, updated_at'
 
 const applicationReviewSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('approved') }).strict(),
@@ -1353,6 +1402,38 @@ app.get('/plans', async (_request, response) => {
   }
 
   response.status(200).json({ plans: data })
+})
+
+app.get('/faqs', async (request, response) => {
+  const queryResult = faqQuerySchema.safeParse(request.query)
+
+  if (!queryResult.success) {
+    response.status(400).json({ error: 'Enter a valid FAQ category' })
+    return
+  }
+
+  let query = supabase
+    .from('faq_articles')
+    .select('id, category, question, answer, slug, sort_order, updated_at')
+    .eq('is_published', true)
+
+  if (queryResult.data.category) {
+    query = query.eq('category', queryResult.data.category)
+  }
+
+  const { data, error } = await query
+    .order('category')
+    .order('sort_order')
+    .order('created_at')
+    .order('id')
+
+  if (error) {
+    console.error('Failed to load FAQs', { code: error.code })
+    response.status(500).json({ error: 'Unable to load FAQs' })
+    return
+  }
+
+  response.status(200).json({ faqs: data })
 })
 
 app.get('/locations/regions', async (_request, response) => {
@@ -3433,6 +3514,213 @@ app.patch('/admin/plans/:id/activation', async (request, response) => {
   })
 
   response.status(200).json({ plan })
+})
+
+app.get('/admin/faqs', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load FAQs' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('faq_articles')
+    .select(faqArticleSelect)
+    .order('category')
+    .order('sort_order')
+    .order('created_at')
+    .order('id')
+    .returns<FaqArticle[]>()
+
+  if (error) {
+    console.error('Failed to load admin FAQs', { code: error.code })
+    response.status(500).json({ error: 'Unable to load FAQs' })
+    return
+  }
+
+  response.status(200).json({ faqs: data })
+})
+
+app.post('/admin/faqs', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to create FAQ' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const faqResult = faqContentSchema.safeParse(request.body)
+
+  if (!faqResult.success) {
+    response.status(400).json({ error: 'Enter valid FAQ details' })
+    return
+  }
+
+  const { data: faq, error } = await supabase
+    .from('faq_articles')
+    .insert({
+      ...faqResult.data,
+      slug: faqResult.data.slug ?? null,
+    })
+    .select(faqArticleSelect)
+    .single<FaqArticle>()
+
+  if (error) {
+    if (error.code === '23505') {
+      response.status(409).json({ error: 'An FAQ with this slug already exists' })
+      return
+    }
+
+    console.error('Failed to create FAQ', { code: error.code })
+    response.status(500).json({ error: 'Unable to create FAQ' })
+    return
+  }
+
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'faq.created',
+    targetType: 'faq_article',
+    targetId: faq.id,
+    source: 'api',
+    metadata: { category: faq.category, is_published: faq.is_published },
+  })
+
+  response.status(201).json({ faq })
+})
+
+app.patch('/admin/faqs/:id', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to update FAQ' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = faqArticleIdSchema.safeParse(request.params.id)
+  const faqResult = faqUpdateSchema.safeParse(request.body)
+
+  if (!idResult.success || !faqResult.success) {
+    response.status(400).json({ error: 'Enter valid FAQ details' })
+    return
+  }
+
+  const { data: faq, error } = await supabase
+    .from('faq_articles')
+    .update({
+      ...faqResult.data,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', idResult.data)
+    .select(faqArticleSelect)
+    .maybeSingle<FaqArticle>()
+
+  if (error) {
+    if (error.code === '23505') {
+      response.status(409).json({ error: 'An FAQ with this slug already exists' })
+      return
+    }
+
+    console.error('Failed to update FAQ', { code: error.code })
+    response.status(500).json({ error: 'Unable to update FAQ' })
+    return
+  }
+
+  if (!faq) {
+    response.status(404).json({ error: 'FAQ not found' })
+    return
+  }
+
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'faq.updated',
+    targetType: 'faq_article',
+    targetId: faq.id,
+    source: 'api',
+    metadata: { category: faq.category, is_published: faq.is_published },
+  })
+
+  response.status(200).json({ faq })
+})
+
+app.patch('/admin/faqs/:id/publication', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to update FAQ publication' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = faqArticleIdSchema.safeParse(request.params.id)
+  const publicationResult = faqPublicationSchema.safeParse(request.body)
+
+  if (!idResult.success || !publicationResult.success) {
+    response.status(400).json({ error: 'Enter a valid publication state' })
+    return
+  }
+
+  const { data: faq, error } = await supabase
+    .from('faq_articles')
+    .update({
+      is_published: publicationResult.data.is_published,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', idResult.data)
+    .select(faqArticleSelect)
+    .maybeSingle<FaqArticle>()
+
+  if (error) {
+    console.error('Failed to update FAQ publication', { code: error.code })
+    response.status(500).json({ error: 'Unable to update FAQ publication' })
+    return
+  }
+
+  if (!faq) {
+    response.status(404).json({ error: 'FAQ not found' })
+    return
+  }
+
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: publicationResult.data.is_published ? 'faq.published' : 'faq.unpublished',
+    targetType: 'faq_article',
+    targetId: faq.id,
+    source: 'api',
+    metadata: { category: faq.category, is_published: faq.is_published },
+  })
+
+  response.status(200).json({ faq })
 })
 
 app.get('/admin/customers', async (request, response) => {
