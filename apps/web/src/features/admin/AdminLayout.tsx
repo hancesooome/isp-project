@@ -14,6 +14,7 @@ const adminNavItems = [
   { label: 'Plan changes', mobileLabel: 'Changes', to: '/admin/plan-changes', end: false, icon: 'planChanges' },
   { label: 'Billing', to: '/admin/billing', end: false, icon: 'billing' },
   { label: 'Support', to: '/admin/support', end: false, icon: 'support' },
+  { label: 'FAQs', to: '/admin/faqs', end: false, icon: 'faqs' },
   { label: 'Reports', to: '/admin/reports', end: false, icon: 'reports' },
 ] as const
 
@@ -225,6 +226,7 @@ function AdminIcon({ active, name }: { active: boolean; name: string }) {
     planChanges: <><path d="M7 7h11l-3-3M18 7l-3 3" /><path d="M17 17H6l3 3M6 17l3-3" /></>,
     billing: <><rect height="15" rx="2" width="18" x="3" y="5" /><path d="M3 10h18M7 15h3M15 15h2" /></>,
     support: <><path d="M21 12a8 8 0 01-8 8H8l-5 2 2-5a8 8 0 1116-5z" /><path d="M9.5 9a2.5 2.5 0 014.8.9c0 1.8-2.3 2-2.3 3.6M12 17h.01" /></>,
+    faqs: <><circle cx="12" cy="12" r="9" /><path d="M9.8 9a2.4 2.4 0 014.6.9c0 1.8-2.4 2-2.4 3.6M12 17h.01" /></>,
     reports: <><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></>,
   }
 

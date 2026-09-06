@@ -34,6 +34,7 @@ import { AdminPlanChangesPage } from './features/admin/AdminPlanChangesPage'
 import { HomePage } from './features/home/HomePage'
 import { PublicLayout } from './features/home/PublicLayout'
 import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage'
+import { AdminFaqPage } from './features/faq/AdminFaqPage'
 import { AdminBillingPage } from './features/invoices/AdminBillingPage'
 import { InvoiceDetailsPage } from './features/invoices/InvoiceDetailsPage'
 import { InvoicesPage } from './features/invoices/InvoicesPage'
@@ -119,6 +120,7 @@ export function App() {
         <Route path="subscriptions/:id" element={<AdminSubscriptionDetailsRoute />} />
         <Route path="billing" element={<AdminBillingPage />} />
         <Route path="reports" element={<AdminReportsPage />} />
+        <Route path="faqs" element={<AdminFaqPage />} />
         <Route path="support" element={<AdminSupportTicketsPage />} />
         <Route path="support/:id" element={<AdminSupportTicketDetailsRoute />} />
       </Route>
