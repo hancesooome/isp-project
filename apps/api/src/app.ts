@@ -20,7 +20,7 @@ import { statementOfAccountStorage } from './services/statement-of-account-stora
 import { stripePaymentProvider } from './services/stripe-payment-provider.js'
 import {
   attachPayMongoPaymentMethod,
-  createPayMongoEwalletPaymentMethod,
+  createPayMongoPaymentMethod,
   createPayMongoPaymentIntent,
   retrievePayMongoPaymentIntent,
 } from './services/paymongo-payment-provider.js'
@@ -357,7 +357,7 @@ const coverageAreaIdSchema = z.string().uuid()
 const customerIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
 const payMongoPaymentIntentIdSchema = z.string().regex(/^pi_[A-Za-z0-9]+$/)
-const payMongoEwalletSchema = z.enum(['gcash', 'maya'])
+const payMongoMethodSchema = z.enum(['gcash', 'maya', 'qrph'])
 const planIdSchema = z.string().uuid()
 const statementIdSchema = z.string().uuid()
 const subscriptionIdSchema = z.string().uuid()
@@ -2502,7 +2502,7 @@ app.post('/invoices/:id/paymongo/payment-intent', async (request, response) => {
   }
 })
 
-app.post('/invoices/:id/paymongo/:wallet', async (request, response) => {
+app.post('/invoices/:id/paymongo/:method', async (request, response) => {
   const auth = await authorizeRole(
     request.header('authorization'),
     'customer',
@@ -2510,7 +2510,7 @@ app.post('/invoices/:id/paymongo/:wallet', async (request, response) => {
 
   if (auth.status !== 200 || !auth.userId) {
     if (auth.status === 500) {
-      response.status(500).json({ error: 'Unable to start e-wallet payment' })
+      response.status(500).json({ error: 'Unable to start PayMongo payment' })
       return
     }
 
@@ -2521,20 +2521,20 @@ app.post('/invoices/:id/paymongo/:wallet', async (request, response) => {
   }
 
   if (!isPayMongoEnabled()) {
-    response.status(503).json({ error: 'E-wallet payments are unavailable' })
+    response.status(503).json({ error: 'PayMongo payments are unavailable' })
     return
   }
 
   const idResult = invoiceIdSchema.safeParse(request.params.id)
-  const walletResult = payMongoEwalletSchema.safeParse(request.params.wallet)
+  const methodResult = payMongoMethodSchema.safeParse(request.params.method)
 
-  if (!idResult.success || !walletResult.success) {
+  if (!idResult.success || !methodResult.success) {
     response.status(400).json({ error: 'Invalid payment request' })
     return
   }
 
-  const wallet = walletResult.data
-  const providerPaymentMethod = wallet === 'maya' ? 'paymaya' : 'gcash'
+  const method = methodResult.data
+  const providerPaymentMethod = method === 'maya' ? 'paymaya' : method
 
   const { data: invoice, error } = await supabase
     .from('invoices')
@@ -2549,8 +2549,8 @@ app.post('/invoices/:id/paymongo/:wallet', async (request, response) => {
     }>()
 
   if (error) {
-    console.error('Failed to load e-wallet invoice', { code: error.code })
-    response.status(500).json({ error: 'Unable to start e-wallet payment' })
+    console.error('Failed to load PayMongo invoice', { code: error.code })
+    response.status(500).json({ error: 'Unable to start PayMongo payment' })
     return
   }
 
@@ -2562,10 +2562,10 @@ app.post('/invoices/:id/paymongo/:wallet', async (request, response) => {
   if (
     !['open', 'overdue'].includes(invoice.status) ||
     invoice.amount_cents < 100 ||
-    invoice.amount_cents > 10_000_000 ||
+    (method !== 'qrph' && invoice.amount_cents > 10_000_000) ||
     invoice.currency !== 'PHP'
   ) {
-    response.status(409).json({ error: 'Invoice is not eligible for e-wallet payment' })
+    response.status(409).json({ error: 'Invoice is not eligible for this payment method' })
     return
   }
 
@@ -2592,23 +2592,49 @@ app.post('/invoices/:id/paymongo/:wallet', async (request, response) => {
     )
 
     if (paymentError) {
-      console.error('Failed to persist e-wallet Payment Intent', {
+      console.error('Failed to persist PayMongo Payment Intent', {
         code: paymentError.code,
       })
       const status = ['P0001', 'P0002'].includes(paymentError.code) ? 409 : 500
-      response.status(status).json({ error: 'Unable to start e-wallet payment' })
+      response.status(status).json({ error: 'Unable to start PayMongo payment' })
       return
     }
 
-    const paymentMethodId = await createPayMongoEwalletPaymentMethod(
+    const paymentMethodId = await createPayMongoPaymentMethod(
       providerPaymentMethod,
     )
+
+    if (method === 'qrph') {
+      const attachedIntent = await attachPayMongoPaymentMethod({
+        paymentIntentId: paymentIntent.id,
+        clientKey: paymentIntent.clientKey,
+        paymentMethodId,
+      })
+
+      if (
+        attachedIntent.status !== 'awaiting_next_action' ||
+        !attachedIntent.qrImageUrl
+      ) {
+        console.error('QR Ph Payment Intent did not return a QR image', {
+          status: attachedIntent.status,
+        })
+        throw new Error('QRPH_IMAGE_MISSING')
+      }
+
+      response.status(201).json({
+        payment_intent_id: attachedIntent.id,
+        qr_image_url: attachedIntent.qrImageUrl,
+        status: attachedIntent.status,
+      })
+      return
+    }
+
     const returnUrl = new URL(
       `/account/invoices/${encodeURIComponent(invoice.id)}`,
       env.appUrl,
     )
     returnUrl.searchParams.set('paymongo', 'returned')
-    returnUrl.searchParams.set('wallet', wallet)
+    returnUrl.searchParams.set('wallet', method)
     returnUrl.searchParams.set('payment_intent_id', paymentIntent.id)
 
     const attachedIntent = await attachPayMongoPaymentMethod({
@@ -2644,7 +2670,7 @@ app.post('/invoices/:id/paymongo/:wallet', async (request, response) => {
         .eq('status', 'pending')
 
       if (updateError) {
-        console.error('Failed to mark e-wallet initiation as failed', {
+        console.error('Failed to mark PayMongo initiation as failed', {
           code: updateError.code,
         })
       }
@@ -2653,8 +2679,8 @@ app.post('/invoices/:id/paymongo/:wallet', async (request, response) => {
     const reason = error instanceof z.ZodError
       ? 'invalid_provider_response'
       : 'provider_request_failed'
-    console.error('Failed to initiate e-wallet payment', { reason })
-    response.status(502).json({ error: 'Unable to start e-wallet payment' })
+    console.error('Failed to initiate PayMongo payment', { reason })
+    response.status(502).json({ error: 'Unable to start PayMongo payment' })
   }
 })
 
@@ -2713,10 +2739,11 @@ app.get(
       const paymentIntent = await retrievePayMongoPaymentIntent(
         paymentIntentIdResult.data,
       )
-      const outcome = paymentIntent.status === 'awaiting_payment_method' &&
-        paymentIntent.hasPaymentError
-        ? 'canceled_or_failed'
-        : 'pending_confirmation'
+      const outcome = paymentIntent.status === 'awaiting_payment_method'
+        ? 'expired_canceled_or_failed'
+        : paymentIntent.status === 'succeeded'
+          ? 'paid_awaiting_confirmation'
+          : 'pending'
 
       response.status(200).json({ outcome })
     } catch (error) {

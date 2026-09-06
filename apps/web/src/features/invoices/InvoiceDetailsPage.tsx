@@ -23,7 +23,17 @@ interface InvoiceDetailsPageProps {
   invoiceId: string
 }
 
-type PaymentOption = 'card' | 'gcash' | 'maya'
+type PaymentOption = 'card' | 'gcash' | 'maya' | 'qrph'
+type PayMongoStatus =
+  | 'expired_canceled_or_failed'
+  | 'paid_awaiting_confirmation'
+  | 'pending'
+
+interface QrPayment {
+  id: string
+  imageUrl: string
+  status: PayMongoStatus
+}
 
 const dateFormatter = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',
@@ -60,8 +70,9 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [redirectProvider, setRedirectProvider] = useState<PaymentOption | null>(null)
   const [payMongoReturnStatus, setPayMongoReturnStatus] = useState<
-    'checking' | 'canceled_or_failed' | 'pending_confirmation' | null
+    'checking' | PayMongoStatus | null
   >(payMongoOutcome === 'returned' ? 'checking' : null)
+  const [qrPayment, setQrPayment] = useState<QrPayment | null>(null)
 
   useEffect(() => {
     if (!session) return
@@ -137,8 +148,9 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
           typeof result !== 'object' ||
           result === null ||
           !('outcome' in result) ||
-          (result.outcome !== 'canceled_or_failed' &&
-            result.outcome !== 'pending_confirmation')
+          (result.outcome !== 'expired_canceled_or_failed' &&
+            result.outcome !== 'paid_awaiting_confirmation' &&
+            result.outcome !== 'pending')
         ) {
           throw new Error('INVALID_PAYMENT_STATUS_RESPONSE')
         }
@@ -148,13 +160,58 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
         if (requestError instanceof Error && requestError.name === 'AbortError') {
           return
         }
-        setPayMongoReturnStatus('pending_confirmation')
+        setPayMongoReturnStatus('pending')
       }
     }
 
     void checkPaymentStatus()
     return () => controller.abort()
   }, [invoiceId, payMongoOutcome, paymentIntentId, session])
+
+  useEffect(() => {
+    if (!session || !qrPayment || qrPayment.status !== 'pending') return
+
+    const controller = new AbortController()
+
+    async function checkQrStatus() {
+      try {
+        const response = await fetch(
+          `/api/invoices/${encodeURIComponent(invoiceId)}/paymongo/payment-intents/${encodeURIComponent(qrPayment?.id ?? '')}/status`,
+          {
+            headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
+            signal: controller.signal,
+          },
+        )
+        if (!response.ok) return
+
+        const result: unknown = await response.json()
+        if (
+          typeof result !== 'object' ||
+          result === null ||
+          !('outcome' in result) ||
+          (result.outcome !== 'expired_canceled_or_failed' &&
+            result.outcome !== 'paid_awaiting_confirmation' &&
+            result.outcome !== 'pending')
+        ) return
+
+        setQrPayment((current) => {
+          if (!current || current.status === result.outcome) return current
+          return { ...current, status: result.outcome as PayMongoStatus }
+        })
+      } catch (requestError) {
+        if (requestError instanceof Error && requestError.name === 'AbortError') {
+          return
+        }
+      }
+    }
+
+    void checkQrStatus()
+    const interval = window.setInterval(() => void checkQrStatus(), 5_000)
+    return () => {
+      controller.abort()
+      window.clearInterval(interval)
+    }
+  }, [invoiceId, qrPayment, session])
 
   async function handlePayNow() {
     if (!session || !invoice || isRedirecting) return
@@ -247,6 +304,49 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
     }
   }
 
+  async function handleQrPayment() {
+    if (!session || !invoice || isRedirecting) return
+
+    setCheckoutError(null)
+    setIsRedirecting(true)
+    setRedirectProvider('qrph')
+
+    try {
+      const response = await fetch(
+        `/api/invoices/${encodeURIComponent(invoice.id)}/paymongo/qrph`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        },
+      )
+      if (!response.ok) throw new Error('QRPH_REQUEST_FAILED')
+
+      const result: unknown = await response.json()
+      if (
+        typeof result !== 'object' ||
+        result === null ||
+        !('payment_intent_id' in result) ||
+        typeof result.payment_intent_id !== 'string' ||
+        !('qr_image_url' in result) ||
+        typeof result.qr_image_url !== 'string' ||
+        !result.qr_image_url.startsWith('data:image/png;base64,')
+      ) {
+        throw new Error('INVALID_QRPH_RESPONSE')
+      }
+
+      setQrPayment({
+        id: result.payment_intent_id,
+        imageUrl: result.qr_image_url,
+        status: 'pending',
+      })
+    } catch {
+      setCheckoutError('We could not generate the QR Ph code. Please try again later.')
+    } finally {
+      setIsRedirecting(false)
+      setRedirectProvider(null)
+    }
+  }
+
   if (error) {
     return <ErrorPanel message={error} title="Invoice unavailable" />
   }
@@ -282,12 +382,12 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
       </Link>
 
       <article className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
-        {payMongoReturnStatus === 'canceled_or_failed' && invoice.status !== 'paid' ? (
+        {payMongoReturnStatus === 'expired_canceled_or_failed' && invoice.status !== 'paid' ? (
           <p
             className="mb-6 rounded-lg border border-amber-800 bg-amber-950/50 p-4 text-sm text-amber-200"
             role="status"
           >
-            The {returnedWallet} payment was canceled or could not be completed. Your
+            The {returnedWallet} payment expired, was canceled, or could not be completed. Your
             invoice is still unpaid, and you can try again.
           </p>
         ) : payMongoReturnStatus && invoice.status !== 'paid' ? (
@@ -297,7 +397,9 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
           >
             {payMongoReturnStatus === 'checking'
               ? `Checking your ${returnedWallet} payment status...`
-              : `Your ${returnedWallet} payment is pending confirmation. This invoice will update only after PayMongo confirms the payment.`}
+              : payMongoReturnStatus === 'paid_awaiting_confirmation'
+                ? `PayMongo received your ${returnedWallet} payment. The invoice is awaiting secure webhook confirmation.`
+                : `Your ${returnedWallet} payment is pending. This invoice will update only after PayMongo confirms the payment.`}
           </p>
         ) : checkoutOutcome === 'canceled' ? (
           <p
@@ -382,6 +484,50 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                 <span>Pay with Maya</span>
               )}
             </button>
+            <button
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 py-3 font-semibold text-white transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isRedirecting}
+              onClick={() => void handleQrPayment()}
+              type="button"
+            >
+              {redirectProvider === 'qrph' ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  <span>Generating QR Ph...</span>
+                </>
+              ) : (
+                <span>Pay with QR Ph</span>
+              )}
+            </button>
+            {qrPayment ? (
+              <div className="mt-4 rounded-xl border border-slate-700 bg-white p-5 text-center text-slate-950">
+                {qrPayment.status === 'expired_canceled_or_failed' ? (
+                  <p className="text-sm font-medium text-red-700" role="status">
+                    This QR payment expired, was canceled, or failed. Generate a new QR code to try again.
+                  </p>
+                ) : (
+                  <>
+                    <img
+                      alt="Pay this invoice using QR Ph"
+                      className="mx-auto h-64 w-64 max-w-full"
+                      src={qrPayment.imageUrl}
+                    />
+                    <p className="mt-3 text-sm font-medium">
+                      {qrPayment.status === 'paid_awaiting_confirmation'
+                        ? 'Payment received by PayMongo. Awaiting secure confirmation.'
+                        : 'Scan using a QR Ph-compatible banking or e-wallet app.'}
+                    </p>
+                  </>
+                )}
+                <button
+                  className="mt-4 text-sm font-semibold text-slate-600 hover:text-slate-950"
+                  onClick={() => setQrPayment(null)}
+                  type="button"
+                >
+                  Close QR
+                </button>
+              </div>
+            ) : null}
             <button
               className="mt-4 w-full rounded-lg border border-slate-700 px-4 py-3 font-semibold text-white transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isRedirecting}

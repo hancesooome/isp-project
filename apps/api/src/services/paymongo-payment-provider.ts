@@ -26,7 +26,10 @@ const attachedPaymentIntentResponseSchema = z.object({
       next_action: z.object({
         redirect: z.object({
           url: z.string().url(),
-        }),
+        }).optional(),
+        code: z.object({
+          image_url: z.string().max(1_500_000),
+        }).optional(),
       }).nullable().optional(),
     }),
   }),
@@ -48,7 +51,7 @@ interface CreatePaymentIntentRequest {
   paymentMethods?: Array<'gcash' | 'paymaya' | 'qrph'>
 }
 
-type PayMongoEwallet = 'gcash' | 'paymaya'
+type PayMongoPaymentMethod = 'gcash' | 'paymaya' | 'qrph'
 
 export async function createPayMongoPaymentIntent(
   request: CreatePaymentIntentRequest,
@@ -76,8 +79,8 @@ export async function createPayMongoPaymentIntent(
   }
 }
 
-export async function createPayMongoEwalletPaymentMethod(
-  type: PayMongoEwallet,
+export async function createPayMongoPaymentMethod(
+  type: PayMongoPaymentMethod,
 ) {
   const response = await payMongoRequest<unknown>('/payment_methods', {
     method: 'POST',
@@ -93,7 +96,7 @@ export async function attachPayMongoPaymentMethod(request: {
   paymentIntentId: string
   clientKey: string
   paymentMethodId: string
-  returnUrl: string
+  returnUrl?: string
 }) {
   const response = await payMongoRequest<unknown>(
     `/payment_intents/${encodeURIComponent(request.paymentIntentId)}/attach`,
@@ -104,7 +107,7 @@ export async function attachPayMongoPaymentMethod(request: {
           attributes: {
             payment_method: request.paymentMethodId,
             client_key: request.clientKey,
-            return_url: request.returnUrl,
+            ...(request.returnUrl ? { return_url: request.returnUrl } : {}),
           },
         },
       }),
@@ -112,16 +115,25 @@ export async function attachPayMongoPaymentMethod(request: {
   )
 
   const paymentIntent = attachedPaymentIntentResponseSchema.parse(response).data
-  const redirectUrl = paymentIntent.attributes.next_action?.redirect.url ?? null
+  const redirectUrl = paymentIntent.attributes.next_action?.redirect?.url ?? null
+  const qrImageUrl = paymentIntent.attributes.next_action?.code?.image_url ?? null
 
   if (redirectUrl && new URL(redirectUrl).protocol !== 'https:') {
     throw new Error('PAYMONGO_REDIRECT_URL_INVALID')
+  }
+
+  if (
+    qrImageUrl &&
+    !/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(qrImageUrl)
+  ) {
+    throw new Error('PAYMONGO_QR_IMAGE_INVALID')
   }
 
   return {
     id: paymentIntent.id,
     status: paymentIntent.attributes.status,
     redirectUrl,
+    qrImageUrl,
   }
 }
 
