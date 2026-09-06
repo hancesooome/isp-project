@@ -49,10 +49,16 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
   const { session } = useAuth()
   const [searchParams] = useSearchParams()
   const checkoutOutcome = searchParams.get('checkout')
+  const payMongoOutcome = searchParams.get('paymongo')
+  const paymentIntentId = searchParams.get('payment_intent_id')
   const [invoice, setInvoice] = useState<Invoice | null>()
   const [error, setError] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const [redirectProvider, setRedirectProvider] = useState<'card' | 'gcash' | null>(null)
+  const [payMongoReturnStatus, setPayMongoReturnStatus] = useState<
+    'checking' | 'canceled_or_failed' | 'pending_confirmation' | null
+  >(payMongoOutcome === 'returned' ? 'checking' : null)
 
   useEffect(() => {
     if (!session) return
@@ -103,11 +109,56 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
     return () => controller.abort()
   }, [invoiceId, session])
 
+  useEffect(() => {
+    if (
+      !session ||
+      payMongoOutcome !== 'returned' ||
+      !paymentIntentId
+    ) return
+
+    const controller = new AbortController()
+
+    async function checkPaymentStatus() {
+      try {
+        const response = await fetch(
+          `/api/invoices/${encodeURIComponent(invoiceId)}/paymongo/payment-intents/${encodeURIComponent(paymentIntentId ?? '')}/status`,
+          {
+            headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
+            signal: controller.signal,
+          },
+        )
+        if (!response.ok) throw new Error('PAYMENT_STATUS_REQUEST_FAILED')
+
+        const result: unknown = await response.json()
+        if (
+          typeof result !== 'object' ||
+          result === null ||
+          !('outcome' in result) ||
+          (result.outcome !== 'canceled_or_failed' &&
+            result.outcome !== 'pending_confirmation')
+        ) {
+          throw new Error('INVALID_PAYMENT_STATUS_RESPONSE')
+        }
+
+        setPayMongoReturnStatus(result.outcome)
+      } catch (requestError) {
+        if (requestError instanceof Error && requestError.name === 'AbortError') {
+          return
+        }
+        setPayMongoReturnStatus('pending_confirmation')
+      }
+    }
+
+    void checkPaymentStatus()
+    return () => controller.abort()
+  }, [invoiceId, payMongoOutcome, paymentIntentId, session])
+
   async function handlePayNow() {
     if (!session || !invoice || isRedirecting) return
 
     setCheckoutError(null)
     setIsRedirecting(true)
+    setRedirectProvider('card')
 
     try {
       const response = await fetch(
@@ -143,6 +194,52 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
     } catch {
       setCheckoutError('We could not start checkout. Please try again later.')
       setIsRedirecting(false)
+      setRedirectProvider(null)
+    }
+  }
+
+  async function handleGcashPayment() {
+    if (!session || !invoice || isRedirecting) return
+
+    setCheckoutError(null)
+    setIsRedirecting(true)
+    setRedirectProvider('gcash')
+
+    try {
+      const response = await fetch(
+        `/api/invoices/${encodeURIComponent(invoice.id)}/paymongo/gcash`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        },
+      )
+
+      if (!response.ok) throw new Error('GCASH_REQUEST_FAILED')
+
+      const result: unknown = await response.json()
+
+      if (
+        typeof result !== 'object' ||
+        result === null ||
+        !('redirect_url' in result) ||
+        typeof result.redirect_url !== 'string'
+      ) {
+        throw new Error('INVALID_GCASH_RESPONSE')
+      }
+
+      const redirectUrl = new URL(result.redirect_url)
+
+      if (redirectUrl.protocol !== 'https:') {
+        throw new Error('INVALID_GCASH_REDIRECT')
+      }
+
+      window.location.assign(redirectUrl.toString())
+    } catch {
+      setCheckoutError('We could not open GCash. Please try again later.')
+      setIsRedirecting(false)
+      setRedirectProvider(null)
     }
   }
 
@@ -181,7 +278,24 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
       </Link>
 
       <article className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
-        {checkoutOutcome === 'canceled' ? (
+        {payMongoReturnStatus === 'canceled_or_failed' && invoice.status !== 'paid' ? (
+          <p
+            className="mb-6 rounded-lg border border-amber-800 bg-amber-950/50 p-4 text-sm text-amber-200"
+            role="status"
+          >
+            The GCash payment was canceled or could not be completed. Your
+            invoice is still unpaid, and you can try again.
+          </p>
+        ) : payMongoReturnStatus && invoice.status !== 'paid' ? (
+          <p
+            className="mb-6 rounded-lg border border-sky-800 bg-sky-950/50 p-4 text-sm text-sky-200"
+            role="status"
+          >
+            {payMongoReturnStatus === 'checking'
+              ? 'Checking your GCash payment status...'
+              : 'Your GCash payment is pending confirmation. This invoice will update only after PayMongo confirms the payment.'}
+          </p>
+        ) : checkoutOutcome === 'canceled' ? (
           <p
             className="mb-6 rounded-lg border border-amber-800 bg-amber-950/50 p-4 text-sm text-amber-200"
             role="status"
@@ -223,7 +337,8 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
           </div>
         </dl>
 
-        {invoice.status === 'open' && invoice.amount_cents > 0 ? (
+        {(invoice.status === 'open' || invoice.status === 'overdue') &&
+        invoice.amount_cents > 0 ? (
           <div className="mt-8 border-t border-slate-800 pt-6">
             {checkoutError ? (
               <p className="mb-4 text-sm text-red-300" role="alert">
@@ -233,21 +348,36 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
             <button
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isRedirecting}
-              onClick={() => void handlePayNow()}
+              onClick={() => void handleGcashPayment()}
               type="button"
             >
-              {isRedirecting ? (
+              {redirectProvider === 'gcash' ? (
                 <>
                   <LoadingSpinner size="sm" />
-                  <span>Opening secure checkout...</span>
+                  <span>Opening GCash...</span>
                 </>
               ) : (
-                <span>Pay now</span>
+                <span>Pay with GCash</span>
               )}
             </button>
             <p className="mt-3 text-center text-sm text-slate-400">
-              You will be redirected to Stripe&apos;s secure checkout.
+              You will be redirected to GCash to authorize the payment.
             </p>
+            <button
+              className="mt-4 w-full rounded-lg border border-slate-700 px-4 py-3 font-semibold text-white transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isRedirecting}
+              onClick={() => void handlePayNow()}
+              type="button"
+            >
+              {redirectProvider === 'card' ? (
+                <span className="flex items-center justify-center gap-2">
+                  <LoadingSpinner size="sm" />
+                  Opening secure checkout...
+                </span>
+              ) : (
+                'Pay by card'
+              )}
+            </button>
           </div>
         ) : null}
       </article>

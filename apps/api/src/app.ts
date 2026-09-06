@@ -18,7 +18,12 @@ import { supabase } from './lib/supabase.js'
 import { stripe } from './lib/stripe.js'
 import { statementOfAccountStorage } from './services/statement-of-account-storage.js'
 import { stripePaymentProvider } from './services/stripe-payment-provider.js'
-import { createPayMongoPaymentIntent } from './services/paymongo-payment-provider.js'
+import {
+  attachPayMongoPaymentMethod,
+  createPayMongoEwalletPaymentMethod,
+  createPayMongoPaymentIntent,
+  retrievePayMongoPaymentIntent,
+} from './services/paymongo-payment-provider.js'
 
 interface Plan {
   id: string
@@ -351,6 +356,7 @@ const applicationIdSchema = z.string().uuid()
 const coverageAreaIdSchema = z.string().uuid()
 const customerIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
+const payMongoPaymentIntentIdSchema = z.string().regex(/^pi_[A-Za-z0-9]+$/)
 const planIdSchema = z.string().uuid()
 const statementIdSchema = z.string().uuid()
 const subscriptionIdSchema = z.string().uuid()
@@ -2494,6 +2500,226 @@ app.post('/invoices/:id/paymongo/payment-intent', async (request, response) => {
     response.status(502).json({ error: 'Unable to start payment' })
   }
 })
+
+app.post('/invoices/:id/paymongo/gcash', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
+
+  if (auth.status !== 200 || !auth.userId) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to start GCash payment' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  if (!isPayMongoEnabled()) {
+    response.status(503).json({ error: 'GCash payments are unavailable' })
+    return
+  }
+
+  const idResult = invoiceIdSchema.safeParse(request.params.id)
+
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid invoice ID' })
+    return
+  }
+
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .select('id, amount_cents, currency, status')
+    .eq('id', idResult.data)
+    .eq('user_id', auth.userId)
+    .maybeSingle<{
+      id: string
+      amount_cents: number
+      currency: string
+      status: 'open' | 'paid' | 'overdue'
+    }>()
+
+  if (error) {
+    console.error('Failed to load GCash invoice', { code: error.code })
+    response.status(500).json({ error: 'Unable to start GCash payment' })
+    return
+  }
+
+  if (!invoice) {
+    response.status(404).json({ error: 'Invoice not found' })
+    return
+  }
+
+  if (
+    !['open', 'overdue'].includes(invoice.status) ||
+    invoice.amount_cents < 100 ||
+    invoice.amount_cents > 10_000_000 ||
+    invoice.currency !== 'PHP'
+  ) {
+    response.status(409).json({ error: 'Invoice is not eligible for GCash payment' })
+    return
+  }
+
+  let paymentIntentReference: string | null = null
+
+  try {
+    const paymentIntent = await createPayMongoPaymentIntent({
+      invoiceId: invoice.id,
+      amountCents: invoice.amount_cents,
+      currency: invoice.currency,
+      paymentMethods: ['gcash'],
+    })
+    paymentIntentReference = paymentIntent.id
+
+    const { error: paymentError } = await supabase.rpc(
+      'record_pending_paymongo_payment',
+      {
+        p_invoice_id: invoice.id,
+        p_user_id: auth.userId,
+        p_provider_reference: paymentIntent.id,
+        p_amount_cents: invoice.amount_cents,
+        p_currency: invoice.currency,
+      },
+    )
+
+    if (paymentError) {
+      console.error('Failed to persist GCash Payment Intent', {
+        code: paymentError.code,
+      })
+      const status = ['P0001', 'P0002'].includes(paymentError.code) ? 409 : 500
+      response.status(status).json({ error: 'Unable to start GCash payment' })
+      return
+    }
+
+    const paymentMethodId = await createPayMongoEwalletPaymentMethod('gcash')
+    const returnUrl = new URL(
+      `/account/invoices/${encodeURIComponent(invoice.id)}`,
+      env.appUrl,
+    )
+    returnUrl.searchParams.set('paymongo', 'returned')
+    returnUrl.searchParams.set('payment_intent_id', paymentIntent.id)
+
+    const attachedIntent = await attachPayMongoPaymentMethod({
+      paymentIntentId: paymentIntent.id,
+      clientKey: paymentIntent.clientKey,
+      paymentMethodId,
+      returnUrl: returnUrl.toString(),
+    })
+
+    if (
+      attachedIntent.status !== 'awaiting_next_action' ||
+      !attachedIntent.redirectUrl
+    ) {
+      console.error('GCash Payment Intent did not return a redirect', {
+        status: attachedIntent.status,
+      })
+      throw new Error('GCASH_REDIRECT_MISSING')
+    }
+
+    response.status(201).json({
+      redirect_url: attachedIntent.redirectUrl,
+      status: attachedIntent.status,
+    })
+  } catch (error) {
+    if (paymentIntentReference) {
+      const { error: updateError } = await supabase
+        .from('payments')
+        .update({ status: 'failed', updated_at: new Date().toISOString() })
+        .eq('invoice_id', invoice.id)
+        .eq('user_id', auth.userId)
+        .eq('provider', 'paymongo')
+        .eq('provider_reference', paymentIntentReference)
+        .eq('status', 'pending')
+
+      if (updateError) {
+        console.error('Failed to mark GCash initiation as failed', {
+          code: updateError.code,
+        })
+      }
+    }
+
+    const reason = error instanceof z.ZodError
+      ? 'invalid_provider_response'
+      : 'provider_request_failed'
+    console.error('Failed to initiate GCash payment', { reason })
+    response.status(502).json({ error: 'Unable to start GCash payment' })
+  }
+})
+
+app.get(
+  '/invoices/:id/paymongo/payment-intents/:paymentIntentId/status',
+  async (request, response) => {
+    const auth = await authorizeRole(
+      request.header('authorization'),
+      'customer',
+    )
+
+    if (auth.status !== 200 || !auth.userId) {
+      if (auth.status === 500) {
+        response.status(500).json({ error: 'Unable to check payment status' })
+        return
+      }
+
+      const message = auth.status === 403
+        ? 'Customer access required'
+        : 'Authentication required'
+      response.status(auth.status).json({ error: message })
+      return
+    }
+
+    const invoiceIdResult = invoiceIdSchema.safeParse(request.params.id)
+    const paymentIntentIdResult = payMongoPaymentIntentIdSchema.safeParse(
+      request.params.paymentIntentId,
+    )
+
+    if (!invoiceIdResult.success || !paymentIntentIdResult.success) {
+      response.status(400).json({ error: 'Invalid payment reference' })
+      return
+    }
+
+    const { data: payment, error } = await supabase
+      .from('payments')
+      .select('id')
+      .eq('invoice_id', invoiceIdResult.data)
+      .eq('user_id', auth.userId)
+      .eq('provider', 'paymongo')
+      .eq('provider_reference', paymentIntentIdResult.data)
+      .maybeSingle<{ id: string }>()
+
+    if (error) {
+      console.error('Failed to load GCash payment reference', { code: error.code })
+      response.status(500).json({ error: 'Unable to check payment status' })
+      return
+    }
+
+    if (!payment) {
+      response.status(404).json({ error: 'Payment not found' })
+      return
+    }
+
+    try {
+      const paymentIntent = await retrievePayMongoPaymentIntent(
+        paymentIntentIdResult.data,
+      )
+      const outcome = paymentIntent.status === 'awaiting_payment_method' &&
+        paymentIntent.hasPaymentError
+        ? 'canceled_or_failed'
+        : 'pending_confirmation'
+
+      response.status(200).json({ outcome })
+    } catch (error) {
+      const reason = error instanceof z.ZodError
+        ? 'invalid_provider_response'
+        : 'provider_request_failed'
+      console.error('Failed to retrieve GCash Payment Intent', { reason })
+      response.status(502).json({ error: 'Unable to check payment status' })
+    }
+  },
+)
 
 app.get('/admin/access', async (request, response) => {
   const auth = await authorizeRole(request.header('authorization'), 'admin')
