@@ -13,7 +13,10 @@ import { recordAuditEvent } from './lib/audit.js'
 import { sendEmail } from './lib/email.js'
 import { logger } from './lib/logger.js'
 import { formatMoney, PAYMENT_CURRENCY } from './lib/money.js'
-import { isPayMongoEnabled } from './lib/paymongo.js'
+import {
+  isPayMongoEnabled,
+  verifyPayMongoWebhookSignature,
+} from './lib/paymongo.js'
 import { supabase } from './lib/supabase.js'
 import { stripe } from './lib/stripe.js'
 import { statementOfAccountStorage } from './services/statement-of-account-storage.js'
@@ -358,6 +361,35 @@ const customerIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
 const payMongoPaymentIntentIdSchema = z.string().regex(/^pi_[A-Za-z0-9]+$/)
 const payMongoMethodSchema = z.enum(['gcash', 'maya', 'qrph'])
+const payMongoEventEnvelopeSchema = z.object({
+  data: z.object({
+    attributes: z.object({
+      type: z.string().min(1),
+    }),
+  }),
+})
+const payMongoPaymentEventSchema = z.object({
+  data: z.object({
+    id: z.string().regex(/^evt_[A-Za-z0-9]+$/),
+    type: z.literal('event'),
+    attributes: z.object({
+      type: z.enum(['payment.paid', 'payment.failed']),
+      livemode: z.boolean(),
+      created_at: z.number().int().nonnegative(),
+      data: z.object({
+        id: z.string().regex(/^pay_[A-Za-z0-9]+$/),
+        type: z.literal('payment'),
+        attributes: z.object({
+          amount: z.number().int().positive(),
+          currency: z.literal('PHP'),
+          status: z.enum(['paid', 'failed']),
+          payment_intent_id: z.string().regex(/^pi_[A-Za-z0-9]+$/),
+          paid_at: z.number().int().nonnegative().nullable().optional(),
+        }),
+      }),
+    }),
+  }),
+})
 const planIdSchema = z.string().uuid()
 const statementIdSchema = z.string().uuid()
 const subscriptionIdSchema = z.string().uuid()
@@ -1010,6 +1042,154 @@ app.post(
             })
           }
         }
+      }
+    }
+
+    response.status(200).json({ received: true })
+  },
+)
+
+app.post(
+  '/paymongo/webhook',
+  express.raw({ type: 'application/json', limit: '1mb' }),
+  async (request, response) => {
+    const signature = request.header('paymongo-signature') ??
+      request.header('x-paymongo-signature')
+
+    if (
+      !signature ||
+      !Buffer.isBuffer(request.body) ||
+      !verifyPayMongoWebhookSignature(request.body, signature)
+    ) {
+      response.status(400).json({ error: 'Invalid webhook signature' })
+      return
+    }
+
+    let payload: unknown
+    try {
+      payload = JSON.parse(request.body.toString('utf8'))
+    } catch {
+      response.status(400).json({ error: 'Invalid webhook payload' })
+      return
+    }
+
+    const envelopeResult = payMongoEventEnvelopeSchema.safeParse(payload)
+
+    if (!envelopeResult.success) {
+      response.status(400).json({ error: 'Invalid webhook payload' })
+      return
+    }
+
+    if (
+      envelopeResult.data.data.attributes.type !== 'payment.paid' &&
+      envelopeResult.data.data.attributes.type !== 'payment.failed'
+    ) {
+      response.status(200).json({ received: true })
+      return
+    }
+
+    const eventResult = payMongoPaymentEventSchema.safeParse(payload)
+
+    if (!eventResult.success) {
+      response.status(400).json({ error: 'Invalid webhook payload' })
+      return
+    }
+
+    const event = eventResult.data.data
+    const eventAttributes = event.attributes
+    const providerPayment = eventAttributes.data
+    const paymentAttributes = providerPayment.attributes
+    const expectedLiveMode = env.payMongoMode === 'live'
+
+    if (eventAttributes.livemode !== expectedLiveMode) {
+      logger.warn('Ignored PayMongo webhook with unexpected mode', {
+        eventId: event.id,
+        requestId: response.locals.requestId,
+      })
+      response.status(200).json({ received: true })
+      return
+    }
+
+    const isPaid = eventAttributes.type === 'payment.paid'
+    if (
+      (isPaid && paymentAttributes.status !== 'paid') ||
+      (!isPaid && paymentAttributes.status !== 'failed') ||
+      (isPaid && paymentAttributes.paid_at == null)
+    ) {
+      logger.warn('Ignored inconsistent PayMongo payment event', {
+        eventId: event.id,
+        requestId: response.locals.requestId,
+      })
+      response.status(200).json({ received: true })
+      return
+    }
+
+    const paidAt = isPaid
+      ? new Date(paymentAttributes.paid_at! * 1000).toISOString()
+      : null
+    const { data: processed, error } = await supabase.rpc(
+      'process_paymongo_payment_event',
+      {
+        p_event_id: event.id,
+        p_event_type: eventAttributes.type,
+        p_payment_intent_reference: paymentAttributes.payment_intent_id,
+        p_provider_payment_reference: providerPayment.id,
+        p_amount_cents: paymentAttributes.amount,
+        p_currency: paymentAttributes.currency,
+        p_paid_at: paidAt,
+      },
+    )
+
+    if (error) {
+      if (['P0001', 'P0002'].includes(error.code)) {
+        logger.warn('Ignored unmatched PayMongo payment event', {
+          code: error.code,
+          eventId: event.id,
+          requestId: response.locals.requestId,
+        })
+        response.status(200).json({ received: true })
+        return
+      }
+
+      logger.error('Failed to reconcile PayMongo payment event', {
+        code: error.code,
+        eventId: event.id,
+        requestId: response.locals.requestId,
+      })
+      response.status(500).json({ error: 'Unable to process webhook' })
+      return
+    }
+
+    if (processed) {
+      const { data: payment, error: paymentLookupError } = await supabase
+        .from('payments')
+        .select('invoice_id')
+        .eq('provider', 'paymongo')
+        .eq('provider_reference', paymentAttributes.payment_intent_id)
+        .maybeSingle<{ invoice_id: string }>()
+
+      if (paymentLookupError || !payment) {
+        logger.error('Failed to load reconciled PayMongo payment', {
+          code: paymentLookupError?.code,
+          eventId: event.id,
+          requestId: response.locals.requestId,
+        })
+      } else {
+        await recordAuditEvent({
+          actorType: 'system',
+          action: isPaid
+            ? 'payment.webhook_succeeded'
+            : 'payment.webhook_failed',
+          targetType: 'invoice',
+          targetId: payment.invoice_id,
+          source: 'paymongo_webhook',
+          metadata: {
+            provider: 'paymongo',
+            paymongo_event_id: event.id,
+            provider_payment_id: providerPayment.id,
+            amount_cents: paymentAttributes.amount,
+          },
+        })
       }
     }
 

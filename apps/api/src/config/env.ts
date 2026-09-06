@@ -52,15 +52,25 @@ function readPayMongoConfig() {
   }
 
   const secretKey = process.env.PAYMONGO_SECRET_KEY?.trim() || null
-  if (mode === 'disabled') return { mode, secretKey: null } as const
+  const webhookSecret = process.env.PAYMONGO_WEBHOOK_SECRET?.trim() || null
+  if (mode === 'disabled') {
+    return { mode, secretKey: null, webhookSecret: null } as const
+  }
   if (!secretKey) throw new Error('PAYMONGO_SECRET_KEY is required when PayMongo is enabled')
+  if (!webhookSecret) {
+    throw new Error('PAYMONGO_WEBHOOK_SECRET is required when PayMongo is enabled')
+  }
 
   const expectedPrefix = mode === 'test' ? 'sk_test_' : 'sk_live_'
   if (!secretKey.startsWith(expectedPrefix)) {
     throw new Error(`PAYMONGO_SECRET_KEY must use the ${expectedPrefix} prefix in ${mode} mode`)
   }
 
-  return { mode, secretKey } as const
+  if (!webhookSecret.startsWith('whsk_')) {
+    throw new Error('PAYMONGO_WEBHOOK_SECRET must use the whsk_ prefix')
+  }
+
+  return { mode, secretKey, webhookSecret } as const
 }
 
 const payMongoConfig = readPayMongoConfig()
@@ -95,6 +105,7 @@ export const env = {
   stripeWebhookSecret: readRequiredEnv('STRIPE_WEBHOOK_SECRET'),
   payMongoMode: payMongoConfig.mode,
   payMongoSecretKey: payMongoConfig.secretKey,
+  payMongoWebhookSecret: payMongoConfig.webhookSecret,
   resendApiKey: readRequiredEnv('RESEND_API_KEY'),
   emailFrom: readRequiredEnv('EMAIL_FROM'),
   cronSecret: readRequiredEnv('CRON_SECRET'),

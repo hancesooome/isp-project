@@ -8,7 +8,7 @@ interface AuditTarget {
   action: string
   targetType: string
   targetId: string
-  source: 'api' | 'stripe_webhook' | 'scheduled_job'
+  source: 'api' | 'stripe_webhook' | 'paymongo_webhook' | 'scheduled_job'
   metadata?: Record<string, string | number | boolean | null>
 }
 
