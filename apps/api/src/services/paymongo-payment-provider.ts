@@ -44,6 +44,11 @@ const retrievedPaymentIntentResponseSchema = z.object({
   }),
 })
 
+const paymentCapabilitiesSchema = z.union([
+  z.array(z.string()),
+  z.object({ data: z.array(z.string()) }),
+])
+
 interface CreatePaymentIntentRequest {
   invoiceId: string
   amountCents: number
@@ -52,6 +57,19 @@ interface CreatePaymentIntentRequest {
 }
 
 type PayMongoPaymentMethod = 'gcash' | 'paymaya' | 'qrph'
+
+export async function getPayMongoPaymentCapabilities() {
+  const response = await payMongoRequest<unknown>(
+    '/merchants/capabilities/payment_methods',
+  )
+  const result = paymentCapabilitiesSchema.parse(response)
+  const methods = Array.isArray(result) ? result : result.data
+
+  return methods.filter(
+    (method): method is PayMongoPaymentMethod =>
+      method === 'gcash' || method === 'paymaya' || method === 'qrph',
+  )
+}
 
 export async function createPayMongoPaymentIntent(
   request: CreatePaymentIntentRequest,

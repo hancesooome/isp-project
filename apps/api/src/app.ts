@@ -25,6 +25,7 @@ import {
   attachPayMongoPaymentMethod,
   createPayMongoPaymentMethod,
   createPayMongoPaymentIntent,
+  getPayMongoPaymentCapabilities,
   retrievePayMongoPaymentIntent,
 } from './services/paymongo-payment-provider.js'
 
@@ -2585,6 +2586,46 @@ app.post('/invoices/:id/checkout-session', async (request, response) => {
     console.error('Failed to create Stripe Checkout Session')
     response.status(502).json({ error: 'Unable to start checkout' })
   }
+})
+
+app.get('/payments/methods', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    'customer',
+  )
+
+  if (auth.status !== 200) {
+    if (auth.status === 500) {
+      response.status(500).json({ error: 'Unable to load payment methods' })
+      return
+    }
+
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const methods = ['card']
+
+  if (isPayMongoEnabled()) {
+    try {
+      const capabilities = await getPayMongoPaymentCapabilities()
+      for (const capability of capabilities) {
+        const method = capability === 'paymaya' ? 'maya' : capability
+        if (!methods.includes(method)) methods.unshift(method)
+      }
+    } catch {
+      logger.warn('Unable to load PayMongo payment capabilities', {
+        requestId: response.locals.requestId,
+      })
+    }
+  }
+
+  const preferredOrder = ['gcash', 'maya', 'qrph', 'card']
+  response.status(200).json({
+    methods: preferredOrder.filter((method) => methods.includes(method)),
+  })
 })
 
 app.post('/invoices/:id/paymongo/payment-intent', async (request, response) => {

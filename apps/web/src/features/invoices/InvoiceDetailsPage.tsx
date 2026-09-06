@@ -39,6 +39,13 @@ const dateFormatter = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',
 })
 
+const paymentMethodDetails: Record<PaymentOption, { label: string; description: string }> = {
+  gcash: { label: 'GCash', description: 'Continue in GCash to authorize payment' },
+  maya: { label: 'Maya', description: 'Continue in Maya to authorize payment' },
+  qrph: { label: 'QR Ph', description: 'Scan using a supported banking or wallet app' },
+  card: { label: 'Credit or debit card', description: 'Secure checkout powered by Stripe' },
+}
+
 function isInvoice(value: unknown): value is Invoice {
   if (typeof value !== 'object' || value === null) return false
 
@@ -73,6 +80,13 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
     'checking' | PayMongoStatus | null
   >(payMongoOutcome === 'returned' ? 'checking' : null)
   const [qrPayment, setQrPayment] = useState<QrPayment | null>(null)
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<
+    PaymentOption[]
+  >([])
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
+    PaymentOption | null
+  >(null)
 
   useEffect(() => {
     if (!session) return
@@ -122,6 +136,53 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
     void loadInvoice()
     return () => controller.abort()
   }, [invoiceId, session])
+
+  useEffect(() => {
+    if (!session) return
+
+    const controller = new AbortController()
+
+    async function loadPaymentMethods() {
+      try {
+        const response = await fetch('/api/payments/methods', {
+          headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error('PAYMENT_METHODS_REQUEST_FAILED')
+
+        const result: unknown = await response.json()
+        if (
+          typeof result !== 'object' ||
+          result === null ||
+          !('methods' in result) ||
+          !Array.isArray(result.methods) ||
+          !result.methods.every(
+            (method) =>
+              method === 'card' ||
+              method === 'gcash' ||
+              method === 'maya' ||
+              method === 'qrph',
+          )
+        ) {
+          throw new Error('INVALID_PAYMENT_METHODS_RESPONSE')
+        }
+
+        const methods = result.methods as PaymentOption[]
+        setAvailablePaymentMethods(methods)
+        setSelectedPaymentMethod(methods[0] ?? null)
+      } catch (requestError) {
+        if (requestError instanceof Error && requestError.name === 'AbortError') {
+          return
+        }
+        setAvailablePaymentMethods([])
+      } finally {
+        if (!controller.signal.aborted) setPaymentMethodsLoading(false)
+      }
+    }
+
+    void loadPaymentMethods()
+    return () => controller.abort()
+  }, [session])
 
   useEffect(() => {
     if (
@@ -394,6 +455,19 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
     }
   }
 
+  function handleSelectedPayment() {
+    if (selectedPaymentMethod === 'card') {
+      void handlePayNow()
+    } else if (
+      selectedPaymentMethod === 'gcash' ||
+      selectedPaymentMethod === 'maya'
+    ) {
+      void handleEwalletPayment(selectedPaymentMethod)
+    } else if (selectedPaymentMethod === 'qrph') {
+      void handleQrPayment()
+    }
+  }
+
   if (error) {
     return <ErrorPanel message={error} title="Invoice unavailable" />
   }
@@ -498,54 +572,77 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                 {checkoutError}
               </p>
             ) : null}
-            <button
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isRedirecting}
-              onClick={() => void handleEwalletPayment('gcash')}
-              type="button"
-            >
-              {redirectProvider === 'gcash' ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  <span>Opening GCash...</span>
-                </>
-              ) : (
-                <span>Pay with GCash</span>
-              )}
-            </button>
-            <p className="mt-3 text-center text-sm text-slate-400">
-              You will be redirected to GCash to authorize the payment.
-            </p>
-            <button
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-sky-500 px-4 py-3 font-semibold text-sky-300 transition hover:bg-sky-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isRedirecting}
-              onClick={() => void handleEwalletPayment('maya')}
-              type="button"
-            >
-              {redirectProvider === 'maya' ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  <span>Opening Maya...</span>
-                </>
-              ) : (
-                <span>Pay with Maya</span>
-              )}
-            </button>
-            <button
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 py-3 font-semibold text-white transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isRedirecting}
-              onClick={() => void handleQrPayment()}
-              type="button"
-            >
-              {redirectProvider === 'qrph' ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  <span>Generating QR Ph...</span>
-                </>
-              ) : (
-                <span>Pay with QR Ph</span>
-              )}
-            </button>
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-white">Choose payment method</h2>
+                <p className="mt-1 text-sm text-slate-400">Available methods for this account</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Amount to pay</p>
+                <p className="mt-1 text-xl font-bold text-white">
+                  {priceFormatter.format(invoice.amount_cents / 100)}
+                </p>
+              </div>
+            </div>
+
+            {paymentMethodsLoading ? (
+              <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-800 p-6 text-sm text-slate-400">
+                <LoadingSpinner size="sm" />
+                Loading payment methods...
+              </div>
+            ) : availablePaymentMethods.length === 0 ? (
+              <p className="rounded-xl border border-amber-800 bg-amber-950/40 p-4 text-sm text-amber-200">
+                No payment methods are currently available. Please try again later.
+              </p>
+            ) : (
+              <fieldset className="grid gap-3 sm:grid-cols-2">
+                <legend className="sr-only">Payment method</legend>
+                {availablePaymentMethods.map((method) => {
+                  const details = paymentMethodDetails[method]
+                  const selected = selectedPaymentMethod === method
+                  return (
+                    <button
+                      aria-pressed={selected}
+                      className={`rounded-xl border p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 ${
+                        selected
+                          ? 'border-sky-400 bg-sky-950/60 ring-1 ring-sky-400'
+                          : 'border-slate-700 bg-slate-950/40 hover:border-slate-600'
+                      }`}
+                      key={method}
+                      onClick={() => setSelectedPaymentMethod(method)}
+                      type="button"
+                    >
+                      <span className="block font-semibold text-white">{details.label}</span>
+                      <span className="mt-1 block text-sm leading-5 text-slate-400">
+                        {details.description}
+                      </span>
+                    </button>
+                  )
+                })}
+              </fieldset>
+            )}
+
+            {selectedPaymentMethod ? (
+              <button
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isRedirecting}
+                onClick={handleSelectedPayment}
+                type="button"
+              >
+                {redirectProvider ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    <span>
+                      {redirectProvider === 'qrph'
+                        ? 'Generating QR Ph...'
+                        : `Opening ${paymentMethodDetails[redirectProvider].label}...`}
+                    </span>
+                  </>
+                ) : (
+                  <span>Continue with {paymentMethodDetails[selectedPaymentMethod].label}</span>
+                )}
+              </button>
+            ) : null}
             {qrPayment ? (
               <div className="mt-4 rounded-xl border border-slate-700 bg-white p-5 text-center text-slate-950">
                 {qrPayment.status === 'expired_canceled_or_failed' ? (
@@ -575,21 +672,6 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                 </button>
               </div>
             ) : null}
-            <button
-              className="mt-4 w-full rounded-lg border border-slate-700 px-4 py-3 font-semibold text-white transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isRedirecting}
-              onClick={() => void handlePayNow()}
-              type="button"
-            >
-              {redirectProvider === 'card' ? (
-                <span className="flex items-center justify-center gap-2">
-                  <LoadingSpinner size="sm" />
-                  Opening secure checkout...
-                </span>
-              ) : (
-                'Pay by card'
-              )}
-            </button>
           </div>
         ) : null}
       </article>
