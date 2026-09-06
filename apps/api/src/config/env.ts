@@ -45,6 +45,26 @@ function readNonNegativeInteger(name: string, fallback: number): number {
   return parsed
 }
 
+function readPayMongoConfig() {
+  const mode = process.env.PAYMONGO_MODE?.trim().toLowerCase() || 'disabled'
+  if (mode !== 'disabled' && mode !== 'test' && mode !== 'live') {
+    throw new Error('PAYMONGO_MODE must be disabled, test, or live')
+  }
+
+  const secretKey = process.env.PAYMONGO_SECRET_KEY?.trim() || null
+  if (mode === 'disabled') return { mode, secretKey: null } as const
+  if (!secretKey) throw new Error('PAYMONGO_SECRET_KEY is required when PayMongo is enabled')
+
+  const expectedPrefix = mode === 'test' ? 'sk_test_' : 'sk_live_'
+  if (!secretKey.startsWith(expectedPrefix)) {
+    throw new Error(`PAYMONGO_SECRET_KEY must use the ${expectedPrefix} prefix in ${mode} mode`)
+  }
+
+  return { mode, secretKey } as const
+}
+
+const payMongoConfig = readPayMongoConfig()
+
 function readIntegerInRange(
   name: string,
   fallback: number,
@@ -73,6 +93,8 @@ export const env = {
   serviceAreaKeywords: readServiceAreas(process.env.SERVICE_AREA_KEYWORDS),
   stripeSecretKey: readRequiredEnv('STRIPE_SECRET_KEY'),
   stripeWebhookSecret: readRequiredEnv('STRIPE_WEBHOOK_SECRET'),
+  payMongoMode: payMongoConfig.mode,
+  payMongoSecretKey: payMongoConfig.secretKey,
   resendApiKey: readRequiredEnv('RESEND_API_KEY'),
   emailFrom: readRequiredEnv('EMAIL_FROM'),
   cronSecret: readRequiredEnv('CRON_SECRET'),
