@@ -33,6 +33,7 @@ import { AdminCoveragePage } from './features/admin/AdminCoveragePage'
 import { AdminPlanChangesPage } from './features/admin/AdminPlanChangesPage'
 import { HomePage } from './features/home/HomePage'
 import { PublicLayout } from './features/home/PublicLayout'
+import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage'
 import { AdminBillingPage } from './features/invoices/AdminBillingPage'
 import { InvoiceDetailsPage } from './features/invoices/InvoiceDetailsPage'
 import { InvoicesPage } from './features/invoices/InvoicesPage'
@@ -65,6 +66,7 @@ export function App() {
         <Route element={<HomePage />} path="/" />
         <Route element={<ServiceAvailabilityPage />} path="/availability" />
         <Route element={<PlansPage />} path="/plans" />
+        <Route element={<PrivacyPolicyPage />} path="/privacy" />
       </Route>
       <Route element={<LightCentredPage><LoginPage /></LightCentredPage>} path="/login" />
       <Route element={<LightCentredPage><SignupForm /></LightCentredPage>} path="/signup" />

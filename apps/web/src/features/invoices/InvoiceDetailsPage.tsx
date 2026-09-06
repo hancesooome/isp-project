@@ -39,11 +39,24 @@ const dateFormatter = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',
 })
 
-const paymentMethodDetails: Record<PaymentOption, { label: string; description: string }> = {
+const paymentMethodDetails: Record<
+  PaymentOption,
+  { label: string; description: string; logoSrc?: string; logoClassName?: string }
+> = {
   gcash: { label: 'GCash', description: 'Continue in GCash to authorize payment' },
   maya: { label: 'Maya', description: 'Continue in Maya to authorize payment' },
-  qrph: { label: 'QR Ph', description: 'Scan using a supported banking or wallet app' },
-  card: { label: 'Credit or debit card', description: 'Secure checkout powered by Stripe' },
+  qrph: {
+    label: 'QR Ph',
+    description: 'Scan using a supported banking or wallet app',
+    logoSrc: '/brands/qr-ph.webp',
+    logoClassName: 'h-7 w-auto',
+  },
+  card: {
+    label: 'Credit or debit card',
+    description: 'Secure checkout powered by Stripe',
+    logoSrc: '/brands/stripe-wordmark-slate.svg',
+    logoClassName: 'h-7 w-auto',
+  },
 }
 
 function isInvoice(value: unknown): value is Invoice {
@@ -572,14 +585,14 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                 {checkoutError}
               </p>
             ) : null}
-            <div className="mb-5 flex items-end justify-between gap-4">
+            <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-white">Choose payment method</h2>
                 <p className="mt-1 text-sm text-slate-400">Available methods for this account</p>
               </div>
-              <div className="text-right">
+              <div className="rounded-lg bg-blue-50 px-4 py-3 sm:text-right">
                 <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Amount to pay</p>
-                <p className="mt-1 text-xl font-bold text-white">
+                <p className="mt-1 text-xl font-bold text-slate-950">
                   {priceFormatter.format(invoice.amount_cents / 100)}
                 </p>
               </div>
@@ -603,17 +616,35 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                   return (
                     <button
                       aria-pressed={selected}
-                      className={`rounded-xl border p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 ${
+                      className={`relative min-h-28 rounded-xl border p-4 pr-12 text-left shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 ${
                         selected
-                          ? 'border-sky-400 bg-sky-950/60 ring-1 ring-sky-400'
-                          : 'border-slate-700 bg-slate-950/40 hover:border-slate-600'
+                          ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                          : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
                       }`}
                       key={method}
                       onClick={() => setSelectedPaymentMethod(method)}
                       type="button"
                     >
-                      <span className="block font-semibold text-white">{details.label}</span>
-                      <span className="mt-1 block text-sm leading-5 text-slate-400">
+                      <span
+                        aria-hidden="true"
+                        className={`absolute right-4 top-4 grid size-5 place-items-center rounded-full border ${
+                          selected
+                            ? 'border-blue-600 bg-blue-600 text-[#ffffff]'
+                            : 'border-slate-300 bg-white'
+                        }`}
+                      >
+                        {selected ? <span className="text-xs leading-none">✓</span> : null}
+                      </span>
+                      {details.logoSrc ? (
+                        <img
+                          alt=""
+                          aria-hidden="true"
+                          className={`mb-3 block max-w-28 object-contain object-left ${details.logoClassName ?? ''}`}
+                          src={details.logoSrc}
+                        />
+                      ) : null}
+                      <span className="block font-semibold text-slate-950">{details.label}</span>
+                      <span className="mt-2 block text-sm leading-5 text-slate-600">
                         {details.description}
                       </span>
                     </button>

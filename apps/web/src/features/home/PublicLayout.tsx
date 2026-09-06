@@ -25,7 +25,10 @@ export function PublicLayout() {
             <p className="mt-4 max-w-sm text-sm leading-6 text-slate-500">Internet service applications and account management in one clear platform.</p>
           </div>
         </div>
-        <p className="mx-auto mt-8 max-w-7xl border-t border-slate-900/10 pt-6 text-sm text-slate-500">&copy; {new Date().getFullYear()} ISP Platform</p>
+        <div className="mx-auto mt-8 flex max-w-7xl flex-wrap items-center justify-between gap-4 border-t border-slate-900/10 pt-6 text-sm text-slate-500">
+          <p>&copy; {new Date().getFullYear()} ISP Platform</p>
+          <Link className={`rounded-md hover:text-slate-950 ${focusClass}`} to="/privacy">Privacy policy</Link>
+        </div>
       </footer>
     </div>
   )
