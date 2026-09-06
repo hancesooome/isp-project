@@ -62,9 +62,32 @@ const sections = [
   {
     title: 'Browser storage and cookies',
     content: (
-      <div className="space-y-3 text-slate-600">
+      <div className="space-y-5 text-slate-600">
         <p>Supabase uses browser storage to maintain your authenticated session. The availability journey uses session storage to carry coverage and selected-plan details between pages in the same browser session.</p>
         <p>The application does not currently include advertising or behavioral-tracking cookies. Hosting, authentication, payment, and map providers may use necessary cookies or receive technical request information when their services are loaded.</p>
+        <dl className="overflow-hidden rounded-xl border border-slate-900/10 bg-white">
+          <StorageCategory
+            description="Authentication and the verified service-availability journey. These are required for the features you request."
+            name="Necessary"
+            status="Active"
+          />
+          <StorageCategory
+            description="No preference storage or integrations are currently installed."
+            name="Preferences"
+            status="Not in use"
+          />
+          <StorageCategory
+            description="No analytics or session-replay integrations are currently installed."
+            name="Analytics"
+            status="Not in use"
+          />
+          <StorageCategory
+            description="No advertising or behavioral-marketing integrations are currently installed."
+            name="Marketing"
+            status="Not in use"
+          />
+        </dl>
+        <p className="text-sm">There are currently no optional categories to accept, reject, or configure, so the platform does not display a consent banner. Controls must be added before any optional integration is enabled.</p>
       </div>
     ),
   },
@@ -140,6 +163,32 @@ function Processor({ name, purpose }: { name: string; purpose: string }) {
     <div className="grid gap-1 bg-white p-4 sm:grid-cols-[12rem_1fr] sm:gap-5">
       <dt className="font-semibold text-slate-900">{name}</dt>
       <dd className="text-slate-600">{purpose}</dd>
+    </div>
+  )
+}
+
+function StorageCategory({
+  description,
+  name,
+  status,
+}: {
+  description: string
+  name: string
+  status: 'Active' | 'Not in use'
+}) {
+  return (
+    <div className="grid gap-2 border-b border-slate-900/10 p-4 last:border-b-0 sm:grid-cols-[9rem_1fr_auto] sm:items-center sm:gap-5">
+      <dt className="font-semibold text-slate-900">{name}</dt>
+      <dd className="text-sm leading-6 text-slate-600">{description}</dd>
+      <dd
+        className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${
+          status === 'Active'
+            ? 'bg-blue-50 text-blue-700'
+            : 'bg-slate-100 text-slate-600'
+        }`}
+      >
+        {status}
+      </dd>
     </div>
   )
 }
