@@ -213,6 +213,53 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
     }
   }, [invoiceId, qrPayment, session])
 
+  useEffect(() => {
+    if (
+      !session ||
+      !payMongoReturnStatus ||
+      payMongoReturnStatus === 'expired_canceled_or_failed' ||
+      invoice?.status === 'paid'
+    ) return
+
+    const controller = new AbortController()
+
+    async function refreshInvoice() {
+      try {
+        const response = await fetch(
+          `/api/invoices/${encodeURIComponent(invoiceId)}`,
+          {
+            headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
+            signal: controller.signal,
+          },
+        )
+        if (!response.ok) return
+
+        const result: unknown = await response.json()
+        if (
+          typeof result !== 'object' ||
+          result === null ||
+          !('invoice' in result) ||
+          !isInvoice(result.invoice)
+        ) return
+
+        setInvoice(result.invoice)
+        if (result.invoice.status === 'paid') {
+          setPayMongoReturnStatus(null)
+        }
+      } catch (requestError) {
+        if (requestError instanceof Error && requestError.name === 'AbortError') {
+          return
+        }
+      }
+    }
+
+    const interval = window.setInterval(() => void refreshInvoice(), 3_000)
+    return () => {
+      controller.abort()
+      window.clearInterval(interval)
+    }
+  }, [invoice?.status, invoiceId, payMongoReturnStatus, session])
+
   async function handlePayNow() {
     if (!session || !invoice || isRedirecting) return
 
