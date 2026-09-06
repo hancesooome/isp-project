@@ -385,6 +385,9 @@ const payMongoPaymentEventSchema = z.object({
           status: z.enum(['paid', 'failed']),
           payment_intent_id: z.string().regex(/^pi_[A-Za-z0-9]+$/),
           paid_at: z.number().int().nonnegative().nullable().optional(),
+          source: z.object({
+            type: z.enum(['gcash', 'paymaya', 'qrph']),
+          }),
         }),
       }),
     }),
@@ -1141,6 +1144,7 @@ app.post(
         p_amount_cents: paymentAttributes.amount,
         p_currency: paymentAttributes.currency,
         p_paid_at: paidAt,
+        p_payment_method: paymentAttributes.source.type,
       },
     )
 
@@ -2660,6 +2664,7 @@ app.post('/invoices/:id/paymongo/payment-intent', async (request, response) => {
         p_provider_reference: paymentIntent.id,
         p_amount_cents: invoice.amount_cents,
         p_currency: invoice.currency,
+        p_payment_method: 'unknown',
       },
     )
 
@@ -2772,6 +2777,7 @@ app.post('/invoices/:id/paymongo/:method', async (request, response) => {
         p_provider_reference: paymentIntent.id,
         p_amount_cents: invoice.amount_cents,
         p_currency: invoice.currency,
+        p_payment_method: providerPaymentMethod,
       },
     )
 

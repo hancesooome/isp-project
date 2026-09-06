@@ -62,3 +62,4 @@ supabase/migrations/202609050008_normalize_php_currency.sql
 supabase/migrations/202609060001_record_pending_paymongo_payment.sql
 supabase/migrations/202609060002_process_paymongo_payment_events.sql
 supabase/migrations/202609060003_harden_payment_webhook_idempotency.sql
+supabase/migrations/202609060004_unify_payment_records.sql
