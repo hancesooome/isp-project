@@ -198,8 +198,8 @@ interface AdminApplicationDetail {
 
 interface AdminSubscription {
   id: string
-  status: 'active' | 'past_due' | 'canceled'
-  started_at: string
+  status: 'pending_activation' | 'active' | 'past_due' | 'canceled'
+  started_at: string | null
   ended_at: string | null
   customer: { id: string; full_name: string | null } | null
   plan: { id: string; name: string } | null
@@ -259,8 +259,8 @@ interface AdminCustomerApplication {
 
 interface AdminCustomerSubscription {
   id: string
-  status: 'active' | 'past_due' | 'canceled'
-  started_at: string
+  status: 'pending_activation' | 'active' | 'past_due' | 'canceled'
+  started_at: string | null
   ended_at: string | null
   plan: {
     name: string
@@ -569,7 +569,7 @@ const adminCoverageSchema = z
 
 const adminSubscriptionsQuerySchema = z
   .object({
-    status: z.enum(['active', 'past_due', 'canceled', 'all']).optional(),
+    status: z.enum(['pending_activation', 'active', 'past_due', 'canceled', 'all']).optional(),
   })
   .strict()
 
@@ -3912,7 +3912,7 @@ app.post('/admin/invoices', async (request, response) => {
     .maybeSingle<{
       id: string
       user_id: string
-      status: 'active' | 'past_due' | 'canceled'
+      status: 'pending_activation' | 'active' | 'past_due' | 'canceled'
     }>()
 
   if (subscriptionError) {
@@ -3928,7 +3928,7 @@ app.post('/admin/invoices', async (request, response) => {
     return
   }
 
-  if (subscription.status === 'canceled') {
+  if (subscription.status === 'canceled' || subscription.status === 'pending_activation') {
     response.status(409).json({ error: 'Subscription is not current' })
     return
   }
@@ -4309,7 +4309,7 @@ app.patch('/admin/subscriptions/:id/status', async (request, response) => {
     return
   }
 
-  type SubscriptionStatus = 'active' | 'past_due' | 'canceled'
+  type SubscriptionStatus = 'pending_activation' | 'active' | 'past_due' | 'canceled'
   const { data: existingSubscription, error: lookupError } = await supabase
     .from('subscriptions')
     .select('id, status, started_at, ended_at, updated_at')
@@ -4317,7 +4317,7 @@ app.patch('/admin/subscriptions/:id/status', async (request, response) => {
     .maybeSingle<{
       id: string
       status: SubscriptionStatus
-      started_at: string
+      started_at: string | null
       ended_at: string | null
       updated_at: string
     }>()
@@ -4343,6 +4343,7 @@ app.patch('/admin/subscriptions/:id/status', async (request, response) => {
   }
 
   const allowedTransitions: Record<SubscriptionStatus, SubscriptionStatus[]> = {
+    pending_activation: [],
     active: ['past_due', 'canceled'],
     past_due: ['active', 'canceled'],
     canceled: [],
@@ -4369,7 +4370,7 @@ app.patch('/admin/subscriptions/:id/status', async (request, response) => {
     .maybeSingle<{
       id: string
       status: SubscriptionStatus
-      started_at: string
+      started_at: string | null
       ended_at: string | null
       updated_at: string
     }>()

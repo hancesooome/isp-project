@@ -25,8 +25,8 @@ interface CustomerApplication {
 
 interface CustomerSubscription {
   id: string
-  status: 'active' | 'past_due' | 'canceled'
-  started_at: string
+  status: 'pending_activation' | 'active' | 'past_due' | 'canceled'
+  started_at: string | null
   ended_at: string | null
   plan: {
     name: string
@@ -105,10 +105,11 @@ function isSubscription(value: unknown): value is CustomerSubscription {
 
   return (
     typeof subscription.id === 'string' &&
-    (subscription.status === 'active' ||
+    (subscription.status === 'pending_activation' ||
+      subscription.status === 'active' ||
       subscription.status === 'past_due' ||
       subscription.status === 'canceled') &&
-    typeof subscription.started_at === 'string' &&
+    isNullableString(subscription.started_at) &&
     isNullableString(subscription.ended_at) &&
     (plan === null ||
       (typeof plan === 'object' &&
@@ -343,7 +344,7 @@ export function AdminCustomerDetailsPage({ customerId }: { customerId: string })
                     <div>
                       <p className="font-semibold text-white">{subscription.plan?.name ?? 'Plan unavailable'}</p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Started {dateFormatter.format(new Date(subscription.started_at))}
+                        {subscription.started_at ? `Started ${dateFormatter.format(new Date(subscription.started_at))}` : 'Awaiting activation'}
                         {subscription.plan ? ` · ${currencyFormatter.format(subscription.plan.price_cents / 100)} ${subscription.plan.billing_interval}` : ''}
                       </p>
                     </div>

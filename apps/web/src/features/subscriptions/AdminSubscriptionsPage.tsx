@@ -8,13 +8,13 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { moneyFormatter as currencyFormatter } from '../../lib/money'
 import { useAuth } from '../auth/auth-context'
 
-type SubscriptionStatus = 'active' | 'past_due' | 'canceled'
+type SubscriptionStatus = 'pending_activation' | 'active' | 'past_due' | 'canceled'
 type StatusFilter = SubscriptionStatus | 'all'
 
 interface AdminSubscription {
   id: string
   status: SubscriptionStatus
-  started_at: string
+  started_at: string | null
   ended_at: string | null
   customer: { id: string; full_name: string | null } | null
   plan: { id: string; name: string } | null
@@ -58,7 +58,7 @@ interface AdminSubscriptionDetail extends AdminSubscription {
 interface StatusUpdate {
   id: string
   status: SubscriptionStatus
-  started_at: string
+  started_at: string | null
   ended_at: string | null
   updated_at: string
 }
@@ -68,6 +68,7 @@ const statusActions: Record<
   SubscriptionStatus,
   Array<{ label: string; status: SubscriptionStatus }>
 > = {
+  pending_activation: [],
   active: [
     { label: 'Mark past due', status: 'past_due' },
     { label: 'Cancel subscription', status: 'canceled' },
@@ -84,7 +85,7 @@ function isNullableString(value: unknown): value is string | null {
 }
 
 function isStatus(value: unknown): value is SubscriptionStatus {
-  return value === 'active' || value === 'past_due' || value === 'canceled'
+  return value === 'pending_activation' || value === 'active' || value === 'past_due' || value === 'canceled'
 }
 
 function isSubscription(value: unknown): value is AdminSubscription {
@@ -97,7 +98,7 @@ function isSubscription(value: unknown): value is AdminSubscription {
   return (
     typeof subscription.id === 'string' &&
     isStatus(subscription.status) &&
-    typeof subscription.started_at === 'string' &&
+    isNullableString(subscription.started_at) &&
     isNullableString(subscription.ended_at) &&
     (customer === null ||
       (typeof customer === 'object' &&
@@ -178,7 +179,7 @@ function isStatusUpdate(value: unknown): value is StatusUpdate {
   return (
     typeof subscription.id === 'string' &&
     isStatus(subscription.status) &&
-    typeof subscription.started_at === 'string' &&
+    isNullableString(subscription.started_at) &&
     isNullableString(subscription.ended_at) &&
     typeof subscription.updated_at === 'string'
   )
@@ -243,7 +244,7 @@ export function AdminSubscriptionsPage() {
             setError(null)
             setFilter(event.target.value as StatusFilter)
           }} value={filter}>
-            <option value="all">All</option><option value="active">Active</option><option value="past_due">Past due</option><option value="canceled">Canceled</option>
+            <option value="all">All</option><option value="pending_activation">Pending activation</option><option value="active">Active</option><option value="past_due">Past due</option><option value="canceled">Canceled</option>
           </select>
         </label>
       </header>
@@ -265,7 +266,7 @@ export function AdminSubscriptionsPage() {
                 <li className="grid gap-3 px-5 py-4 md:grid-cols-[1.3fr_1fr_0.8fr_0.8fr_auto] md:items-center" key={subscription.id}>
                   <p className="font-semibold text-white">{subscription.customer?.full_name ?? 'Name unavailable'}</p>
                   <p className="text-sm text-slate-300">{subscription.plan?.name ?? 'Plan unavailable'}</p>
-                  <p className="text-sm text-slate-400">{dateFormatter.format(new Date(subscription.started_at))}</p>
+                  <p className="text-sm text-slate-400">{subscription.started_at ? dateFormatter.format(new Date(subscription.started_at)) : 'Not activated'}</p>
                   <div><StatusBadge status={subscription.status} /></div>
                   <Link className="text-sm font-semibold text-blue-300 hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" to={`/admin/subscriptions/${encodeURIComponent(subscription.id)}`}>View details →</Link>
                 </li>
@@ -372,7 +373,7 @@ export function AdminSubscriptionDetailsPage({ subscriptionId }: { subscriptionI
           <Detail label="Plan" value={subscription.plan?.name} />
           <Detail label="Speed" value={subscription.plan?.speed_mbps ? `${subscription.plan.speed_mbps.toLocaleString()} Mbps` : null} />
           <Detail label="Plan price" value={subscription.plan ? `${currencyFormatter.format(subscription.plan.price_cents / 100)} per ${subscription.plan.billing_interval === 'monthly' ? 'month' : 'year'}` : null} />
-          <Detail label="Started" value={dateFormatter.format(new Date(subscription.started_at))} />
+          <Detail label="Started" value={subscription.started_at ? dateFormatter.format(new Date(subscription.started_at)) : 'Not activated'} />
           <Detail label="Ended" value={subscription.ended_at ? dateFormatter.format(new Date(subscription.ended_at)) : null} />
           <Detail label="Installation address" value={subscription.customer?.customer_profile?.installation_address ?? subscription.application?.installation_address} />
         </InfoCard>
@@ -390,7 +391,7 @@ export function AdminSubscriptionDetailsPage({ subscriptionId }: { subscriptionI
       <section className="mt-5 rounded-[12px] border border-white/8 bg-[#11161f] p-5" aria-labelledby="status-actions-heading">
         <h2 className="text-sm font-semibold text-white" id="status-actions-heading">Status actions</h2>
         {statusActions[subscription.status].length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">Canceled subscriptions are retained as history and cannot be reactivated.</p>
+          <p className="mt-3 text-sm text-slate-500">{subscription.status === 'pending_activation' ? 'Activation is handled by the installation workflow.' : 'Canceled subscriptions are retained as history and cannot be reactivated.'}</p>
         ) : (
           <div className="mt-4 flex flex-wrap gap-2">
             {statusActions[subscription.status].map((action) => (

@@ -167,7 +167,12 @@ export async function renderStatementOfAccountPdf(
     wrappedLine('Plan', statement.subscription.plan.name)
     wrappedLine('Billing interval', statement.subscription.plan.billing_interval)
     wrappedLine('Status', statement.subscription.status.toUpperCase())
-    wrappedLine('Started', formatTimestamp(statement.subscription.started_at))
+    wrappedLine(
+      'Started',
+      statement.subscription.started_at
+        ? formatTimestamp(statement.subscription.started_at)
+        : 'Awaiting activation',
+    )
   } else {
     line('No subscription on record.', { color: muted })
   }
