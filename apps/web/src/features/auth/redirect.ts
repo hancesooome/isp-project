@@ -8,6 +8,7 @@ const allowedAuthenticatedPaths = new Set([
   '/admin',
   '/admin/applications',
   '/admin/billing',
+  '/technician',
   '/apply',
 ])
 

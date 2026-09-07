@@ -95,7 +95,7 @@ interface FaqArticle {
   updated_at: string
 }
 
-type UserRole = 'customer' | 'admin'
+type UserRole = 'customer' | 'admin' | 'technician'
 
 interface AuthorizationResult {
   status: 200 | 401 | 403 | 500
@@ -3127,6 +3127,64 @@ app.get(
     }
   },
 )
+
+app.get('/technician/access', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'technician')
+
+  if (auth.status !== 200) {
+    const message = auth.status === 403
+      ? 'Technician access required'
+      : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to verify technician access' : message,
+    })
+    return
+  }
+
+  response.status(200).json({ role: 'technician' })
+})
+
+app.get('/technician/installations', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'technician')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message = auth.status === 403
+      ? 'Technician access required'
+      : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to load work queue' : message,
+    })
+    return
+  }
+
+  const { data: installations, error } = await supabase
+    .from('installation_orders')
+    .select(`
+      id,
+      subscription_id,
+      status,
+      service_address,
+      service_latitude,
+      service_longitude,
+      scheduled_start_at,
+      scheduled_end_at,
+      schedule_timezone,
+      internal_notes,
+      updated_at,
+      customer:profiles!installation_orders_customer_id_fkey(full_name),
+      plan:plans!installation_orders_plan_id_fkey(name)
+    `)
+    .eq('technician_id', auth.userId)
+    .order('scheduled_start_at', { ascending: true, nullsFirst: false })
+
+  if (error) {
+    console.error('Failed to load technician work queue', { code: error.code })
+    response.status(500).json({ error: 'Unable to load work queue' })
+    return
+  }
+
+  response.status(200).json({ installations })
+})
 
 app.get('/admin/access', async (request, response) => {
   const auth = await authorizeRole(request.header('authorization'), 'admin')

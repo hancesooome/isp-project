@@ -15,6 +15,7 @@ import { InstallationAppointmentPage } from './features/applications/Installatio
 import { ServiceApplicationForm } from './features/applications/ServiceApplicationForm'
 import { ServiceAvailabilityPage } from './features/availability/ServiceAvailabilityPage'
 import { AdminRoute } from './features/auth/AdminRoute'
+import { TechnicianRoute } from './features/auth/TechnicianRoute'
 import { LoginForm } from './features/auth/LoginForm'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import { SignupForm } from './features/auth/SignupForm'
@@ -32,6 +33,7 @@ import { AdminOverviewPage } from './features/admin/AdminOverviewPage'
 import { AdminReportsPage } from './features/admin/AdminReportsPage'
 import { AdminCoveragePage } from './features/admin/AdminCoveragePage'
 import { AdminPlanChangesPage } from './features/admin/AdminPlanChangesPage'
+import { TechnicianWorkQueuePage } from './features/installations/TechnicianWorkQueuePage'
 import { AdminInstallationsPage } from './features/admin/AdminInstallationsPage'
 import { HomePage } from './features/home/HomePage'
 import { PublicLayout } from './features/home/PublicLayout'
@@ -131,6 +133,7 @@ export function App() {
         <Route path="support" element={<AdminSupportTicketsPage />} />
         <Route path="support/:id" element={<AdminSupportTicketDetailsRoute />} />
       </Route>
+      <Route element={<ProtectedRoute><TechnicianRoute><TechnicianWorkQueuePage /></TechnicianRoute></ProtectedRoute>} path="/technician" />
       <Route element={<CentredPage><NotFoundPage /></CentredPage>} path="*" />
     </Routes>
   )
