@@ -67,3 +67,4 @@ PRIVACY_STORAGE_AUDIT.md
 supabase/migrations/202609060005_create_faq_articles.sql
 supabase/migrations/202609070001_create_installation_orders.sql
 supabase/migrations/202609070002_create_installation_order_on_approval.sql
+supabase/migrations/202609070003_add_installation_scheduling.sql

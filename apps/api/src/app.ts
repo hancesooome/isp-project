@@ -372,6 +372,7 @@ const applicationIdSchema = z.string().uuid()
 const coverageAreaIdSchema = z.string().uuid()
 const customerIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
+const installationOrderIdSchema = z.string().uuid()
 const payMongoPaymentIntentIdSchema = z.string().regex(/^pi_[A-Za-z0-9]+$/)
 const payMongoMethodSchema = z.enum(['gcash', 'maya', 'qrph'])
 const payMongoEventEnvelopeSchema = z.object({
@@ -578,6 +579,20 @@ const adminSubscriptionStatusSchema = z
     status: z.enum(['active', 'past_due', 'canceled']),
   })
   .strict()
+
+const installationScheduleSchema = z
+  .object({
+    scheduled_start_at: z.iso.datetime({ offset: true }),
+    scheduled_end_at: z.iso.datetime({ offset: true }),
+    reschedule_reason: z.string().trim().min(3).max(500).nullable().optional(),
+  })
+  .strict()
+  .refine(
+    (schedule) =>
+      new Date(schedule.scheduled_end_at).getTime() >
+      new Date(schedule.scheduled_start_at).getTime(),
+    { path: ['scheduled_end_at'] },
+  )
 
 const adminPlanSelect =
   'id, name, slug, description, speed_mbps, price_cents, billing_interval, is_active, created_at, updated_at'
@@ -3266,6 +3281,90 @@ app.patch('/admin/coverage/:id', async (request, response) => {
   })
 
   response.status(200).json({ coverage_area_id: coverageAreaId })
+})
+
+app.patch('/admin/installations/:id/schedule', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to schedule installation' : message,
+    })
+    return
+  }
+
+  const idResult = installationOrderIdSchema.safeParse(request.params.id)
+  const scheduleResult = installationScheduleSchema.safeParse(request.body)
+
+  if (!idResult.success || !scheduleResult.success) {
+    response.status(400).json({ error: 'Enter a valid installation schedule' })
+    return
+  }
+
+  const schedule = scheduleResult.data
+  const { data: installation, error } = await supabase
+    .rpc('schedule_installation_order', {
+      p_installation_order_id: idResult.data,
+      p_scheduler_id: auth.userId,
+      p_scheduled_start_at: schedule.scheduled_start_at,
+      p_scheduled_end_at: schedule.scheduled_end_at,
+      p_reschedule_reason: schedule.reschedule_reason ?? null,
+    })
+    .single<{
+      id: string
+      status: 'scheduled'
+      scheduled_start_at: string
+      scheduled_end_at: string
+      schedule_timezone: 'Asia/Manila'
+      technician_id: string | null
+      reschedule_count: number
+      last_rescheduled_at: string | null
+      reschedule_reason: string | null
+      updated_at: string
+      schedule_changed: boolean
+      was_rescheduled: boolean
+    }>()
+
+  if (error) {
+    if (error.code === 'P0002') {
+      response.status(404).json({ error: 'Installation order not found' })
+      return
+    }
+
+    if (error.code === 'P0001') {
+      response.status(409).json({
+        error: 'Installation cannot be scheduled with these details',
+      })
+      return
+    }
+
+    console.error('Failed to schedule installation', { code: error.code })
+    response.status(500).json({ error: 'Unable to schedule installation' })
+    return
+  }
+
+  if (installation.schedule_changed) {
+    await recordAuditEvent({
+      actorType: 'admin',
+      actorId: auth.userId,
+      action: installation.was_rescheduled
+        ? 'installation.rescheduled'
+        : 'installation.scheduled',
+      targetType: 'installation_order',
+      targetId: installation.id,
+      source: 'api',
+      metadata: {
+        scheduled_start_at: installation.scheduled_start_at,
+        scheduled_end_at: installation.scheduled_end_at,
+        schedule_timezone: installation.schedule_timezone,
+        reschedule_count: installation.reschedule_count,
+      },
+    })
+  }
+
+  response.status(200).json({ installation })
 })
 
 app.get('/admin/reports/overview', async (request, response) => {
