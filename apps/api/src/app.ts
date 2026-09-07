@@ -1825,6 +1825,44 @@ app.get('/applications/current', async (request, response) => {
   response.status(200).json({ application })
 })
 
+app.get('/installation', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message =
+      auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to load installation' : message,
+    })
+    return
+  }
+
+  const { data: installation, error } = await supabase
+    .from('installation_orders')
+    .select(`
+      id,
+      status,
+      service_address,
+      scheduled_start_at,
+      scheduled_end_at,
+      schedule_timezone,
+      created_at,
+      plan:plans!installation_orders_plan_id_fkey(id, name)
+    `)
+    .eq('customer_id', auth.userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Failed to load customer installation', { code: error.code })
+    response.status(500).json({ error: 'Unable to load installation' })
+    return
+  }
+
+  response.status(200).json({ installation })
+})
+
 app.post('/support-tickets', async (request, response) => {
   const auth = await authorizeRole(
     request.header('authorization'),

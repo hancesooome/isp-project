@@ -7,6 +7,7 @@ import { useAuth } from '../auth/auth-context'
 const navItems = [
   { label: 'Overview', shortLabel: 'Overview', to: '/account', end: true, icon: 'overview' },
   { label: 'Application Status', shortLabel: 'Application', to: '/account/application', end: false, icon: 'application' },
+  { label: 'Installation', shortLabel: 'Install', to: '/account/installation', end: false, icon: 'installation' },
   { label: 'Invoices', shortLabel: 'Invoices', to: '/account/invoices', end: false, icon: 'invoices' },
   { label: 'Statements', shortLabel: 'Statements', to: '/account/statements', end: false, icon: 'statements' },
   { label: 'Support', shortLabel: 'Support', to: '/account/support', end: false, icon: 'support' },
@@ -96,7 +97,7 @@ export function CustomerLayout() {
 
         <nav
           aria-label="Customer portal mobile navigation"
-          className="fixed inset-x-3 bottom-3 z-20 grid grid-cols-5 rounded-[16px] border border-slate-900/10 bg-[rgba(255,255,255,0.92)] p-1.5 shadow-2xl backdrop-blur-xl md:hidden"
+          className="fixed inset-x-3 bottom-3 z-20 grid auto-cols-[4.75rem] grid-flow-col overflow-x-auto rounded-[16px] border border-slate-900/10 bg-[rgba(255,255,255,0.92)] p-1.5 shadow-2xl backdrop-blur-xl md:hidden"
         >
           {mobileNavItems.map((item) => (
             <NavLink
@@ -227,6 +228,7 @@ function NavIcon({ active, name }: { active: boolean; name: string }) {
   const paths: Record<string, ReactNode> = {
     overview: <><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></>,
     application: <><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v5h5M10 13h5M10 17h5" /></>,
+    installation: <><path d="M12 2v4M5.6 4.6l2.8 2.8M18.4 4.6l-2.8 2.8" /><path d="M5 13a7 7 0 0114 0v3H5zM3 20h18" /></>,
     invoices: <><rect height="15" rx="2" width="18" x="3" y="5" /><path d="M3 10h18M7 15h3" /></>,
     statements: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
     support: <><path d="M21 12a8 8 0 01-8 8H8l-5 2 2-5a8 8 0 1116-5z" /><path d="M9.5 9a2.5 2.5 0 014.8.9c0 1.8-2.3 2-2.3 3.6M12 17h.01" /></>,

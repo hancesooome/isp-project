@@ -11,6 +11,7 @@ import {
 import { AdminApplicationReviewPage } from './features/applications/AdminApplicationReviewPage'
 import { AdminApplicationsPage } from './features/applications/AdminApplicationsPage'
 import { ApplicationStatusPage } from './features/applications/ApplicationStatusPage'
+import { InstallationAppointmentPage } from './features/applications/InstallationAppointmentPage'
 import { ServiceApplicationForm } from './features/applications/ServiceApplicationForm'
 import { ServiceAvailabilityPage } from './features/availability/ServiceAvailabilityPage'
 import { AdminRoute } from './features/auth/AdminRoute'
@@ -95,6 +96,7 @@ export function App() {
         <Route path="change-plan" element={<ChangePlanPage />} />
         <Route path="plan-changes" element={<PlanChangeHistoryPage />} />
         <Route path="application" element={<ApplicationStatusPage />} />
+        <Route path="installation" element={<InstallationAppointmentPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="invoices/:id" element={<InvoiceDetailsRoute />} />
         <Route path="statements" element={<StatementsPage />} />
