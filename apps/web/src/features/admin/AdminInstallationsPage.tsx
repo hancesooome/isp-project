@@ -34,6 +34,14 @@ interface InstallationOrder {
   technician: { id: string; full_name: string | null } | null
 }
 
+interface AvailableTechnician {
+  profile_id: string
+  technician_code: string
+  availability_status: 'available'
+  profile: { full_name: string | null } | null
+  coverage_area: { name: string } | null
+}
+
 type InstallationFilter =
   | 'all'
   | 'pending'
@@ -72,6 +80,14 @@ function isInstallationOrder(value: unknown): value is InstallationOrder {
   )
 }
 
+function isAvailableTechnician(value: unknown): value is AvailableTechnician {
+  if (!value || typeof value !== 'object') return false
+  const technician = value as Record<string, unknown>
+  return typeof technician.profile_id === 'string' &&
+    typeof technician.technician_code === 'string' &&
+    technician.availability_status === 'available'
+}
+
 function matchesFilter(status: InstallationStatus, filter: InstallationFilter) {
   if (filter === 'all') return true
   if (filter === 'pending') return status === 'pending_scheduling'
@@ -87,6 +103,8 @@ export function AdminInstallationsPage() {
   const [filter, setFilter] = useState<InstallationFilter>('all')
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [assigningId, setAssigningId] = useState<string | null>(null)
+  const [technicians, setTechnicians] = useState<AvailableTechnician[]>([])
 
   useEffect(() => {
     if (!session) return
@@ -115,6 +133,28 @@ export function AdminInstallationsPage() {
     return () => controller.abort()
   }, [session])
 
+  useEffect(() => {
+    if (!session) return
+    const controller = new AbortController()
+    async function loadTechnicians() {
+      try {
+        const response = await fetch('/api/admin/technicians/available', {
+          headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error('TECHNICIANS_REQUEST_FAILED')
+        const result: unknown = await response.json()
+        if (!result || typeof result !== 'object' || !('technicians' in result) ||
+          !Array.isArray(result.technicians) || !result.technicians.every(isAvailableTechnician)) return
+        setTechnicians(result.technicians)
+      } catch (requestError) {
+        if (!(requestError instanceof Error && requestError.name === 'AbortError')) setTechnicians([])
+      }
+    }
+    void loadTechnicians()
+    return () => controller.abort()
+  }, [session])
+
   const visibleInstallations = useMemo(() => {
     const query = search.trim().toLowerCase()
     return installations?.filter((order) => matchesFilter(order.status, filter) && (
@@ -130,6 +170,7 @@ export function AdminInstallationsPage() {
       order.id === updated.id ? { ...order, ...updated } : order,
     ) ?? null)
     setEditingId(null)
+    setAssigningId(null)
   }
 
   return (
@@ -157,7 +198,7 @@ export function AdminInstallationsPage() {
                 <div className="mt-5 overflow-hidden rounded-[14px] border border-white/10 bg-[rgba(14,18,26,0.78)] shadow-[0_14px_38px_rgba(0,0,0,0.16)]">
                   {visibleInstallations.length === 0 ? <p className="px-5 py-14 text-center text-sm text-slate-400">No installations match this filter.</p>
                     : <div className="divide-y divide-white/8">{visibleInstallations.map((order) => (
-                      <InstallationRow editing={editingId === order.id} key={order.id} onCancel={() => setEditingId(null)} onEdit={() => setEditingId(order.id)} onUpdated={updateInstallation} order={order} token={session?.access_token ?? ''} />
+                      <InstallationRow assigning={assigningId === order.id} editing={editingId === order.id} key={order.id} onAssign={() => { setEditingId(null); setAssigningId(order.id) }} onCancel={() => { setEditingId(null); setAssigningId(null) }} onEdit={() => { setAssigningId(null); setEditingId(order.id) }} onUpdated={updateInstallation} order={order} technicians={technicians} token={session?.access_token ?? ''} />
                     ))}</div>}
                 </div>
               </>}
@@ -175,7 +216,7 @@ function FilterBar({ filter, installations, onChange }: { filter: InstallationFi
   </div>
 }
 
-function InstallationRow({ editing, onCancel, onEdit, onUpdated, order, token }: { editing: boolean; onCancel: () => void; onEdit: () => void; onUpdated: (order: InstallationOrder) => void; order: InstallationOrder; token: string }) {
+function InstallationRow({ assigning, editing, onAssign, onCancel, onEdit, onUpdated, order, technicians, token }: { assigning: boolean; editing: boolean; onAssign: () => void; onCancel: () => void; onEdit: () => void; onUpdated: (order: InstallationOrder) => void; order: InstallationOrder; technicians: AvailableTechnician[]; token: string }) {
   const canSchedule = !['in_progress', 'completed', 'cancelled'].includes(order.status)
   const coordinates = order.service_latitude !== null && order.service_longitude !== null
     ? `${order.service_latitude.toFixed(5)}, ${order.service_longitude.toFixed(5)}` : null
@@ -184,10 +225,52 @@ function InstallationRow({ editing, onCancel, onEdit, onUpdated, order, token }:
       <div><p className="text-xs text-slate-500">#{order.id.slice(0, 8).toUpperCase()}</p><h2 className="mt-1 font-semibold text-white">{order.customer?.full_name ?? 'Customer unavailable'}</h2><p className="mt-1 text-sm text-slate-300">{order.plan?.name ?? 'Plan unavailable'}</p></div>
       <div><p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">Service address</p><p className="mt-1 text-sm leading-6 text-slate-200">{order.service_address}</p>{coordinates ? <a className="mt-1 inline-block text-xs font-medium text-blue-300 hover:text-blue-200" href={`https://www.openstreetmap.org/?mlat=${order.service_latitude}&mlon=${order.service_longitude}#map=17/${order.service_latitude}/${order.service_longitude}`} rel="noreferrer" target="_blank">{coordinates} · View map ↗</a> : <p className="mt-1 text-xs text-slate-500">No map pin recorded</p>}</div>
       <div><StatusBadge status={order.status} /><p className="mt-3 text-sm font-medium text-slate-200">{formatSchedule(order)}</p><p className="mt-1 text-xs text-slate-500">Technician: {order.technician?.full_name ?? (order.technician_id ? 'Assigned' : 'Unassigned')}</p>{order.reschedule_count > 0 ? <p className="mt-1 text-xs text-amber-300">Rescheduled {order.reschedule_count} time{order.reschedule_count === 1 ? '' : 's'}</p> : null}</div>
-      {canSchedule ? <button className="min-h-10 rounded-[9px] border border-blue-400/30 px-4 text-sm font-semibold text-blue-300 hover:bg-blue-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" onClick={onEdit} type="button">{order.scheduled_start_at ? 'Reschedule' : 'Schedule'}</button> : null}
+      <div className="flex flex-col gap-2">{canSchedule ? <button className="min-h-10 rounded-[9px] border border-blue-400/30 px-4 text-sm font-semibold text-blue-300 hover:bg-blue-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" onClick={onEdit} type="button">{order.scheduled_start_at ? 'Reschedule' : 'Schedule'}</button> : null}{(order.status === 'scheduled' || order.status === 'assigned') ? <button className="min-h-10 rounded-[9px] border border-white/12 px-4 text-sm font-semibold text-slate-200 hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" onClick={onAssign} type="button">{order.technician_id ? 'Reassign' : 'Assign technician'}</button> : null}</div>
     </div>
     {editing ? <ScheduleForm onCancel={onCancel} onUpdated={onUpdated} order={order} token={token} /> : null}
+    {assigning ? <AssignmentForm onCancel={onCancel} onUpdated={onUpdated} order={order} technicians={technicians} token={token} /> : null}
   </article>
+}
+
+function AssignmentForm({ onCancel, onUpdated, order, technicians, token }: { onCancel: () => void; onUpdated: (order: InstallationOrder) => void; order: InstallationOrder; technicians: AvailableTechnician[]; token: string }) {
+  const [technicianId, setTechnicianId] = useState(order.technician_id ?? '')
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const isReassignment = order.technician_id !== null && technicianId !== order.technician_id
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/admin/installations/${encodeURIComponent(order.id)}/technician`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          technician_id: technicianId,
+          assignment_reason: isReassignment ? reason : null,
+        }),
+      })
+      const result: unknown = await response.json()
+      if (!response.ok || !result || typeof result !== 'object' || !('installation' in result)) {
+        throw new Error('ASSIGNMENT_FAILED')
+      }
+      const assignment = result.installation as { status: InstallationStatus; technician_id: string }
+      const selected = technicians.find((technician) => technician.profile_id === assignment.technician_id)
+      onUpdated({
+        ...order,
+        status: assignment.status,
+        technician_id: assignment.technician_id,
+        technician: selected ? { id: selected.profile_id, full_name: selected.profile?.full_name ?? null } : null,
+      })
+    } catch {
+      setError('This technician could not be assigned. They may have a conflicting appointment or be unavailable.')
+      setSaving(false)
+    }
+  }
+
+  return <form className="mt-5 border-t border-white/8 pt-5" onSubmit={(event) => void submit(event)}><div className="grid gap-4 md:grid-cols-[1fr_1.4fr_auto] md:items-end"><Field label="Available technician"><select className={scheduleInputClass} onChange={(event) => setTechnicianId(event.target.value)} required value={technicianId}><option value="">Select technician</option>{technicians.map((technician) => <option key={technician.profile_id} value={technician.profile_id}>{technician.profile?.full_name ?? 'Unnamed technician'} · {technician.technician_code}{technician.coverage_area?.name ? ` · ${technician.coverage_area.name}` : ''}</option>)}</select></Field>{order.technician_id ? <Field label="Reason for reassignment"><input className={scheduleInputClass} disabled={!isReassignment} minLength={3} onChange={(event) => setReason(event.target.value)} required={isReassignment} value={reason} /></Field> : <p className="text-xs leading-5 text-slate-500">Only active and currently available technicians are listed. Conflicting appointment windows are rejected.</p>}<div className="flex gap-2"><button className="min-h-11 rounded-[9px] bg-blue-500 px-4 text-sm font-semibold text-white disabled:opacity-60" disabled={saving || technicians.length === 0} type="submit">{saving ? 'Assigning…' : 'Assign'}</button><button className="min-h-11 rounded-[9px] border border-white/10 px-4 text-sm text-slate-300" disabled={saving} onClick={onCancel} type="button">Cancel</button></div></div>{technicians.length === 0 ? <p className="mt-3 text-sm text-amber-300">No active, available technicians found.</p> : null}{error ? <p className="mt-3 text-sm text-red-300" role="alert">{error}</p> : null}</form>
 }
 
 function ScheduleForm({ onCancel, onUpdated, order, token }: { onCancel: () => void; onUpdated: (order: InstallationOrder) => void; order: InstallationOrder; token: string }) {

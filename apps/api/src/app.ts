@@ -594,6 +594,13 @@ const installationScheduleSchema = z
     { path: ['scheduled_end_at'] },
   )
 
+const technicianAssignmentSchema = z
+  .object({
+    technician_id: z.string().uuid(),
+    assignment_reason: z.string().trim().min(3).max(500).nullable().optional(),
+  })
+  .strict()
+
 const adminPlanSelect =
   'id, name, slug, description, speed_mbps, price_cents, billing_interval, is_active, created_at, updated_at'
 const faqArticleSelect =
@@ -3321,6 +3328,40 @@ app.patch('/admin/coverage/:id', async (request, response) => {
   response.status(200).json({ coverage_area_id: coverageAreaId })
 })
 
+app.get('/admin/technicians/available', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to load technicians' : message,
+    })
+    return
+  }
+
+  const { data: technicians, error } = await supabase
+    .from('technician_profiles')
+    .select(`
+      profile_id,
+      technician_code,
+      availability_status,
+      profile:profiles!technician_profiles_profile_id_fkey(full_name),
+      coverage_area:coverage_areas!technician_profiles_primary_coverage_area_id_fkey(name)
+    `)
+    .eq('is_active', true)
+    .eq('availability_status', 'available')
+    .order('technician_code')
+
+  if (error) {
+    console.error('Failed to load available technicians', { code: error.code })
+    response.status(500).json({ error: 'Unable to load technicians' })
+    return
+  }
+
+  response.status(200).json({ technicians })
+})
+
 app.get('/admin/installations', async (request, response) => {
   const auth = await authorizeRole(request.header('authorization'), 'admin')
 
@@ -3442,6 +3483,77 @@ app.patch('/admin/installations/:id/schedule', async (request, response) => {
         schedule_timezone: installation.schedule_timezone,
         reschedule_count: installation.reschedule_count,
       },
+    })
+  }
+
+  response.status(200).json({ installation })
+})
+
+app.patch('/admin/installations/:id/technician', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to assign technician' : message,
+    })
+    return
+  }
+
+  const idResult = installationOrderIdSchema.safeParse(request.params.id)
+  const assignmentResult = technicianAssignmentSchema.safeParse(request.body)
+  if (!idResult.success || !assignmentResult.success) {
+    response.status(400).json({ error: 'Enter a valid technician assignment' })
+    return
+  }
+
+  const assignment = assignmentResult.data
+  const { data: installation, error } = await supabase
+    .rpc('assign_installation_technician', {
+      p_installation_order_id: idResult.data,
+      p_technician_id: assignment.technician_id,
+      p_assigner_id: auth.userId,
+      p_assignment_reason: assignment.assignment_reason ?? null,
+    })
+    .single<{
+      id: string
+      status: 'assigned'
+      technician_id: string
+      technician_name: string | null
+      assignment_changed: boolean
+      was_reassigned: boolean
+      updated_at: string
+    }>()
+
+  if (error) {
+    if (error.code === 'P0002') {
+      response.status(404).json({ error: 'Installation order not found' })
+      return
+    }
+    if (error.code === 'P0001' || error.code === '23514' || error.code === '23P01') {
+      response.status(409).json({
+        error: 'Technician is unavailable, conflicted, or this installation cannot be assigned',
+      })
+      return
+    }
+
+    console.error('Failed to assign installation technician', { code: error.code })
+    response.status(500).json({ error: 'Unable to assign technician' })
+    return
+  }
+
+  if (installation.assignment_changed) {
+    await recordAuditEvent({
+      actorType: 'admin',
+      actorId: auth.userId,
+      action: installation.was_reassigned
+        ? 'installation.technician_reassigned'
+        : 'installation.technician_assigned',
+      targetType: 'installation_order',
+      targetId: installation.id,
+      source: 'api',
+      metadata: { technician_id: installation.technician_id },
     })
   }
 
