@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/auth-context'
@@ -10,7 +10,10 @@ const navItems = [
   { label: 'Invoices', shortLabel: 'Invoices', to: '/account/invoices', end: false, icon: 'invoices' },
   { label: 'Statements', shortLabel: 'Statements', to: '/account/statements', end: false, icon: 'statements' },
   { label: 'Support', shortLabel: 'Support', to: '/account/support', end: false, icon: 'support' },
+  { label: 'Help Center', shortLabel: 'Help', to: '/account/help', end: false, icon: 'help' },
 ] as const
+
+const mobileNavItems = navItems.filter((item) => item.icon !== 'help')
 
 export function CustomerLayout() {
   const navigate = useNavigate()
@@ -59,6 +62,8 @@ export function CustomerLayout() {
       <div className="min-h-screen md:pl-64">
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-900/8 bg-[rgba(255,255,255,0.82)] px-4 backdrop-blur-xl md:hidden">
           <PortalBrand compact />
+          <div className="flex items-center gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-[10px] px-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/help">Help</Link>
           <details className="group relative">
             <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-[10px] border border-slate-900/10 bg-white/70 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
               <span className="sr-only">Open account menu</span>
@@ -80,6 +85,7 @@ export function CustomerLayout() {
               </button>
             </div>
           </details>
+          </div>
         </header>
 
         <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(71,118,255,0.07),transparent_28%),#f7f8fb] px-4 pt-8 pb-28 sm:px-6 md:px-8 md:py-10 lg:px-12">
@@ -92,7 +98,7 @@ export function CustomerLayout() {
           aria-label="Customer portal mobile navigation"
           className="fixed inset-x-3 bottom-3 z-20 grid grid-cols-5 rounded-[16px] border border-slate-900/10 bg-[rgba(255,255,255,0.92)] p-1.5 shadow-2xl backdrop-blur-xl md:hidden"
         >
-          {navItems.map((item) => (
+          {mobileNavItems.map((item) => (
             <NavLink
               className={({ isActive }) =>
                 `flex min-h-14 flex-col items-center justify-center gap-1 rounded-[10px] px-1 text-[10px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
@@ -224,6 +230,7 @@ function NavIcon({ active, name }: { active: boolean; name: string }) {
     invoices: <><rect height="15" rx="2" width="18" x="3" y="5" /><path d="M3 10h18M7 15h3" /></>,
     statements: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
     support: <><path d="M21 12a8 8 0 01-8 8H8l-5 2 2-5a8 8 0 1116-5z" /><path d="M9.5 9a2.5 2.5 0 014.8.9c0 1.8-2.3 2-2.3 3.6M12 17h.01" /></>,
+    help: <><circle cx="12" cy="12" r="9" /><path d="M9.8 9a2.4 2.4 0 014.6.9c0 1.8-2.4 2-2.4 3.6M12 17h.01" /></>,
   }
 
   return <svg {...commonProps}>{paths[name]}</svg>
