@@ -26,13 +26,17 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
     applied: 'border-emerald-700 bg-emerald-950/60 text-emerald-200',
 
     pending: 'border-amber-700 bg-amber-950/60 text-amber-200',
+    pending_scheduling: 'border-amber-700 bg-amber-950/60 text-amber-200',
+    reschedule_required: 'border-amber-700 bg-amber-950/60 text-amber-200',
     pending_activation: 'border-amber-700 bg-amber-950/60 text-amber-200',
     open: 'border-amber-700 bg-amber-950/60 text-amber-200',
 
     in_progress: 'border-blue-700 bg-blue-950/60 text-blue-200',
     scheduled: 'border-blue-700 bg-blue-950/60 text-blue-200',
+    assigned: 'border-blue-700 bg-blue-950/60 text-blue-200',
     closed: 'border-slate-600 bg-slate-800/80 text-slate-200',
     canceled: 'border-slate-600 bg-slate-800/80 text-slate-200',
+    cancelled: 'border-slate-600 bg-slate-800/80 text-slate-200',
 
     rejected: 'border-red-800 bg-red-950/60 text-red-200',
     overdue: 'border-red-800 bg-red-950/60 text-red-200',
@@ -51,9 +55,9 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
         className={`mr-1.5 size-1.5 rounded-full ${
           status === 'active' || status === 'approved' || status === 'paid' || status === 'resolved' || status === 'applied'
             ? 'bg-emerald-400'
-            : status === 'pending' || status === 'pending_activation' || status === 'open'
+            : status === 'pending' || status === 'pending_scheduling' || status === 'pending_activation' || status === 'open' || status === 'reschedule_required'
               ? 'bg-amber-400'
-              : status === 'in_progress' || status === 'scheduled'
+              : status === 'in_progress' || status === 'scheduled' || status === 'assigned'
                 ? 'bg-blue-400'
                 : status === 'closed'
                   ? 'bg-slate-400'

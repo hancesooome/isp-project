@@ -2263,7 +2263,7 @@ app.post('/subscription/change-plan/upgrade', async (request, response) => {
       subscription_id: string
       requested_plan_id: string
       change_type: 'upgrade'
-      status: 'scheduled'
+      status: 'pending_scheduling' | 'scheduled' | 'assigned' | 'reschedule_required'
       effective_at: string
     }>()
 
@@ -3281,6 +3281,49 @@ app.patch('/admin/coverage/:id', async (request, response) => {
   })
 
   response.status(200).json({ coverage_area_id: coverageAreaId })
+})
+
+app.get('/admin/installations', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to load installations' : message,
+    })
+    return
+  }
+
+  const { data: installations, error } = await supabase
+    .from('installation_orders')
+    .select(`
+      id,
+      status,
+      service_address,
+      service_latitude,
+      service_longitude,
+      scheduled_start_at,
+      scheduled_end_at,
+      schedule_timezone,
+      technician_id,
+      reschedule_count,
+      last_rescheduled_at,
+      reschedule_reason,
+      created_at,
+      customer:profiles!installation_orders_customer_id_fkey(id, full_name),
+      plan:plans!installation_orders_plan_id_fkey(id, name),
+      technician:profiles!installation_orders_technician_id_fkey(id, full_name)
+    `)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Failed to load installations', { code: error.code })
+    response.status(500).json({ error: 'Unable to load installations' })
+    return
+  }
+
+  response.status(200).json({ installations })
 })
 
 app.patch('/admin/installations/:id/schedule', async (request, response) => {

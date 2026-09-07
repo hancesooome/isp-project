@@ -7,6 +7,7 @@ import { useAuth } from '../auth/auth-context'
 const adminNavItems = [
   { label: 'Overview', to: '/admin', end: true, icon: 'overview' },
   { label: 'Applications', to: '/admin/applications', end: false, icon: 'applications' },
+  { label: 'Installations', mobileLabel: 'Installs', to: '/admin/installations', end: false, icon: 'installations' },
   { label: 'Customers', to: '/admin/customers', end: false, icon: 'customers' },
   { label: 'Plans', to: '/admin/plans', end: false, icon: 'plans' },
   { label: 'Coverage', to: '/admin/coverage', end: false, icon: 'coverage' },
@@ -219,6 +220,7 @@ function AdminIcon({ active, name }: { active: boolean; name: string }) {
   const paths: Record<string, ReactNode> = {
     overview: <><rect height="7" rx="1" width="7" x="3" y="3" /><rect height="7" rx="1" width="7" x="14" y="3" /><rect height="7" rx="1" width="7" x="3" y="14" /><rect height="7" rx="1" width="7" x="14" y="14" /></>,
     applications: <><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v5h5M10 13h5M10 17h5" /></>,
+    installations: <><path d="M12 2v4M5.6 4.6l2.8 2.8M18.4 4.6l-2.8 2.8" /><path d="M5 13a7 7 0 0114 0v3H5zM3 20h18M9 13h6" /></>,
     customers: <><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></>,
     plans: <><path d="M5 12.55a11 11 0 0114.08 0M8.53 16.11a6 6 0 016.95 0M12 20h.01" /></>,
     coverage: <><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z" /><path d="M9 3v15M15 6v15" /></>,

@@ -31,6 +31,7 @@ import { AdminOverviewPage } from './features/admin/AdminOverviewPage'
 import { AdminReportsPage } from './features/admin/AdminReportsPage'
 import { AdminCoveragePage } from './features/admin/AdminCoveragePage'
 import { AdminPlanChangesPage } from './features/admin/AdminPlanChangesPage'
+import { AdminInstallationsPage } from './features/admin/AdminInstallationsPage'
 import { HomePage } from './features/home/HomePage'
 import { PublicLayout } from './features/home/PublicLayout'
 import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage'
@@ -114,6 +115,7 @@ export function App() {
         <Route index element={<AdminOverviewPage />} />
         <Route path="applications" element={<AdminApplicationsPage />} />
         <Route path="applications/:id" element={<AdminApplicationReviewRoute />} />
+        <Route path="installations" element={<AdminInstallationsPage />} />
         <Route path="customers" element={<AdminCustomersPage />} />
         <Route path="customers/:id" element={<AdminCustomerDetailsRoute />} />
         <Route path="plans" element={<AdminPlansPage />} />
