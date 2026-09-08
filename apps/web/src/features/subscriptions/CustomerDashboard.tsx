@@ -10,7 +10,7 @@ import { moneyFormatter as priceFormatter } from '../../lib/money'
 
 interface CustomerSubscription {
   id: string
-  status: 'active' | 'past_due'
+  status: 'active' | 'past_due' | 'suspended'
   started_at: string
   plan: {
     id: string
@@ -43,7 +43,7 @@ function isSubscription(value: unknown): value is CustomerSubscription {
 
   return (
     typeof subscription.id === 'string' &&
-    (subscription.status === 'active' || subscription.status === 'past_due') &&
+    (subscription.status === 'active' || subscription.status === 'past_due' || subscription.status === 'suspended') &&
     typeof subscription.started_at === 'string' &&
     (plan === null ||
       (typeof plan === 'object' &&
@@ -174,6 +174,13 @@ export function CustomerDashboard() {
 
       {subscription ? (
         <div className="mt-8 grid gap-4 lg:grid-cols-[1.45fr_0.8fr]">
+          {subscription.status === 'suspended' ? (
+            <div className="rounded-[12px] border border-red-200 bg-red-50 p-5 text-sm leading-6 text-red-900 lg:col-span-2" role="alert">
+              <p className="font-semibold">Your account service is suspended for non-payment.</p>
+              <p className="mt-1">Please review and pay your overdue invoices. This is an operational account status and does not confirm the state of your physical internet connection.</p>
+              <Link className="mt-3 inline-flex min-h-10 items-center font-semibold text-red-800 underline decoration-red-300 underline-offset-4" to="/account/invoices">View invoices</Link>
+            </div>
+          ) : null}
           <article className="relative overflow-hidden rounded-[18px] border border-slate-900/8 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(238,241,247,0.78))] p-6 shadow-[0_18px_50px_rgba(18,25,38,0.08)] sm:p-8">
             <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
               <div className="max-w-md">

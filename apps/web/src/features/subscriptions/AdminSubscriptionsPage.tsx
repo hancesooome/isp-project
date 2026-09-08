@@ -8,7 +8,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { moneyFormatter as currencyFormatter } from '../../lib/money'
 import { useAuth } from '../auth/auth-context'
 
-type SubscriptionStatus = 'pending_activation' | 'active' | 'past_due' | 'canceled'
+type SubscriptionStatus = 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
 type StatusFilter = SubscriptionStatus | 'all'
 
 interface AdminSubscription {
@@ -71,6 +71,7 @@ const statusActions: Record<
   pending_activation: [],
   active: [{ label: 'Cancel subscription', status: 'canceled' }],
   past_due: [{ label: 'Cancel subscription', status: 'canceled' }],
+  suspended: [{ label: 'Cancel subscription', status: 'canceled' }],
   canceled: [],
 }
 
@@ -79,7 +80,7 @@ function isNullableString(value: unknown): value is string | null {
 }
 
 function isStatus(value: unknown): value is SubscriptionStatus {
-  return value === 'pending_activation' || value === 'active' || value === 'past_due' || value === 'canceled'
+  return value === 'pending_activation' || value === 'active' || value === 'past_due' || value === 'suspended' || value === 'canceled'
 }
 
 function isSubscription(value: unknown): value is AdminSubscription {
@@ -238,7 +239,7 @@ export function AdminSubscriptionsPage() {
             setError(null)
             setFilter(event.target.value as StatusFilter)
           }} value={filter}>
-            <option value="all">All</option><option value="pending_activation">Pending activation</option><option value="active">Active</option><option value="past_due">Past due</option><option value="canceled">Canceled</option>
+            <option value="all">All</option><option value="pending_activation">Pending activation</option><option value="active">Active</option><option value="past_due">Past due</option><option value="suspended">Suspended</option><option value="canceled">Canceled</option>
           </select>
         </label>
       </header>

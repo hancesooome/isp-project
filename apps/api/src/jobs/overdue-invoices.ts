@@ -10,12 +10,18 @@ interface OverdueInvoiceResult {
   eligibleSubscriptions: number
   transitionedSubscriptions: number
   skippedSubscriptions: number
+  eligibleSuspensions: number
+  transitionedSuspensions: number
+  skippedSuspensions: number
   eligibleNotifications: number
   sentNotifications: number
   skippedNotifications: number
   eligibleDelinquencyNotifications: number
   sentDelinquencyNotifications: number
   skippedDelinquencyNotifications: number
+  eligibleSuspensionNotifications: number
+  sentSuspensionNotifications: number
+  skippedSuspensionNotifications: number
 }
 
 interface OverdueTransitionResult {
@@ -25,6 +31,9 @@ interface OverdueTransitionResult {
   eligibleSubscriptions: number
   transitionedSubscriptions: number
   skippedSubscriptions: number
+  eligibleSuspensions: number
+  transitionedSuspensions: number
+  skippedSuspensions: number
 }
 
 interface OverdueInvoice {
@@ -35,6 +44,12 @@ interface OverdueInvoice {
 }
 
 interface DelinquencyNotification {
+  id: string
+  subscription_id: string
+  triggering_invoice_id: string
+}
+
+interface SuspensionNotification {
   id: string
   subscription_id: string
   triggering_invoice_id: string
@@ -55,7 +70,10 @@ function isOverdueTransitionResult(
     typeof result.skippedInvoices === 'number' &&
     typeof result.eligibleSubscriptions === 'number' &&
     typeof result.transitionedSubscriptions === 'number' &&
-    typeof result.skippedSubscriptions === 'number'
+    typeof result.skippedSubscriptions === 'number' &&
+    typeof result.eligibleSuspensions === 'number' &&
+    typeof result.transitionedSuspensions === 'number' &&
+    typeof result.skippedSuspensions === 'number'
   )
 }
 
@@ -76,8 +94,128 @@ export async function runOverdueInvoiceJob(): Promise<OverdueInvoiceResult> {
 
   const notifications = await sendOverdueNotifications()
   const delinquencyNotifications = await sendDelinquencyNotifications()
+  const suspensionNotifications = await sendSuspensionNotifications()
 
-  return { ...data, ...notifications, ...delinquencyNotifications }
+  return {
+    ...data,
+    ...notifications,
+    ...delinquencyNotifications,
+    ...suspensionNotifications,
+  }
+}
+
+async function sendSuspensionNotifications() {
+  const { data: history, error } = await supabase
+    .from('subscription_suspension_history')
+    .select('id, subscription_id, triggering_invoice_id')
+    .is('email_claimed_at', null)
+    .order('suspended_at')
+    .order('id')
+    .returns<SuspensionNotification[]>()
+
+  if (error) {
+    console.error('Failed to load suspension notifications', {
+      code: error.code,
+    })
+    throw new Error('SUSPENSION_NOTIFICATIONS_FAILED')
+  }
+
+  let sentSuspensionNotifications = 0
+  let skippedSuspensionNotifications = 0
+
+  for (const notification of history) {
+    const claimedAt = new Date().toISOString()
+    const { data: claimedHistory, error: claimError } = await supabase
+      .from('subscription_suspension_history')
+      .update({ email_claimed_at: claimedAt })
+      .eq('id', notification.id)
+      .is('email_claimed_at', null)
+      .select('id')
+      .maybeSingle<{ id: string }>()
+
+    if (claimError || !claimedHistory) {
+      if (claimError) {
+        console.error('Failed to claim suspension notification', {
+          code: claimError.code,
+          historyId: notification.id,
+        })
+      }
+      skippedSuspensionNotifications += 1
+      continue
+    }
+
+    const [subscriptionResult, invoiceResult] = await Promise.all([
+      supabase
+        .from('subscriptions')
+        .select('user_id')
+        .eq('id', notification.subscription_id)
+        .eq('status', 'suspended')
+        .maybeSingle<{ user_id: string }>(),
+      supabase
+        .from('invoices')
+        .select('id, amount_cents, due_date')
+        .eq('id', notification.triggering_invoice_id)
+        .maybeSingle<{ id: string; amount_cents: number; due_date: string }>(),
+    ])
+
+    if (
+      subscriptionResult.error ||
+      invoiceResult.error ||
+      !subscriptionResult.data ||
+      !invoiceResult.data
+    ) {
+      console.error('Failed to load suspension notification details', {
+        historyId: notification.id,
+        subscriptionCode: subscriptionResult.error?.code,
+        invoiceCode: invoiceResult.error?.code,
+      })
+      await releaseSuspensionNotificationClaim(notification.id, claimedAt)
+      skippedSuspensionNotifications += 1
+      continue
+    }
+
+    const { data: userData, error: userError } =
+      await supabase.auth.admin.getUserById(subscriptionResult.data.user_id)
+    const email = userData.user?.email
+
+    if (userError || !email) {
+      console.error('Failed to load suspended customer email', {
+        code: userError?.code ?? 'EMAIL_NOT_FOUND',
+        historyId: notification.id,
+      })
+      await releaseSuspensionNotificationClaim(notification.id, claimedAt)
+      skippedSuspensionNotifications += 1
+      continue
+    }
+
+    const invoice = invoiceResult.data
+    const reference = invoice.id.slice(0, 8).toUpperCase()
+    const amount = formatMoney(invoice.amount_cents)
+    const invoiceUrl = new URL(
+      `/account/invoices/${encodeURIComponent(invoice.id)}`,
+      env.appUrl,
+    ).toString()
+    const result = await sendEmail({
+      to: email,
+      subject: 'Your ISP account service is suspended for non-payment',
+      text: `Your account service has been placed in suspended status because invoice #${reference} for ${amount}, due on ${invoice.due_date}, remains unpaid. This is an operational platform status and does not confirm that your physical internet connection was disabled. View or pay your invoice: ${invoiceUrl}`,
+      html: `<p>Your account service has been placed in <strong>suspended</strong> status because invoice <strong>#${reference}</strong> for <strong>${amount}</strong>, due on ${invoice.due_date}, remains unpaid.</p><p>This is an operational platform status and does not confirm that your physical internet connection was disabled.</p><p><a href="${invoiceUrl}">View or pay your invoice</a></p>`,
+    })
+
+    if (result.success) {
+      sentSuspensionNotifications += 1
+      continue
+    }
+
+    await releaseSuspensionNotificationClaim(notification.id, claimedAt)
+    skippedSuspensionNotifications += 1
+  }
+
+  return {
+    eligibleSuspensionNotifications: history.length,
+    sentSuspensionNotifications,
+    skippedSuspensionNotifications,
+  }
 }
 
 async function sendDelinquencyNotifications() {
@@ -125,7 +263,7 @@ async function sendDelinquencyNotifications() {
         .from('subscriptions')
         .select('user_id')
         .eq('id', notification.subscription_id)
-        .eq('status', 'past_due')
+        .in('status', ['past_due', 'suspended'])
         .maybeSingle<{ user_id: string }>(),
       supabase
         .from('invoices')
@@ -310,6 +448,24 @@ async function releaseDelinquencyNotificationClaim(
 
   if (error) {
     console.error('Failed to release delinquency notification claim', {
+      code: error.code,
+      historyId,
+    })
+  }
+}
+
+async function releaseSuspensionNotificationClaim(
+  historyId: string,
+  claimedAt: string,
+) {
+  const { error } = await supabase
+    .from('subscription_suspension_history')
+    .update({ email_claimed_at: null })
+    .eq('id', historyId)
+    .eq('email_claimed_at', claimedAt)
+
+  if (error) {
+    console.error('Failed to release suspension notification claim', {
       code: error.code,
       historyId,
     })

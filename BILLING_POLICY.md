@@ -18,5 +18,7 @@
 - If the invoice remains unpaid, an active subscription becomes `past_due` on the following day.
 - The transition is automatic, idempotent, and recorded in delinquency history with the triggering invoice.
 - `past_due` is an account and billing state only. It does not suspend or disconnect internet service.
+- A subscription remains `past_due` for seven full Philippine calendar days. If qualifying debt is still unpaid, it becomes `suspended` on the following day.
+- `suspended` is an operational platform state. It does not confirm that physical network access was disabled.
 
 Annual-plan billing is outside the current automated monthly billing scope.

@@ -25,7 +25,7 @@ interface CustomerApplication {
 
 interface CustomerSubscription {
   id: string
-  status: 'pending_activation' | 'active' | 'past_due' | 'canceled'
+  status: 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
   started_at: string | null
   ended_at: string | null
   plan: {
@@ -108,6 +108,7 @@ function isSubscription(value: unknown): value is CustomerSubscription {
     (subscription.status === 'pending_activation' ||
       subscription.status === 'active' ||
       subscription.status === 'past_due' ||
+      subscription.status === 'suspended' ||
       subscription.status === 'canceled') &&
     isNullableString(subscription.started_at) &&
     isNullableString(subscription.ended_at) &&

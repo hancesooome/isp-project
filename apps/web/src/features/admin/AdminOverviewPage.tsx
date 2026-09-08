@@ -14,7 +14,7 @@ interface AdminApplication {
 
 interface AdminSubscription {
   id: string
-  status: 'active' | 'past_due'
+  status: 'active' | 'past_due' | 'suspended'
 }
 
 interface OverviewData {
@@ -44,7 +44,7 @@ function isSubscription(value: unknown): value is AdminSubscription {
   if (typeof value !== 'object' || value === null) return false
   const subscription = value as Record<string, unknown>
   return typeof subscription.id === 'string' &&
-    (subscription.status === 'active' || subscription.status === 'past_due')
+    (subscription.status === 'active' || subscription.status === 'past_due' || subscription.status === 'suspended')
 }
 
 export function AdminOverviewPage() {
@@ -101,6 +101,7 @@ export function AdminOverviewPage() {
     { label: 'Pending review', value: data.applications.filter((item) => item.status === 'pending').length, note: 'Applications needing attention' },
     { label: 'Active subscriptions', value: data.subscriptions.filter((item) => item.status === 'active').length, note: 'Current customer services' },
     { label: 'Past-due subscriptions', value: data.subscriptions.filter((item) => item.status === 'past_due').length, note: 'Billing attention required' },
+    { label: 'Suspended subscriptions', value: data.subscriptions.filter((item) => item.status === 'suspended').length, note: 'Operational suspension status' },
   ] : []
 
   return (
@@ -120,7 +121,7 @@ export function AdminOverviewPage() {
         </div>
       ) : (
         <>
-          <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {metrics.map((metric) => (
               <article className="rounded-[12px] border border-white/8 bg-[linear-gradient(145deg,#161c26,#11161f)] p-5 shadow-sm" key={metric.label}>
                 <p className="text-xs text-slate-400">{metric.label}</p>

@@ -28,7 +28,7 @@ export interface StatementOfAccount {
   }
   subscription: {
     id: string
-    status: 'pending_activation' | 'active' | 'past_due' | 'canceled'
+    status: 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
     started_at: string | null
     ended_at: string | null
     plan: {

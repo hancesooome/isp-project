@@ -113,7 +113,7 @@ interface CustomerApplication {
 
 interface CustomerSubscription {
   id: string
-  status: 'active' | 'past_due'
+  status: 'active' | 'past_due' | 'suspended'
   started_at: string
   plan: {
     id: string
@@ -199,7 +199,7 @@ interface AdminApplicationDetail {
 
 interface AdminSubscription {
   id: string
-  status: 'pending_activation' | 'active' | 'past_due' | 'canceled'
+  status: 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
   started_at: string | null
   ended_at: string | null
   customer: { id: string; full_name: string | null } | null
@@ -260,7 +260,7 @@ interface AdminCustomerApplication {
 
 interface AdminCustomerSubscription {
   id: string
-  status: 'pending_activation' | 'active' | 'past_due' | 'canceled'
+  status: 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
   started_at: string | null
   ended_at: string | null
   plan: {
@@ -571,7 +571,7 @@ const adminCoverageSchema = z
 
 const adminSubscriptionsQuerySchema = z
   .object({
-    status: z.enum(['pending_activation', 'active', 'past_due', 'canceled', 'all']).optional(),
+    status: z.enum(['pending_activation', 'active', 'past_due', 'suspended', 'canceled', 'all']).optional(),
   })
   .strict()
 
@@ -2076,7 +2076,7 @@ app.get('/subscription', async (request, response) => {
       `,
     )
     .eq('user_id', auth.userId)
-    .in('status', ['active', 'past_due'])
+    .in('status', ['active', 'past_due', 'suspended'])
     .order('started_at', { ascending: false })
     .limit(1)
     .maybeSingle<CustomerSubscription>()
@@ -4487,7 +4487,7 @@ app.post('/admin/invoices', async (request, response) => {
     .maybeSingle<{
       id: string
       user_id: string
-      status: 'pending_activation' | 'active' | 'past_due' | 'canceled'
+      status: 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
     }>()
 
   if (subscriptionError) {
@@ -4728,7 +4728,7 @@ app.get('/admin/subscriptions', async (request, response) => {
     .order('id')
 
   if (!queryResult.data.status) {
-    query = query.in('status', ['active', 'past_due'])
+    query = query.in('status', ['active', 'past_due', 'suspended'])
   } else if (queryResult.data.status !== 'all') {
     query = query.eq('status', queryResult.data.status)
   }
@@ -4884,7 +4884,7 @@ app.patch('/admin/subscriptions/:id/status', async (request, response) => {
     return
   }
 
-  type SubscriptionStatus = 'pending_activation' | 'active' | 'past_due' | 'canceled'
+  type SubscriptionStatus = 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
   const { data: existingSubscription, error: lookupError } = await supabase
     .from('subscriptions')
     .select('id, status, started_at, ended_at, updated_at')
@@ -4921,6 +4921,7 @@ app.patch('/admin/subscriptions/:id/status', async (request, response) => {
     pending_activation: [],
     active: ['canceled'],
     past_due: ['canceled'],
+    suspended: ['canceled'],
     canceled: [],
   }
 

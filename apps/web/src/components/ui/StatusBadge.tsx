@@ -2,6 +2,7 @@
   | 'active'
   | 'pending_activation'
   | 'past_due'
+  | 'suspended'
   | 'pending'
   | 'approved'
   | 'rejected'
@@ -42,6 +43,7 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
     overdue: 'border-red-800 bg-red-950/60 text-red-200',
     failed: 'border-red-800 bg-red-950/60 text-red-200',
     past_due: 'border-red-800 bg-red-950/60 text-red-200',
+    suspended: 'border-red-800 bg-red-950/60 text-red-200',
   }
 
   const defaultStyle = 'border-slate-700 bg-slate-800/80 text-slate-200'

@@ -35,7 +35,7 @@ interface InstallationOrder {
   technician: { id: string; full_name: string | null } | null
   subscription: {
     id: string
-    status: 'pending_activation' | 'active' | 'past_due' | 'canceled'
+    status: 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
     activated_at: string | null
     billing_anchor_date: string | null
   } | null

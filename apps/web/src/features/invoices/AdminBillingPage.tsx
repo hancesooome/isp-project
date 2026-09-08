@@ -5,7 +5,7 @@ import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 
 interface AdminSubscription {
   id: string
-  status: 'active' | 'past_due'
+  status: 'active' | 'past_due' | 'suspended'
   customer: { id: string; full_name: string | null } | null
   plan: { id: string; name: string } | null
 }
@@ -35,7 +35,7 @@ function isAdminSubscription(value: unknown): value is AdminSubscription {
 
   return (
     typeof subscription.id === 'string' &&
-    (subscription.status === 'active' || subscription.status === 'past_due') &&
+    (subscription.status === 'active' || subscription.status === 'past_due' || subscription.status === 'suspended') &&
     (customer === null ||
       (typeof customer === 'object' &&
         customer !== null &&
