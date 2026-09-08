@@ -75,3 +75,4 @@ supabase/migrations/202609080003_activate_completed_service.sql
 supabase/migrations/202609080004_prepare_activation_billing.sql
 supabase/migrations/202609080005_add_nonpayment_delinquency.sql
 supabase/migrations/202609080006_add_nonpayment_suspension.sql
+supabase/migrations/202609080007_create_admin_technician_management.sql

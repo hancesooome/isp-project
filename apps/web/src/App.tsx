@@ -20,6 +20,7 @@ import { LoginForm } from './features/auth/LoginForm'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import { SignupForm } from './features/auth/SignupForm'
 import { OAuthCallbackPage } from './features/auth/OAuthCallbackPage'
+import { SetPasswordPage } from './features/auth/SetPasswordPage'
 import {
   DEFAULT_AUTHENTICATED_PATH,
   getSafeRedirect,
@@ -33,6 +34,7 @@ import {
 import { AdminOverviewPage } from './features/admin/AdminOverviewPage'
 import { AdminReportsPage } from './features/admin/AdminReportsPage'
 import { AdminCoveragePage } from './features/admin/AdminCoveragePage'
+import { AdminTechniciansPage } from './features/admin/AdminTechniciansPage'
 import { AdminPlanChangesPage } from './features/admin/AdminPlanChangesPage'
 import { TechnicianWorkQueuePage } from './features/installations/TechnicianWorkQueuePage'
 import { AdminInstallationsPage } from './features/admin/AdminInstallationsPage'
@@ -79,6 +81,7 @@ export function App() {
       <Route element={<LightCentredPage><LoginPage /></LightCentredPage>} path="/login" />
       <Route element={<LightCentredPage><SignupPage /></LightCentredPage>} path="/signup" />
       <Route element={<LightCentredPage><OAuthCallbackPage /></LightCentredPage>} path="/auth/callback" />
+      <Route element={<LightCentredPage><SetPasswordPage /></LightCentredPage>} path="/auth/set-password" />
       <Route element={<CentredPage><PasswordResetPlaceholder /></CentredPage>} path="/forgot-password" />
       <Route
         element={
@@ -122,6 +125,7 @@ export function App() {
         <Route path="applications" element={<AdminApplicationsPage />} />
         <Route path="applications/:id" element={<AdminApplicationReviewRoute />} />
         <Route path="installations" element={<AdminInstallationsPage />} />
+        <Route path="technicians" element={<AdminTechniciansPage />} />
         <Route path="customers" element={<AdminCustomersPage />} />
         <Route path="customers/:id" element={<AdminCustomerDetailsRoute />} />
         <Route path="plans" element={<AdminPlansPage />} />

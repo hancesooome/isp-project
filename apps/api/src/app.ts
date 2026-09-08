@@ -602,6 +602,19 @@ const technicianAssignmentSchema = z
   })
   .strict()
 
+const technicianInvitationSchema = z
+  .object({
+    email: z.email().trim().toLowerCase(),
+    full_name: z.string().trim().min(2).max(120),
+    technician_code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9][A-Z0-9-]{2,31}$/),
+    primary_coverage_area_id: z.string().uuid().nullable(),
+  })
+  .strict()
+
 const installationStatusTransitionSchema = z
   .object({
     status: z.enum(['in_progress', 'failed', 'reschedule_required', 'cancelled']),
@@ -3543,6 +3556,210 @@ app.patch('/admin/coverage/:id', async (request, response) => {
   })
 
   response.status(200).json({ coverage_area_id: coverageAreaId })
+})
+
+app.get('/admin/technicians', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    const message =
+      auth.status === 500
+        ? 'Unable to load technicians'
+        : auth.status === 403
+          ? 'Admin access required'
+          : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('technician_profiles')
+    .select(`
+      profile_id,
+      technician_code,
+      is_active,
+      availability_status,
+      created_at,
+      profile:profiles!technician_profiles_profile_id_fkey(full_name),
+      coverage_area:coverage_areas!technician_profiles_primary_coverage_area_id_fkey(id, name)
+    `)
+    .order('created_at', { ascending: false })
+    .returns<Array<{
+      profile_id: string
+      technician_code: string
+      is_active: boolean
+      availability_status: 'available' | 'unavailable' | 'on_leave'
+      created_at: string
+      profile: { full_name: string | null } | null
+      coverage_area: { id: string; name: string } | null
+    }>>()
+
+  if (error) {
+    console.error('Failed to load technicians', { code: error.code })
+    response.status(500).json({ error: 'Unable to load technicians' })
+    return
+  }
+
+  const technicians = await Promise.all(
+    data.map(async (technician) => {
+      const { data: userData } =
+        await supabase.auth.admin.getUserById(technician.profile_id)
+
+      return {
+        ...technician,
+        email: userData.user?.email ?? null,
+        invited_at: userData.user?.invited_at ?? null,
+        email_confirmed_at: userData.user?.email_confirmed_at ?? null,
+      }
+    }),
+  )
+
+  response.status(200).json({ technicians })
+})
+
+app.post('/admin/technicians', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message =
+      auth.status === 500
+        ? 'Unable to invite technician'
+        : auth.status === 403
+          ? 'Admin access required'
+          : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const result = technicianInvitationSchema.safeParse(request.body)
+
+  if (!result.success) {
+    response.status(400).json({ error: 'Enter valid technician details' })
+    return
+  }
+
+  const input = result.data
+  const { data: existingCode, error: codeLookupError } = await supabase
+    .from('technician_profiles')
+    .select('profile_id')
+    .eq('technician_code', input.technician_code)
+    .maybeSingle<{ profile_id: string }>()
+
+  if (codeLookupError) {
+    console.error('Failed to verify technician code', {
+      code: codeLookupError.code,
+    })
+    response.status(500).json({ error: 'Unable to invite technician' })
+    return
+  }
+
+  if (existingCode) {
+    response.status(409).json({ error: 'Technician code is already in use' })
+    return
+  }
+
+  if (input.primary_coverage_area_id) {
+    const { data: coverageArea, error: coverageError } = await supabase
+      .from('coverage_areas')
+      .select('id')
+      .eq('id', input.primary_coverage_area_id)
+      .eq('is_active', true)
+      .maybeSingle<{ id: string }>()
+
+    if (coverageError) {
+      console.error('Failed to verify technician coverage area', {
+        code: coverageError.code,
+      })
+      response.status(500).json({ error: 'Unable to invite technician' })
+      return
+    }
+
+    if (!coverageArea) {
+      response.status(400).json({ error: 'Coverage area is unavailable' })
+      return
+    }
+  }
+
+  const invitationUrl = new URL('/auth/set-password', env.appUrl).toString()
+  const { data: invitation, error: invitationError } =
+    await supabase.auth.admin.inviteUserByEmail(input.email, {
+      data: { full_name: input.full_name },
+      redirectTo: invitationUrl,
+    })
+
+  if (invitationError || !invitation.user) {
+    console.error('Failed to invite technician', {
+      code: invitationError?.code ?? 'USER_NOT_CREATED',
+    })
+    const conflict =
+      invitationError?.code === 'email_exists' ||
+      invitationError?.code === 'user_already_exists'
+    response.status(conflict ? 409 : 500).json({
+      error: conflict
+        ? 'An account already uses this email address'
+        : 'Unable to invite technician',
+    })
+    return
+  }
+
+  const { data: technician, error: profileError } = await supabase
+    .rpc('create_technician_profile', {
+      p_profile_id: invitation.user.id,
+      p_full_name: input.full_name,
+      p_technician_code: input.technician_code,
+      p_primary_coverage_area_id: input.primary_coverage_area_id,
+    })
+    .single<{
+      profile_id: string
+      technician_code: string
+      is_active: boolean
+      availability_status: string
+      primary_coverage_area_id: string | null
+      created_at: string
+    }>()
+
+  if (profileError || !technician) {
+    console.error('Failed to create invited technician profile', {
+      code: profileError?.code ?? 'PROFILE_NOT_CREATED',
+    })
+    const { error: cleanupError } = await supabase.auth.admin.deleteUser(
+      invitation.user.id,
+    )
+    if (cleanupError) {
+      console.error('Failed to clean up technician invitation', {
+        code: cleanupError.code,
+        userId: invitation.user.id,
+      })
+    }
+    response.status(profileError?.code === '23505' ? 409 : 500).json({
+      error:
+        profileError?.code === '23505'
+          ? 'Technician code is already in use'
+          : 'Unable to invite technician',
+    })
+    return
+  }
+
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: 'technician.invited',
+    targetType: 'technician',
+    targetId: technician.profile_id,
+    source: 'api',
+    metadata: {
+      technician_code: technician.technician_code,
+      primary_coverage_area_id: technician.primary_coverage_area_id,
+    },
+  })
+
+  response.status(201).json({
+    technician: {
+      ...technician,
+      email: input.email,
+      full_name: input.full_name,
+    },
+  })
 })
 
 app.get('/admin/technicians/available', async (request, response) => {
