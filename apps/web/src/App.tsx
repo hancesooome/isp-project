@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   Link,
   Route,
@@ -21,8 +21,11 @@ import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import { SignupForm } from './features/auth/SignupForm'
 import { OAuthCallbackPage } from './features/auth/OAuthCallbackPage'
 import { SetPasswordPage } from './features/auth/SetPasswordPage'
+import { RoleLandingPage } from './features/auth/RoleLandingPage'
+import { useAuth } from './features/auth/auth-context'
 import {
   DEFAULT_AUTHENTICATED_PATH,
+  getRoleLandingPath,
   getSafeRedirect,
 } from './features/auth/redirect'
 import { CustomerLayout } from './features/account/CustomerLayout'
@@ -82,6 +85,7 @@ export function App() {
       <Route element={<LightCentredPage><SignupPage /></LightCentredPage>} path="/signup" />
       <Route element={<LightCentredPage><OAuthCallbackPage /></LightCentredPage>} path="/auth/callback" />
       <Route element={<LightCentredPage><SetPasswordPage /></LightCentredPage>} path="/auth/set-password" />
+      <Route element={<ProtectedRoute><LightCentredPage><RoleLandingPage /></LightCentredPage></ProtectedRoute>} path="/portal" />
       <Route element={<CentredPage><PasswordResetPlaceholder /></CentredPage>} path="/forgot-password" />
       <Route
         element={
@@ -164,12 +168,19 @@ function LightCentredPage({ children }: { children: React.ReactNode }) {
 
 function LoginPage() {
   const navigate = useNavigate()
+  const { isLoading, session } = useAuth()
   const [searchParams] = useSearchParams()
   const redirectTo = getSafeRedirect(searchParams.get('redirect'))
 
+  useEffect(() => {
+    if (!isLoading && session) {
+      navigate(getRoleLandingPath(redirectTo), { replace: true })
+    }
+  }, [isLoading, navigate, redirectTo, session])
+
   return (
     <LoginForm
-      onSignedIn={(destination) => navigate(destination, { replace: true })}
+      onSignedIn={(destination) => navigate(getRoleLandingPath(destination), { replace: true })}
       redirectTo={redirectTo}
     />
   )

@@ -1436,6 +1436,34 @@ app.get('/jobs/overdue-invoices', async (request, response) => {
 app.use(generalRateLimiter)
 app.use(writeRateLimiter)
 
+app.get('/auth/portal', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), [
+    'customer',
+    'admin',
+    'technician',
+  ])
+
+  if (auth.status !== 200 || !auth.role) {
+    const message =
+      auth.status === 500
+        ? 'Unable to determine account destination'
+        : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const destinations: Record<UserRole, string> = {
+    customer: '/account',
+    admin: '/admin',
+    technician: '/technician',
+  }
+
+  response.status(200).json({
+    role: auth.role,
+    destination: destinations[auth.role],
+  })
+})
+
 app.get('/plans', async (_request, response) => {
   const { data, error } = await supabase
     .from('plans')

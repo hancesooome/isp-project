@@ -2,6 +2,7 @@ export const DEFAULT_AUTHENTICATED_PATH = '/account'
 
 const allowedAuthenticatedPaths = new Set([
   DEFAULT_AUTHENTICATED_PATH,
+  '/portal',
   '/account/application',
   '/account/change-plan',
   '/account/plan-changes',
@@ -71,4 +72,29 @@ export function getSafeRedirect(value: string | null): string {
   }
 
   return destination.pathname
+}
+
+export function getRoleLandingPath(destination: string): string {
+  return `/portal?${new URLSearchParams({ redirect: destination }).toString()}`
+}
+
+export function getDestinationForRole(
+  role: 'customer' | 'admin' | 'technician',
+  requestedDestination: string,
+): string {
+  const destination = getSafeRedirect(requestedDestination)
+
+  if (role === 'customer' && (destination.startsWith('/account') || destination.startsWith('/apply'))) {
+    return destination
+  }
+
+  if (role === 'admin' && destination.startsWith('/admin')) {
+    return destination
+  }
+
+  if (role === 'technician' && destination === '/technician') {
+    return destination
+  }
+
+  return role === 'admin' ? '/admin' : role === 'technician' ? '/technician' : '/account'
 }

@@ -74,9 +74,9 @@ export function AdminRoute({ children }: AdminRouteProps) {
           </p>
           <Link
             className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
-            to="/account"
+            to="/portal"
           >
-            Return to account
+            Open my workspace
           </Link>
         </section>
       </div>

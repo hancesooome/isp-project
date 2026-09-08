@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { useAuth } from './auth-context'
-import { getSafeRedirect } from './redirect'
+import { getRoleLandingPath, getSafeRedirect } from './redirect'
 
 export function OAuthCallbackPage() {
   const { isLoading, session } = useAuth()
@@ -17,7 +17,7 @@ export function OAuthCallbackPage() {
 
   useEffect(() => {
     if (session) {
-      navigate(destination, { replace: true })
+      navigate(getRoleLandingPath(destination), { replace: true })
     }
   }, [destination, navigate, session])
 

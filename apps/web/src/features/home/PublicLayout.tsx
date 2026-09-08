@@ -81,7 +81,7 @@ function PublicHeader() {
 function AccountLinks() {
   const { session, isLoading } = useAuth()
   if (isLoading) return <span className="px-4 text-sm text-slate-500" role="status">Loading account...</span>
-  if (session) return <Link to="/account" className={`inline-flex min-h-11 items-center rounded-[10px] bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 ${focusClass}`}>My account</Link>
+  if (session) return <Link to="/portal" className={`inline-flex min-h-11 items-center rounded-[10px] bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 ${focusClass}`}>Open dashboard</Link>
   return (
     <>
       <Link to="/login" className={`inline-flex min-h-11 items-center rounded-[10px] px-4 text-sm font-semibold text-slate-700 hover:bg-white ${focusClass}`}>Sign in</Link>

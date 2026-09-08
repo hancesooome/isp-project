@@ -34,7 +34,7 @@ export function SetPasswordPage() {
       return
     }
 
-    navigate('/technician', { replace: true })
+    navigate('/portal', { replace: true })
   }
 
   if (isLoading) {
