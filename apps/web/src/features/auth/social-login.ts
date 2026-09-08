@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase'
 
-export type SocialProvider = 'google' | 'facebook'
+export type SocialProvider = 'google'
 
 export async function loginWithSocialProvider(
   provider: SocialProvider,
