@@ -7,6 +7,7 @@ import {
 } from './signup-schema'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { signUpCustomer } from './signup'
+import { SocialAuthButtons } from './SocialAuthButtons'
 
 type FieldErrors = Partial<Record<keyof SignupFormValues, string>>
 
@@ -31,7 +32,11 @@ function getFieldErrors(error: ZodError<SignupFormValues>): FieldErrors {
   return errors
 }
 
-export function SignupForm() {
+interface SignupFormProps {
+  redirectTo: string
+}
+
+export function SignupForm({ redirectTo }: SignupFormProps) {
   const [values, setValues] = useState(initialValues)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submissionError, setSubmissionError] = useState<string | null>(null)
@@ -102,7 +107,7 @@ export function SignupForm() {
         </p>
         <Link
           className="public-primary-button mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-          to="/login"
+          to={`/login?${new URLSearchParams({ redirect: redirectTo }).toString()}`}
         >
           Continue to sign in
         </Link>
@@ -126,7 +131,17 @@ export function SignupForm() {
         Register to manage your internet service account.
       </p>
 
-      <form className="mt-8 space-y-5" noValidate onSubmit={handleSubmit}>
+      <div className="mt-7">
+        <SocialAuthButtons disabled={isSubmitting} redirectTo={redirectTo} />
+      </div>
+
+      <div className="my-7 flex items-center gap-3" aria-hidden="true">
+        <span className="h-px flex-1 bg-slate-900/10" />
+        <span className="text-xs font-medium text-slate-500">or use email</span>
+        <span className="h-px flex-1 bg-slate-900/10" />
+      </div>
+
+      <form className="space-y-5" noValidate onSubmit={handleSubmit}>
         <Field
           autoComplete="name"
           error={fieldErrors.fullName}
@@ -187,7 +202,7 @@ export function SignupForm() {
 
         <p className="text-center text-sm text-slate-600">
           Already have an account?{' '}
-          <Link className="font-semibold text-blue-700 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/login">
+          <Link className="font-semibold text-blue-700 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to={`/login?${new URLSearchParams({ redirect: redirectTo }).toString()}`}>
             Sign in
           </Link>
         </p>

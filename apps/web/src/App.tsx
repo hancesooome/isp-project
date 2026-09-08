@@ -19,6 +19,7 @@ import { TechnicianRoute } from './features/auth/TechnicianRoute'
 import { LoginForm } from './features/auth/LoginForm'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import { SignupForm } from './features/auth/SignupForm'
+import { OAuthCallbackPage } from './features/auth/OAuthCallbackPage'
 import {
   DEFAULT_AUTHENTICATED_PATH,
   getSafeRedirect,
@@ -76,7 +77,8 @@ export function App() {
         <Route element={<FaqPage />} path="/help" />
       </Route>
       <Route element={<LightCentredPage><LoginPage /></LightCentredPage>} path="/login" />
-      <Route element={<LightCentredPage><SignupForm /></LightCentredPage>} path="/signup" />
+      <Route element={<LightCentredPage><SignupPage /></LightCentredPage>} path="/signup" />
+      <Route element={<LightCentredPage><OAuthCallbackPage /></LightCentredPage>} path="/auth/callback" />
       <Route element={<CentredPage><PasswordResetPlaceholder /></CentredPage>} path="/forgot-password" />
       <Route
         element={
@@ -167,6 +169,13 @@ function LoginPage() {
       redirectTo={redirectTo}
     />
   )
+}
+
+function SignupPage() {
+  const [searchParams] = useSearchParams()
+  const redirectTo = getSafeRedirect(searchParams.get('redirect'))
+
+  return <SignupForm redirectTo={redirectTo} />
 }
 
 function InvoiceDetailsRoute() {

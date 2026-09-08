@@ -5,6 +5,7 @@ import { getLoginErrorMessage } from './login-error-message'
 import { loginSchema, type LoginFormValues } from './login-schema'
 import { loginWithPassword } from './login'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { SocialAuthButtons } from './SocialAuthButtons'
 
 type FieldErrors = Partial<Record<keyof LoginFormValues, string>>
 
@@ -88,7 +89,17 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
       <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Welcome back</h1>
       <p className="mt-2 text-slate-600">Sign in to manage your account.</p>
 
-      <form className="mt-8 space-y-5" noValidate onSubmit={handleSubmit}>
+      <div className="mt-7">
+        <SocialAuthButtons disabled={isSubmitting} redirectTo={redirectTo} />
+      </div>
+
+      <div className="my-7 flex items-center gap-3" aria-hidden="true">
+        <span className="h-px flex-1 bg-slate-900/10" />
+        <span className="text-xs font-medium text-slate-500">or use email</span>
+        <span className="h-px flex-1 bg-slate-900/10" />
+      </div>
+
+      <form className="space-y-5" noValidate onSubmit={handleSubmit}>
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="email">
             Email address
@@ -160,7 +171,7 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
 
         <p className="text-center text-sm text-slate-600">
           Don&apos;t have an account?{' '}
-          <Link className="font-semibold text-blue-700 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/signup">
+          <Link className="font-semibold text-blue-700 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to={`/signup?${new URLSearchParams({ redirect: redirectTo }).toString()}`}>
             Create account
           </Link>
         </p>
