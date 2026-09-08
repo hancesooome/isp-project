@@ -11,4 +11,12 @@
 - The daily billing job creates every period whose start date has arrived. The invoice uniqueness constraint makes retries safe.
 - Legacy subscriptions retain their established calendar-month cycle to avoid duplicate charges during migration.
 
+## Non-payment delinquency
+
+- An unpaid invoice becomes overdue on the first Philippine calendar day after its due date.
+- The customer then has three full Philippine calendar days of grace.
+- If the invoice remains unpaid, an active subscription becomes `past_due` on the following day.
+- The transition is automatic, idempotent, and recorded in delinquency history with the triggering invoice.
+- `past_due` is an account and billing state only. It does not suspend or disconnect internet service.
+
 Annual-plan billing is outside the current automated monthly billing scope.

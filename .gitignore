@@ -73,3 +73,4 @@ supabase/migrations/202609080001_add_installation_status_workflow.sql
 supabase/migrations/202609080002_complete_installation.sql
 supabase/migrations/202609080003_activate_completed_service.sql
 supabase/migrations/202609080004_prepare_activation_billing.sql
+supabase/migrations/202609080005_add_nonpayment_delinquency.sql

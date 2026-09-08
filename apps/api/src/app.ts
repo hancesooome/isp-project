@@ -577,7 +577,7 @@ const adminSubscriptionsQuerySchema = z
 
 const adminSubscriptionStatusSchema = z
   .object({
-    status: z.enum(['active', 'past_due', 'canceled']),
+    status: z.literal('canceled'),
   })
   .strict()
 
@@ -4919,8 +4919,8 @@ app.patch('/admin/subscriptions/:id/status', async (request, response) => {
 
   const allowedTransitions: Record<SubscriptionStatus, SubscriptionStatus[]> = {
     pending_activation: [],
-    active: ['past_due', 'canceled'],
-    past_due: ['active', 'canceled'],
+    active: ['canceled'],
+    past_due: ['canceled'],
     canceled: [],
   }
 

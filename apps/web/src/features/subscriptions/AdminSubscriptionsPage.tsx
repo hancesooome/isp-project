@@ -69,14 +69,8 @@ const statusActions: Record<
   Array<{ label: string; status: SubscriptionStatus }>
 > = {
   pending_activation: [],
-  active: [
-    { label: 'Mark past due', status: 'past_due' },
-    { label: 'Cancel subscription', status: 'canceled' },
-  ],
-  past_due: [
-    { label: 'Restore active', status: 'active' },
-    { label: 'Cancel subscription', status: 'canceled' },
-  ],
+  active: [{ label: 'Cancel subscription', status: 'canceled' }],
+  past_due: [{ label: 'Cancel subscription', status: 'canceled' }],
   canceled: [],
 }
 
