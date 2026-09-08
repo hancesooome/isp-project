@@ -609,6 +609,12 @@ const installationStatusTransitionSchema = z
   })
   .strict()
 
+const installationCompletionSchema = z
+  .object({
+    completion_notes: z.string().trim().min(5).max(2000),
+  })
+  .strict()
+
 const adminPlanSelect =
   'id, name, slug, description, speed_mbps, price_cents, billing_interval, is_active, created_at, updated_at'
 const faqArticleSelect =
@@ -3180,6 +3186,8 @@ app.get('/technician/installations', async (request, response) => {
       scheduled_end_at,
       schedule_timezone,
       internal_notes,
+      completed_at,
+      completion_notes,
       failure_reason,
       reschedule_required_reason,
       updated_at,
@@ -3265,6 +3273,74 @@ app.patch('/installations/:id/status', async (request, response) => {
     source: 'api',
     metadata: { status: installation.status, reason: transition.reason ?? null },
   })
+
+  response.status(200).json({ installation })
+})
+
+app.post('/installations/:id/complete', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    ['admin', 'technician'],
+  )
+
+  if (auth.status !== 200 || !auth.userId || !auth.role) {
+    const message = auth.status === 403
+      ? 'Installation completion access required'
+      : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to complete installation' : message,
+    })
+    return
+  }
+
+  const idResult = installationOrderIdSchema.safeParse(request.params.id)
+  const completionResult = installationCompletionSchema.safeParse(request.body)
+  if (!idResult.success || !completionResult.success) {
+    response.status(400).json({ error: 'Enter valid installation completion notes' })
+    return
+  }
+
+  const { data: installation, error } = await supabase
+    .rpc('complete_installation', {
+      p_installation_order_id: idResult.data,
+      p_actor_id: auth.userId,
+      p_completion_notes: completionResult.data.completion_notes,
+    })
+    .single<{
+      id: string
+      status: 'completed'
+      completed_at: string
+      completed_by: string
+      completion_notes: string
+      updated_at: string
+      completion_changed: boolean
+    }>()
+
+  if (error) {
+    if (error.code === 'P0002') {
+      response.status(404).json({ error: 'Installation order not found' })
+      return
+    }
+    if (error.code === 'P0001' || error.code === '42501' || error.code === '23514') {
+      response.status(409).json({ error: 'This installation cannot be completed' })
+      return
+    }
+    console.error('Failed to complete installation', { code: error.code })
+    response.status(500).json({ error: 'Unable to complete installation' })
+    return
+  }
+
+  if (installation.completion_changed) {
+    await recordAuditEvent({
+      actorType: auth.role === 'technician' ? 'technician' : 'admin',
+      actorId: auth.userId,
+      action: 'installation.completed',
+      targetType: 'installation_order',
+      targetId: installation.id,
+      source: 'api',
+      metadata: { completed_at: installation.completed_at },
+    })
+  }
 
   response.status(200).json({ installation })
 })

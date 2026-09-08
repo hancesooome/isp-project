@@ -218,6 +218,7 @@ function FilterBar({ filter, installations, onChange }: { filter: InstallationFi
 }
 
 function InstallationRow({ assigning, editing, onAssign, onCancel, onEdit, onUpdated, order, technicians, token }: { assigning: boolean; editing: boolean; onAssign: () => void; onCancel: () => void; onEdit: () => void; onUpdated: (order: InstallationOrder) => void; order: InstallationOrder; technicians: AvailableTechnician[]; token: string }) {
+  const [completing, setCompleting] = useState(false)
   const canSchedule = !['in_progress', 'completed', 'failed', 'cancelled'].includes(order.status)
   const coordinates = order.service_latitude !== null && order.service_longitude !== null
     ? `${order.service_latitude.toFixed(5)}, ${order.service_longitude.toFixed(5)}` : null
@@ -226,11 +227,28 @@ function InstallationRow({ assigning, editing, onAssign, onCancel, onEdit, onUpd
       <div><p className="text-xs text-slate-500">#{order.id.slice(0, 8).toUpperCase()}</p><h2 className="mt-1 font-semibold text-white">{order.customer?.full_name ?? 'Customer unavailable'}</h2><p className="mt-1 text-sm text-slate-300">{order.plan?.name ?? 'Plan unavailable'}</p></div>
       <div><p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">Service address</p><p className="mt-1 text-sm leading-6 text-slate-200">{order.service_address}</p>{coordinates ? <a className="mt-1 inline-block text-xs font-medium text-blue-300 hover:text-blue-200" href={`https://www.openstreetmap.org/?mlat=${order.service_latitude}&mlon=${order.service_longitude}#map=17/${order.service_latitude}/${order.service_longitude}`} rel="noreferrer" target="_blank">{coordinates} · View map ↗</a> : <p className="mt-1 text-xs text-slate-500">No map pin recorded</p>}</div>
       <div><StatusBadge status={order.status} /><p className="mt-3 text-sm font-medium text-slate-200">{formatSchedule(order)}</p><p className="mt-1 text-xs text-slate-500">Technician: {order.technician?.full_name ?? (order.technician_id ? 'Assigned' : 'Unassigned')}</p>{order.reschedule_count > 0 ? <p className="mt-1 text-xs text-amber-300">Rescheduled {order.reschedule_count} time{order.reschedule_count === 1 ? '' : 's'}</p> : null}</div>
-      <div className="flex flex-col gap-2">{canSchedule ? <button className="min-h-10 rounded-[9px] border border-blue-400/30 px-4 text-sm font-semibold text-blue-300 hover:bg-blue-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" onClick={onEdit} type="button">{order.scheduled_start_at ? 'Reschedule' : 'Schedule'}</button> : null}{(order.status === 'scheduled' || order.status === 'assigned') ? <button className="min-h-10 rounded-[9px] border border-white/12 px-4 text-sm font-semibold text-slate-200 hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" onClick={onAssign} type="button">{order.technician_id ? 'Reassign' : 'Assign technician'}</button> : null}</div>
+      <div className="flex flex-col gap-2">{canSchedule ? <button className="min-h-10 rounded-[9px] border border-blue-400/30 px-4 text-sm font-semibold text-blue-300 hover:bg-blue-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" onClick={onEdit} type="button">{order.scheduled_start_at ? 'Reschedule' : 'Schedule'}</button> : null}{(order.status === 'scheduled' || order.status === 'assigned') ? <button className="min-h-10 rounded-[9px] border border-white/12 px-4 text-sm font-semibold text-slate-200 hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" onClick={onAssign} type="button">{order.technician_id ? 'Reassign' : 'Assign technician'}</button> : null}{order.status === 'in_progress' ? <button className="min-h-10 rounded-[9px] bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500" onClick={() => { onCancel(); setCompleting(true) }} type="button">Complete</button> : null}</div>
     </div>
     {editing ? <ScheduleForm onCancel={onCancel} onUpdated={onUpdated} order={order} token={token} /> : null}
     {assigning ? <AssignmentForm onCancel={onCancel} onUpdated={onUpdated} order={order} technicians={technicians} token={token} /> : null}
+    {completing ? <AdminCompletionForm onCancel={() => setCompleting(false)} onUpdated={onUpdated} order={order} token={token} /> : null}
   </article>
+}
+
+function AdminCompletionForm({ onCancel, onUpdated, order, token }: { onCancel: () => void; onUpdated: (order: InstallationOrder) => void; order: InstallationOrder; token: string }) {
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  async function submit(event: FormEvent) {
+    event.preventDefault(); setSaving(true); setError(null)
+    try {
+      const response = await fetch(`/api/installations/${encodeURIComponent(order.id)}/complete`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ completion_notes: notes }) })
+      const result: unknown = await response.json()
+      if (!response.ok || !result || typeof result !== 'object' || !('installation' in result)) throw new Error('COMPLETION_FAILED')
+      onUpdated({ ...order, status: 'completed' }); onCancel()
+    } catch { setError('The installation could not be completed. Confirm it is in progress and try again.'); setSaving(false) }
+  }
+  return <form className="mt-5 border-t border-white/8 pt-5" onSubmit={(event) => void submit(event)}><label className="block text-xs font-medium text-slate-400">Completion notes<textarea className={`${scheduleInputClass} min-h-24 py-3`} maxLength={2000} minLength={5} onChange={(event) => setNotes(event.target.value)} required value={notes} /></label><div className="mt-3 flex gap-2"><button className="min-h-11 rounded-[9px] bg-emerald-600 px-4 text-sm font-semibold text-white disabled:opacity-60" disabled={saving} type="submit">{saving ? 'Completing…' : 'Confirm completion'}</button><button className="min-h-11 rounded-[9px] border border-white/10 px-4 text-sm text-slate-300" disabled={saving} onClick={onCancel} type="button">Cancel</button></div>{error ? <p className="mt-3 text-sm text-red-300" role="alert">{error}</p> : null}</form>
 }
 
 function AssignmentForm({ onCancel, onUpdated, order, technicians, token }: { onCancel: () => void; onUpdated: (order: InstallationOrder) => void; order: InstallationOrder; technicians: AvailableTechnician[]; token: string }) {
