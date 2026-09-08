@@ -41,7 +41,7 @@ export function SocialAuthButtons({
       <div>
         {providers.map(({ label, provider }) => (
           <button
-            className="flex min-h-12 items-center justify-center gap-2.5 rounded-[10px] border border-slate-900/14 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-900/25 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex min-h-12 w-full items-center justify-center gap-2.5 rounded-[10px] border border-slate-900/14 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-900/25 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={disabled || activeProvider !== null}
             key={provider}
             onClick={() => void continueWith(provider)}
