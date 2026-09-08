@@ -71,3 +71,4 @@ supabase/migrations/202609070003_add_installation_scheduling.sql
 supabase/migrations/202609070004_create_technician_profiles.sql
 supabase/migrations/202609080001_add_installation_status_workflow.sql
 supabase/migrations/202609080002_complete_installation.sql
+supabase/migrations/202609080003_activate_completed_service.sql

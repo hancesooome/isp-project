@@ -33,6 +33,12 @@ interface InstallationOrder {
   customer: { id: string; full_name: string | null } | null
   plan: { id: string; name: string } | null
   technician: { id: string; full_name: string | null } | null
+  subscription: {
+    id: string
+    status: 'pending_activation' | 'active' | 'past_due' | 'canceled'
+    activated_at: string | null
+    billing_anchor_date: string | null
+  } | null
 }
 
 interface AvailableTechnician {
@@ -219,19 +225,35 @@ function FilterBar({ filter, installations, onChange }: { filter: InstallationFi
 
 function InstallationRow({ assigning, editing, onAssign, onCancel, onEdit, onUpdated, order, technicians, token }: { assigning: boolean; editing: boolean; onAssign: () => void; onCancel: () => void; onEdit: () => void; onUpdated: (order: InstallationOrder) => void; order: InstallationOrder; technicians: AvailableTechnician[]; token: string }) {
   const [completing, setCompleting] = useState(false)
+  const [confirmingActivation, setConfirmingActivation] = useState(false)
+  const [activating, setActivating] = useState(false)
+  const [activationError, setActivationError] = useState<string | null>(null)
   const canSchedule = !['in_progress', 'completed', 'failed', 'cancelled'].includes(order.status)
   const coordinates = order.service_latitude !== null && order.service_longitude !== null
     ? `${order.service_latitude.toFixed(5)}, ${order.service_longitude.toFixed(5)}` : null
+
+  async function activateService() {
+    setActivating(true); setActivationError(null)
+    try {
+      const response = await fetch(`/api/admin/installations/${encodeURIComponent(order.id)}/activate`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      const result: unknown = await response.json()
+      if (!response.ok || !result || typeof result !== 'object' || !('activation' in result)) throw new Error('ACTIVATION_FAILED')
+      const activation = result.activation as { activated_at: string; billing_anchor_date: string }
+      onUpdated({ ...order, subscription: order.subscription ? { ...order.subscription, status: 'active', activated_at: activation.activated_at, billing_anchor_date: activation.billing_anchor_date } : null })
+      setConfirmingActivation(false); setActivating(false)
+    } catch { setActivationError('Service could not be activated. Confirm the installation is completed and try again.'); setActivating(false) }
+  }
   return <article className="p-5 sm:p-6">
     <div className="grid gap-5 xl:grid-cols-[1.2fr_1.5fr_1fr_auto] xl:items-start">
       <div><p className="text-xs text-slate-500">#{order.id.slice(0, 8).toUpperCase()}</p><h2 className="mt-1 font-semibold text-white">{order.customer?.full_name ?? 'Customer unavailable'}</h2><p className="mt-1 text-sm text-slate-300">{order.plan?.name ?? 'Plan unavailable'}</p></div>
       <div><p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">Service address</p><p className="mt-1 text-sm leading-6 text-slate-200">{order.service_address}</p>{coordinates ? <a className="mt-1 inline-block text-xs font-medium text-blue-300 hover:text-blue-200" href={`https://www.openstreetmap.org/?mlat=${order.service_latitude}&mlon=${order.service_longitude}#map=17/${order.service_latitude}/${order.service_longitude}`} rel="noreferrer" target="_blank">{coordinates} · View map ↗</a> : <p className="mt-1 text-xs text-slate-500">No map pin recorded</p>}</div>
       <div><StatusBadge status={order.status} /><p className="mt-3 text-sm font-medium text-slate-200">{formatSchedule(order)}</p><p className="mt-1 text-xs text-slate-500">Technician: {order.technician?.full_name ?? (order.technician_id ? 'Assigned' : 'Unassigned')}</p>{order.reschedule_count > 0 ? <p className="mt-1 text-xs text-amber-300">Rescheduled {order.reschedule_count} time{order.reschedule_count === 1 ? '' : 's'}</p> : null}</div>
-      <div className="flex flex-col gap-2">{canSchedule ? <button className="min-h-10 rounded-[9px] border border-blue-400/30 px-4 text-sm font-semibold text-blue-300 hover:bg-blue-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" onClick={onEdit} type="button">{order.scheduled_start_at ? 'Reschedule' : 'Schedule'}</button> : null}{(order.status === 'scheduled' || order.status === 'assigned') ? <button className="min-h-10 rounded-[9px] border border-white/12 px-4 text-sm font-semibold text-slate-200 hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" onClick={onAssign} type="button">{order.technician_id ? 'Reassign' : 'Assign technician'}</button> : null}{order.status === 'in_progress' ? <button className="min-h-10 rounded-[9px] bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500" onClick={() => { onCancel(); setCompleting(true) }} type="button">Complete</button> : null}</div>
+      <div className="flex flex-col gap-2">{canSchedule ? <button className="min-h-10 rounded-[9px] border border-blue-400/30 px-4 text-sm font-semibold text-blue-300 hover:bg-blue-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" onClick={onEdit} type="button">{order.scheduled_start_at ? 'Reschedule' : 'Schedule'}</button> : null}{(order.status === 'scheduled' || order.status === 'assigned') ? <button className="min-h-10 rounded-[9px] border border-white/12 px-4 text-sm font-semibold text-slate-200 hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" onClick={onAssign} type="button">{order.technician_id ? 'Reassign' : 'Assign technician'}</button> : null}{order.status === 'in_progress' ? <button className="min-h-10 rounded-[9px] bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500" onClick={() => { onCancel(); setCompleting(true) }} type="button">Complete</button> : null}{order.status === 'completed' && order.subscription?.status === 'pending_activation' ? <button className="min-h-10 rounded-[9px] bg-blue-500 px-4 text-sm font-semibold text-white hover:bg-blue-400" onClick={() => setConfirmingActivation(true)} type="button">Activate service</button> : null}{order.subscription?.status === 'active' ? <span className="px-2 py-1 text-center text-xs font-semibold text-emerald-300">Service active</span> : null}</div>
     </div>
     {editing ? <ScheduleForm onCancel={onCancel} onUpdated={onUpdated} order={order} token={token} /> : null}
     {assigning ? <AssignmentForm onCancel={onCancel} onUpdated={onUpdated} order={order} technicians={technicians} token={token} /> : null}
     {completing ? <AdminCompletionForm onCancel={() => setCompleting(false)} onUpdated={onUpdated} order={order} token={token} /> : null}
+    {confirmingActivation ? <div className="mt-5 border-t border-white/8 pt-5"><p className="text-sm font-semibold text-white">Activate this customer’s service?</p><p className="mt-1 text-sm text-slate-400">The activation time will become the service start and Philippine billing anchor. No invoice is created by this action.</p><div className="mt-3 flex gap-2"><button className="min-h-11 rounded-[9px] bg-blue-500 px-4 text-sm font-semibold text-white disabled:opacity-60" disabled={activating} onClick={() => void activateService()} type="button">{activating ? 'Activating…' : 'Confirm activation'}</button><button className="min-h-11 rounded-[9px] border border-white/10 px-4 text-sm text-slate-300" disabled={activating} onClick={() => setConfirmingActivation(false)} type="button">Cancel</button></div>{activationError ? <p className="mt-3 text-sm text-red-300" role="alert">{activationError}</p> : null}</div> : null}
   </article>
 }
 

@@ -3609,7 +3609,8 @@ app.get('/admin/installations', async (request, response) => {
       created_at,
       customer:profiles!installation_orders_customer_id_fkey(id, full_name),
       plan:plans!installation_orders_plan_id_fkey(id, name),
-      technician:profiles!installation_orders_technician_id_fkey(id, full_name)
+      technician:profiles!installation_orders_technician_id_fkey(id, full_name),
+      subscription:subscriptions!installation_orders_subscription_id_fkey(id, status, activated_at, billing_anchor_date)
     `)
     .order('created_at', { ascending: false })
 
@@ -3775,6 +3776,71 @@ app.patch('/admin/installations/:id/technician', async (request, response) => {
   }
 
   response.status(200).json({ installation })
+})
+
+app.post('/admin/installations/:id/activate', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message =
+      auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to activate service' : message,
+    })
+    return
+  }
+
+  const idResult = installationOrderIdSchema.safeParse(request.params.id)
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid installation order' })
+    return
+  }
+
+  const { data: activation, error } = await supabase
+    .rpc('activate_completed_service', {
+      p_installation_order_id: idResult.data,
+      p_activator_id: auth.userId,
+    })
+    .single<{
+      installation_order_id: string
+      subscription_id: string
+      subscription_status: 'active'
+      activated_at: string
+      billing_anchor_date: string
+      activation_changed: boolean
+    }>()
+
+  if (error) {
+    if (error.code === 'P0002') {
+      response.status(404).json({ error: 'Installation order not found' })
+      return
+    }
+    if (error.code === 'P0001' || error.code === '42501' || error.code === '23514') {
+      response.status(409).json({ error: 'This service is not eligible for activation' })
+      return
+    }
+    console.error('Failed to activate completed service', { code: error.code })
+    response.status(500).json({ error: 'Unable to activate service' })
+    return
+  }
+
+  if (activation.activation_changed) {
+    await recordAuditEvent({
+      actorType: 'admin',
+      actorId: auth.userId,
+      action: 'service.activated',
+      targetType: 'subscription',
+      targetId: activation.subscription_id,
+      source: 'api',
+      metadata: {
+        installation_order_id: activation.installation_order_id,
+        activated_at: activation.activated_at,
+        billing_anchor_date: activation.billing_anchor_date,
+      },
+    })
+  }
+
+  response.status(200).json({ activation })
 })
 
 app.get('/admin/reports/overview', async (request, response) => {
