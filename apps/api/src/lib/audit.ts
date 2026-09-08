@@ -2,6 +2,7 @@ import { supabase } from './supabase.js'
 
 type AuditActor =
   | { actorType: 'admin'; actorId: string | undefined }
+  | { actorType: 'technician'; actorId: string | undefined }
   | { actorType: 'system'; actorId?: never }
 
 interface AuditTarget {
@@ -15,9 +16,9 @@ interface AuditTarget {
 export async function recordAuditEvent(
   event: AuditActor & AuditTarget,
 ): Promise<boolean> {
-  if (event.actorType === 'admin' && !event.actorId) {
+  if (event.actorType !== 'system' && !event.actorId) {
     console.error('Failed to record audit event', {
-      reason: 'ADMIN_ACTOR_MISSING',
+      reason: 'ACTOR_MISSING',
       action: event.action,
       targetType: event.targetType,
       targetId: event.targetId,
@@ -27,7 +28,7 @@ export async function recordAuditEvent(
 
   try {
     const { error } = await supabase.from('audit_logs').insert({
-      actor_id: event.actorType === 'admin' ? event.actorId : null,
+      actor_id: event.actorType !== 'system' ? event.actorId : null,
       actor_type: event.actorType,
       action: event.action,
       target_type: event.targetType,

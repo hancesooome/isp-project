@@ -12,6 +12,7 @@ type InstallationStatus =
   | 'assigned'
   | 'in_progress'
   | 'completed'
+  | 'failed'
   | 'cancelled'
   | 'reschedule_required'
 
@@ -68,6 +69,12 @@ const statusContent: Record<InstallationStatus, { label: string; title: string; 
     title: 'Installation completed',
     instructions: 'Your installation work is complete. If you experience a service issue, contact support from your account.',
     tone: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  },
+  failed: {
+    label: 'Attempt unsuccessful',
+    title: 'The installation could not be completed',
+    instructions: 'Our team will review the visit and arrange the appropriate next step. Contact support if you need immediate assistance.',
+    tone: 'border-red-200 bg-red-50 text-red-800',
   },
   cancelled: {
     label: 'Cancelled',

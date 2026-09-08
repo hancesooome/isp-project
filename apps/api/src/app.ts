@@ -100,6 +100,7 @@ type UserRole = 'customer' | 'admin' | 'technician'
 interface AuthorizationResult {
   status: 200 | 401 | 403 | 500
   userId?: string
+  role?: UserRole
 }
 
 interface CustomerApplication {
@@ -601,6 +602,13 @@ const technicianAssignmentSchema = z
   })
   .strict()
 
+const installationStatusTransitionSchema = z
+  .object({
+    status: z.enum(['in_progress', 'failed', 'reschedule_required', 'cancelled']),
+    reason: z.string().trim().min(3).max(1000).nullable().optional(),
+  })
+  .strict()
+
 const adminPlanSelect =
   'id, name, slug, description, speed_mbps, price_cents, billing_interval, is_active, created_at, updated_at'
 const faqArticleSelect =
@@ -851,7 +859,7 @@ function isValidDatabaseDate(value: string): boolean {
 
 async function authorizeRole(
   authorizationHeader: string | undefined,
-  requiredRole: UserRole,
+  requiredRole: UserRole | UserRole[],
 ): Promise<AuthorizationResult> {
   if (!authorizationHeader?.startsWith('Bearer ')) {
     return { status: 401 }
@@ -885,11 +893,13 @@ async function authorizeRole(
     return { status: 500 }
   }
 
-  if (profile?.role !== requiredRole) {
+  const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
+  const profileRole = profile?.role as UserRole | undefined
+  if (!profileRole || !allowedRoles.includes(profileRole)) {
     return { status: 403 }
   }
 
-  return { status: 200, userId: user.id }
+  return { status: 200, userId: user.id, role: profileRole }
 }
 
 export const app = express()
@@ -3170,6 +3180,8 @@ app.get('/technician/installations', async (request, response) => {
       scheduled_end_at,
       schedule_timezone,
       internal_notes,
+      failure_reason,
+      reschedule_required_reason,
       updated_at,
       customer:profiles!installation_orders_customer_id_fkey(full_name),
       plan:plans!installation_orders_plan_id_fkey(name)
@@ -3184,6 +3196,77 @@ app.get('/technician/installations', async (request, response) => {
   }
 
   response.status(200).json({ installations })
+})
+
+app.patch('/installations/:id/status', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    ['admin', 'technician'],
+  )
+
+  if (auth.status !== 200 || !auth.userId || !auth.role) {
+    const message = auth.status === 403
+      ? 'Installation workflow access required'
+      : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to update installation' : message,
+    })
+    return
+  }
+
+  const idResult = installationOrderIdSchema.safeParse(request.params.id)
+  const transitionResult = installationStatusTransitionSchema.safeParse(request.body)
+  if (!idResult.success || !transitionResult.success) {
+    response.status(400).json({ error: 'Enter a valid installation status action' })
+    return
+  }
+
+  const transition = transitionResult.data
+  const { data: installation, error } = await supabase
+    .rpc('transition_installation_status', {
+      p_installation_order_id: idResult.data,
+      p_actor_id: auth.userId,
+      p_next_status: transition.status,
+      p_reason: transition.reason ?? null,
+    })
+    .single<{
+      id: string
+      status: 'in_progress' | 'failed' | 'reschedule_required' | 'cancelled'
+      in_progress_at: string | null
+      failed_at: string | null
+      failure_reason: string | null
+      reschedule_required_at: string | null
+      reschedule_required_reason: string | null
+      cancelled_at: string | null
+      cancellation_reason: string | null
+      updated_at: string
+    }>()
+
+  if (error) {
+    if (error.code === 'P0002') {
+      response.status(404).json({ error: 'Installation order not found' })
+      return
+    }
+    if (error.code === 'P0001' || error.code === '42501' || error.code === '23514') {
+      response.status(409).json({ error: 'This installation status change is not allowed' })
+      return
+    }
+    console.error('Failed to transition installation status', { code: error.code })
+    response.status(500).json({ error: 'Unable to update installation' })
+    return
+  }
+
+  await recordAuditEvent({
+    actorType: auth.role === 'technician' ? 'technician' : 'admin',
+    actorId: auth.userId,
+    action: 'installation.status_updated',
+    targetType: 'installation_order',
+    targetId: installation.id,
+    source: 'api',
+    metadata: { status: installation.status, reason: transition.reason ?? null },
+  })
+
+  response.status(200).json({ installation })
 })
 
 app.get('/admin/access', async (request, response) => {

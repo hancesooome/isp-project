@@ -40,6 +40,7 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
 
     rejected: 'border-red-800 bg-red-950/60 text-red-200',
     overdue: 'border-red-800 bg-red-950/60 text-red-200',
+    failed: 'border-red-800 bg-red-950/60 text-red-200',
     past_due: 'border-red-800 bg-red-950/60 text-red-200',
   }
 

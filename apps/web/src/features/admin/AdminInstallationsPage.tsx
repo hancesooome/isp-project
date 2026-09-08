@@ -12,6 +12,7 @@ type InstallationStatus =
   | 'assigned'
   | 'in_progress'
   | 'completed'
+  | 'failed'
   | 'cancelled'
   | 'reschedule_required'
 
@@ -92,7 +93,7 @@ function matchesFilter(status: InstallationStatus, filter: InstallationFilter) {
   if (filter === 'all') return true
   if (filter === 'pending') return status === 'pending_scheduling'
   if (filter === 'scheduled') return status === 'scheduled' || status === 'assigned'
-  if (filter === 'attention') return status === 'reschedule_required' || status === 'cancelled'
+  if (filter === 'attention') return status === 'failed' || status === 'reschedule_required' || status === 'cancelled'
   return status === filter
 }
 
@@ -217,7 +218,7 @@ function FilterBar({ filter, installations, onChange }: { filter: InstallationFi
 }
 
 function InstallationRow({ assigning, editing, onAssign, onCancel, onEdit, onUpdated, order, technicians, token }: { assigning: boolean; editing: boolean; onAssign: () => void; onCancel: () => void; onEdit: () => void; onUpdated: (order: InstallationOrder) => void; order: InstallationOrder; technicians: AvailableTechnician[]; token: string }) {
-  const canSchedule = !['in_progress', 'completed', 'cancelled'].includes(order.status)
+  const canSchedule = !['in_progress', 'completed', 'failed', 'cancelled'].includes(order.status)
   const coordinates = order.service_latitude !== null && order.service_longitude !== null
     ? `${order.service_latitude.toFixed(5)}, ${order.service_longitude.toFixed(5)}` : null
   return <article className="p-5 sm:p-6">
