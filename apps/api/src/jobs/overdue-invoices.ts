@@ -2,6 +2,7 @@ import { env } from '../config/env.js'
 import { sendEmail } from '../lib/email.js'
 import { formatMoney } from '../lib/money.js'
 import { supabase } from '../lib/supabase.js'
+import { sendRestorationNotifications } from './restoration-notifications.js'
 
 interface OverdueInvoiceResult {
   eligibleInvoices: number
@@ -22,6 +23,9 @@ interface OverdueInvoiceResult {
   eligibleSuspensionNotifications: number
   sentSuspensionNotifications: number
   skippedSuspensionNotifications: number
+  eligibleRestorationNotifications: number
+  sentRestorationNotifications: number
+  skippedRestorationNotifications: number
 }
 
 interface OverdueTransitionResult {
@@ -95,12 +99,14 @@ export async function runOverdueInvoiceJob(): Promise<OverdueInvoiceResult> {
   const notifications = await sendOverdueNotifications()
   const delinquencyNotifications = await sendDelinquencyNotifications()
   const suspensionNotifications = await sendSuspensionNotifications()
+  const restorationNotifications = await sendRestorationNotifications()
 
   return {
     ...data,
     ...notifications,
     ...delinquencyNotifications,
     ...suspensionNotifications,
+    ...restorationNotifications,
   }
 }
 

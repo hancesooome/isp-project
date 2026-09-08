@@ -20,5 +20,6 @@
 - `past_due` is an account and billing state only. It does not suspend or disconnect internet service.
 - A subscription remains `past_due` for seven full Philippine calendar days. If qualifying debt is still unpaid, it becomes `suspended` on the following day.
 - `suspended` is an operational platform state. It does not confirm that physical network access was disabled.
+- A non-payment suspension returns to `active` only after verified internal payment records show that every invoice already past its due date is resolved. Browser payment redirects never restore service.
 
 Annual-plan billing is outside the current automated monthly billing scope.

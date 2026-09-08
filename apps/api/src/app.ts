@@ -9,6 +9,7 @@ import { runMonthlyBillingJob } from './jobs/monthly-billing.js'
 import { applyScheduledPlanChanges } from './jobs/apply-plan-changes.js'
 import { runOverdueInvoiceJob } from './jobs/overdue-invoices.js'
 import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
+import { sendRestorationNotifications } from './jobs/restoration-notifications.js'
 import { recordAuditEvent } from './lib/audit.js'
 import { sendEmail } from './lib/email.js'
 import { logger } from './lib/logger.js'
@@ -1095,6 +1096,9 @@ app.post(
     }
 
     if (!processed) {
+      if (!isFailedPayment) {
+        await sendRestorationNotifications()
+      }
       response.status(200).json({ received: true })
       return
     }
@@ -1151,6 +1155,10 @@ app.post(
           }
         }
       }
+    }
+
+    if (!isFailedPayment) {
+      await sendRestorationNotifications()
     }
 
     response.status(200).json({ received: true })
@@ -1300,6 +1308,10 @@ app.post(
           },
         })
       }
+    }
+
+    if (isPaid) {
+      await sendRestorationNotifications()
     }
 
     response.status(200).json({ received: true })
