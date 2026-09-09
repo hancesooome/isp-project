@@ -81,3 +81,4 @@ supabase/migrations/202609090002_add_manual_service_controls.sql
 supabase/migrations/202609090003_create_cancellation_requests.sql
 supabase/migrations/202609090004_create_customer_cancellation_request.sql
 supabase/migrations/202609090005_add_cancellation_review.sql
+supabase/migrations/202609090006_apply_scheduled_terminations.sql

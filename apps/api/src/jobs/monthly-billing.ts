@@ -3,6 +3,7 @@ import { sendEmail } from '../lib/email.js'
 import { supabase } from '../lib/supabase.js'
 import { generateAndStoreStatementOfAccountPdf } from '../services/statement-of-account-storage.js'
 import { applyScheduledPlanChanges } from './apply-plan-changes.js'
+import { applyScheduledTerminations } from './scheduled-terminations.js'
 
 interface BillingSubscription {
   id: string
@@ -92,6 +93,7 @@ async function sendStatementReadyEmail(userId: string, billingMonth: string): Pr
 }
 
 export async function runMonthlyBillingJob(now = new Date()): Promise<MonthlyBillingResult> {
+  await applyScheduledTerminations(now)
   await applyScheduledPlanChanges(now)
   const philippineDate = getPhilippineDate(now)
   const statementDate = parseDatabaseDate(philippineDate)

@@ -13,6 +13,7 @@ import {
 } from './jobs/overdue-invoices.js'
 import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
 import { sendRestorationNotifications } from './jobs/restoration-notifications.js'
+import { applyScheduledTerminations } from './jobs/scheduled-terminations.js'
 import { recordAuditEvent } from './lib/audit.js'
 import { sendEmail } from './lib/email.js'
 import { logger } from './lib/logger.js'
@@ -1389,6 +1390,35 @@ app.get('/jobs/monthly-billing', async (request, response) => {
       requestId: response.locals.requestId,
     })
     response.status(500).json({ error: 'Unable to run monthly billing job' })
+  }
+})
+
+app.get('/jobs/service-terminations', async (request, response) => {
+  if (request.header('authorization') !== `Bearer ${env.cronSecret}`) {
+    response.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+
+  logger.info('Scheduled service termination job started', {
+    job: 'service-terminations',
+    requestId: response.locals.requestId,
+  })
+
+  try {
+    const result = await applyScheduledTerminations()
+    logger.info('Scheduled service termination job completed', {
+      ...result,
+      job: 'service-terminations',
+      requestId: response.locals.requestId,
+    })
+    response.status(200).json({ success: true, ...result })
+  } catch (error) {
+    logger.error('Scheduled service termination job failed', {
+      error,
+      job: 'service-terminations',
+      requestId: response.locals.requestId,
+    })
+    response.status(500).json({ error: 'Unable to apply scheduled service terminations' })
   }
 })
 
