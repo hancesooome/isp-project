@@ -15,6 +15,7 @@ import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
 import { sendRestorationNotifications } from './jobs/restoration-notifications.js'
 import { applyScheduledTerminations } from './jobs/scheduled-terminations.js'
 import { recordAuditEvent } from './lib/audit.js'
+import { getAdminMfaStatus } from './lib/admin-mfa.js'
 import {
   customerHasCapability,
   loadCustomerEntitlements,
@@ -3695,6 +3696,31 @@ app.get('/admin/access', async (request, response) => {
   }
 
   response.status(200).json({ authorized: true })
+})
+
+app.get('/admin/mfa-status', async (request, response) => {
+  const authorization = request.header('authorization')
+  const auth = await authorizeRole(authorization, 'admin')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message = auth.status === 500
+      ? 'Unable to verify admin security'
+      : auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const accessToken = authorization?.slice('Bearer '.length).trim()
+  if (!accessToken) {
+    response.status(401).json({ error: 'Authentication required' })
+    return
+  }
+
+  try {
+    response.status(200).json({ mfa: await getAdminMfaStatus(auth.userId, accessToken) })
+  } catch {
+    response.status(500).json({ error: 'Unable to verify admin security' })
+  }
 })
 
 app.get('/admin/coverage', async (request, response) => {
