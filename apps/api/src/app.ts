@@ -128,6 +128,17 @@ interface CustomerSubscription {
   } | null
 }
 
+interface CustomerCancellationRequest {
+  id: string
+  subscription_id: string
+  reason: string
+  requested_at: string
+  desired_termination_date: string | null
+  effective_termination_date: string | null
+  status: 'pending' | 'approved' | 'rejected' | 'scheduled' | 'completed' | 'withdrawn'
+  review_notes: string | null
+}
+
 interface CustomerInvoice {
   id: string
   amount_cents: number
@@ -452,6 +463,15 @@ const databaseDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .refine(isValidDatabaseDate)
+
+const cancellationRequestSchema = z
+  .object({
+    subscription_id: z.string().uuid(),
+    reason: z.string().trim().min(3).max(1000),
+    desired_termination_date: databaseDateSchema.nullable(),
+    acknowledged: z.literal(true),
+  })
+  .strict()
 
 const adminInvoiceSchema = z
   .object({
@@ -2149,6 +2169,122 @@ app.get('/subscription', async (request, response) => {
   }
 
   response.status(200).json({ subscription })
+})
+
+app.get('/subscription/cancellation-request', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message = auth.status === 500
+      ? 'Unable to load cancellation request'
+      : auth.status === 403
+        ? 'Customer access required'
+        : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: subscription, error: subscriptionError } = await supabase
+    .from('subscriptions')
+    .select('id, status, plan:plans(id, name)')
+    .eq('user_id', auth.userId)
+    .in('status', ['active', 'past_due', 'suspended'])
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle<{
+      id: string
+      status: 'active' | 'past_due' | 'suspended'
+      plan: { id: string; name: string } | null
+    }>()
+
+  if (subscriptionError) {
+    console.error('Failed to load cancellation subscription', { code: subscriptionError.code })
+    response.status(500).json({ error: 'Unable to load cancellation request' })
+    return
+  }
+
+  const { data: cancellationRequest, error: requestError } = await supabase
+    .from('cancellation_requests')
+    .select(`
+      id,
+      subscription_id,
+      reason,
+      requested_at,
+      desired_termination_date,
+      effective_termination_date,
+      status,
+      review_notes
+    `)
+    .eq('user_id', auth.userId)
+    .order('requested_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle<CustomerCancellationRequest>()
+
+  if (requestError) {
+    console.error('Failed to load customer cancellation request', { code: requestError.code })
+    response.status(500).json({ error: 'Unable to load cancellation request' })
+    return
+  }
+
+  response.status(200).json({
+    subscription,
+    cancellation_request: cancellationRequest,
+  })
+})
+
+app.post('/subscription/cancellation-request', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message = auth.status === 500
+      ? 'Unable to submit cancellation request'
+      : auth.status === 403
+        ? 'Customer access required'
+        : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const result = cancellationRequestSchema.safeParse(request.body)
+  if (!result.success) {
+    response.status(400).json({ error: 'Enter a valid reason, date, and confirmation' })
+    return
+  }
+
+  const { data: cancellationRequest, error } = await supabase
+    .rpc('create_customer_cancellation_request', {
+      p_subscription_id: result.data.subscription_id,
+      p_user_id: auth.userId,
+      p_reason: result.data.reason,
+      p_desired_termination_date: result.data.desired_termination_date,
+    })
+    .single<CustomerCancellationRequest>()
+
+  if (error || !cancellationRequest) {
+    if (error?.code === 'P0002') {
+      response.status(404).json({ error: 'Subscription not found' })
+      return
+    }
+    if (error?.code === 'P0001') {
+      response.status(409).json({ error: 'This subscription is not eligible for cancellation' })
+      return
+    }
+    if (error?.code === '23505') {
+      response.status(409).json({ error: 'A cancellation request is already in progress' })
+      return
+    }
+    if (error?.code === '22023') {
+      response.status(422).json({ error: error.message })
+      return
+    }
+
+    console.error('Failed to create customer cancellation request', { code: error?.code })
+    response.status(500).json({ error: 'Unable to submit cancellation request' })
+    return
+  }
+
+  response.status(201).json({ cancellation_request: cancellationRequest })
 })
 
 app.get('/subscription/change-options', async (request, response) => {

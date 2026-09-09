@@ -212,6 +212,7 @@ export function CustomerDashboard() {
               <ActionLink label="Application status" to="/account/application" />
               <ActionLink label="Change plan" to="/account/change-plan" />
               <ActionLink label="Plan-change history" to="/account/plan-changes" />
+              <ActionLink label="Cancel service" to="/account/cancel-service" />
               <ActionLink label="View invoices" to="/account/invoices" />
               <ActionLink label="Download statements" to="/account/statements" />
             </nav>

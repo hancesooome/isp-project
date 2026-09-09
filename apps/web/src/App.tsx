@@ -55,6 +55,7 @@ import { StatementsPage } from './features/statements/StatementsPage'
 import { CustomerDashboard } from './features/subscriptions/CustomerDashboard'
 import { ChangePlanPage } from './features/subscriptions/ChangePlanPage'
 import { PlanChangeHistoryPage } from './features/subscriptions/PlanChangeHistoryPage'
+import { CancellationRequestPage } from './features/subscriptions/CancellationRequestPage'
 import {
   AdminSubscriptionDetailsPage,
   AdminSubscriptionsPage,
@@ -106,6 +107,7 @@ export function App() {
         <Route index element={<CustomerDashboard />} />
         <Route path="change-plan" element={<ChangePlanPage />} />
         <Route path="plan-changes" element={<PlanChangeHistoryPage />} />
+        <Route path="cancel-service" element={<CancellationRequestPage />} />
         <Route path="application" element={<ApplicationStatusPage />} />
         <Route path="installation" element={<InstallationAppointmentPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
