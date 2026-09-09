@@ -2271,6 +2271,40 @@ app.get('/subscription/cancellation-request', async (request, response) => {
   })
 })
 
+app.get('/subscription/service-history', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+  if (auth.status !== 200 || !auth.userId) {
+    response.status(auth.status).json({ error: auth.status === 403 ? 'Customer access required' : auth.status === 500 ? 'Unable to load service history' : 'Authentication required' })
+    return
+  }
+
+  const { error: syncError } = await supabase.rpc(
+    'sync_customer_service_lifecycle_events',
+    { p_user_id: auth.userId },
+  )
+  if (syncError) {
+    console.error('Failed to synchronize customer service history', { code: syncError.code })
+    response.status(500).json({ error: 'Unable to load service history' })
+    return
+  }
+
+  const { data: events, error } = await supabase
+    .from('service_lifecycle_events')
+    .select('id, subscription_id, event_type, occurred_at, summary, reason')
+    .eq('user_id', auth.userId)
+    .order('occurred_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(200)
+
+  if (error) {
+    console.error('Failed to load customer service history', { code: error.code })
+    response.status(500).json({ error: 'Unable to load service history' })
+    return
+  }
+
+  response.status(200).json({ service_history: events })
+})
+
 app.post('/subscription/cancellation-request', async (request, response) => {
   const auth = await authorizeRole(request.header('authorization'), 'customer')
 

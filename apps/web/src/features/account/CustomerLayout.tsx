@@ -10,6 +10,7 @@ const navItems = [
   { label: 'Installation', shortLabel: 'Install', to: '/account/installation', end: false, icon: 'installation' },
   { label: 'Invoices', shortLabel: 'Invoices', to: '/account/invoices', end: false, icon: 'invoices' },
   { label: 'Statements', shortLabel: 'Statements', to: '/account/statements', end: false, icon: 'statements' },
+  { label: 'Service History', shortLabel: 'History', to: '/account/service-history', end: false, icon: 'history' },
   { label: 'Support', shortLabel: 'Support', to: '/account/support', end: false, icon: 'support' },
   { label: 'Help Center', shortLabel: 'Help', to: '/account/help', end: false, icon: 'help' },
 ] as const
@@ -231,6 +232,7 @@ function NavIcon({ active, name }: { active: boolean; name: string }) {
     installation: <><path d="M12 2v4M5.6 4.6l2.8 2.8M18.4 4.6l-2.8 2.8" /><path d="M5 13a7 7 0 0114 0v3H5zM3 20h18" /></>,
     invoices: <><rect height="15" rx="2" width="18" x="3" y="5" /><path d="M3 10h18M7 15h3" /></>,
     statements: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
+    history: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2M7 4l-3 3" /></>,
     support: <><path d="M21 12a8 8 0 01-8 8H8l-5 2 2-5a8 8 0 1116-5z" /><path d="M9.5 9a2.5 2.5 0 014.8.9c0 1.8-2.3 2-2.3 3.6M12 17h.01" /></>,
     help: <><circle cx="12" cy="12" r="9" /><path d="M9.8 9a2.4 2.4 0 014.6.9c0 1.8-2.4 2-2.4 3.6M12 17h.01" /></>,
   }
