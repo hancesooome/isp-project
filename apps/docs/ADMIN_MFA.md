@@ -18,6 +18,8 @@ code.
 
 The frontend helper in `apps/web/src/features/auth/admin-mfa.ts` validates this
 response for the enrollment and challenge routes implemented by later tickets.
-ISP-142 does not yet block the admin portal: forced enrollment belongs to
-ISP-143, and login challenges/API AAL2 enforcement belong to ISP-144.
-
+ISP-143 redirects administrators without a verified TOTP factor to
+`/admin/mfa/enroll`. Enrollment starts only after an explicit action, displays
+the provider-issued QR code, and verifies a six-digit authenticator code through
+Supabase. An admin can leave this flow only by completing enrollment or signing
+out. Login challenges and API AAL2 enforcement belong to ISP-144.

@@ -1,14 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 
 import { useAuth } from './auth-context'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { fetchAdminMfaStatus } from './admin-mfa'
 
 interface AdminRouteProps {
   children: ReactNode
 }
 
-type AdminAccessState = 'checking' | 'allowed' | 'denied' | 'error'
+type AdminAccessState = 'checking' | 'allowed' | 'enrollment_required' | 'denied' | 'error'
 
 export function AdminRoute({ children }: AdminRouteProps) {
   const { session } = useAuth()
@@ -39,7 +40,8 @@ export function AdminRoute({ children }: AdminRouteProps) {
           throw new Error('ADMIN_ACCESS_CHECK_FAILED')
         }
 
-        setAccess('allowed')
+        const mfa = await fetchAdminMfaStatus(session?.access_token ?? '', controller.signal)
+        setAccess(mfa.requirement === 'enrollment_required' ? 'enrollment_required' : 'allowed')
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           return
@@ -81,6 +83,10 @@ export function AdminRoute({ children }: AdminRouteProps) {
         </section>
       </div>
     )
+  }
+
+  if (access === 'enrollment_required') {
+    return <Navigate replace to="/admin/mfa/enroll" />
   }
 
   if (access === 'error') {
