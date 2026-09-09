@@ -39,6 +39,7 @@ import { AdminReportsPage } from './features/admin/AdminReportsPage'
 import { AdminCoveragePage } from './features/admin/AdminCoveragePage'
 import { AdminTechniciansPage } from './features/admin/AdminTechniciansPage'
 import { AdminPlanChangesPage } from './features/admin/AdminPlanChangesPage'
+import { AdminCancellationRequestsPage } from './features/admin/AdminCancellationRequestsPage'
 import { TechnicianWorkQueuePage } from './features/installations/TechnicianWorkQueuePage'
 import { AdminInstallationsPage } from './features/admin/AdminInstallationsPage'
 import { HomePage } from './features/home/HomePage'
@@ -137,6 +138,7 @@ export function App() {
         <Route path="plans" element={<AdminPlansPage />} />
         <Route path="coverage" element={<AdminCoveragePage />} />
         <Route path="plan-changes" element={<AdminPlanChangesPage />} />
+        <Route path="cancellations" element={<AdminCancellationRequestsPage />} />
         <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
         <Route path="subscriptions/:id" element={<AdminSubscriptionDetailsRoute />} />
         <Route path="billing" element={<AdminBillingPage />} />

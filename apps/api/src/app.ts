@@ -473,6 +473,14 @@ const cancellationRequestSchema = z
   })
   .strict()
 
+const cancellationReviewSchema = z
+  .object({
+    decision: z.enum(['approved', 'rejected', 'scheduled']),
+    effective_termination_date: databaseDateSchema.nullable(),
+    review_notes: z.string().trim().min(3).max(1000).nullable(),
+  })
+  .strict()
+
 const adminInvoiceSchema = z
   .object({
     subscription_id: z.string().uuid(),
@@ -5089,6 +5097,105 @@ app.get('/admin/plan-changes', async (request, response) => {
   }
 
   response.status(200).json({ plan_changes: planChanges })
+})
+
+app.get('/admin/cancellation-requests', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+  if (auth.status !== 200) {
+    response.status(auth.status).json({ error: auth.status === 403 ? 'Admin access required' : auth.status === 500 ? 'Unable to load cancellation requests' : 'Authentication required' })
+    return
+  }
+
+  const { data: requests, error } = await supabase
+    .from('cancellation_requests')
+    .select(`
+      id, subscription_id, request_source, reason, requested_at,
+      desired_termination_date, effective_termination_date, status,
+      reviewed_at, review_notes,
+      customer:profiles!cancellation_requests_user_id_fkey(id, full_name),
+      subscription:subscriptions!cancellation_requests_subscription_customer_fkey(
+        id, status, started_at,
+        plan:plans(id, name, price_cents, billing_interval)
+      )
+    `)
+    .order('requested_at', { ascending: false })
+    .order('id', { ascending: false })
+
+  if (error) {
+    console.error('Failed to load admin cancellation requests', { code: error.code })
+    response.status(500).json({ error: 'Unable to load cancellation requests' })
+    return
+  }
+
+  const subscriptionIds = requests.map((item) => item.subscription_id)
+  const invoiceResult = subscriptionIds.length === 0
+    ? { data: [], error: null }
+    : await supabase
+        .from('invoices')
+        .select('subscription_id, amount_cents, status')
+        .in('subscription_id', subscriptionIds)
+        .in('status', ['open', 'overdue'])
+
+  if (invoiceResult.error) {
+    console.error('Failed to load cancellation billing context', { code: invoiceResult.error.code })
+    response.status(500).json({ error: 'Unable to load cancellation requests' })
+    return
+  }
+
+  response.status(200).json({
+    cancellation_requests: requests.map((item) => ({
+      ...item,
+      outstanding_cents: invoiceResult.data
+        .filter((invoice) => invoice.subscription_id === item.subscription_id)
+        .reduce((total, invoice) => total + invoice.amount_cents, 0),
+      overdue_invoices: invoiceResult.data.filter(
+        (invoice) => invoice.subscription_id === item.subscription_id && invoice.status === 'overdue',
+      ).length,
+    })),
+  })
+})
+
+app.patch('/admin/cancellation-requests/:id/review', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+  if (auth.status !== 200 || !auth.userId) {
+    response.status(auth.status).json({ error: auth.status === 403 ? 'Admin access required' : auth.status === 500 ? 'Unable to review cancellation request' : 'Authentication required' })
+    return
+  }
+
+  const idResult = subscriptionIdSchema.safeParse(request.params.id)
+  const reviewResult = cancellationReviewSchema.safeParse(request.body)
+  if (!idResult.success || !reviewResult.success) {
+    response.status(400).json({ error: 'Enter a valid decision, date, and review note' })
+    return
+  }
+
+  const input = reviewResult.data
+  const { data: cancellationRequest, error } = await supabase
+    .rpc('review_cancellation_request', {
+      p_request_id: idResult.data,
+      p_actor_id: auth.userId,
+      p_decision: input.decision,
+      p_effective_termination_date: input.effective_termination_date,
+      p_review_notes: input.review_notes,
+    })
+    .single<CustomerCancellationRequest>()
+
+  if (error || !cancellationRequest) {
+    const status = error?.code === 'P0002' ? 404 : error?.code === 'P0001' ? 409 : error?.code === '22023' ? 422 : 500
+    if (status === 500) console.error('Failed to review cancellation request', { code: error?.code })
+    response.status(status).json({ error: status === 404 ? 'Cancellation request not found' : status === 409 ? 'Cancellation request has already been reviewed' : status === 422 ? error?.message : 'Unable to review cancellation request' })
+    return
+  }
+
+  await recordAuditEvent({
+    actorType: 'admin', actorId: auth.userId,
+    action: `cancellation_request.${input.decision}`,
+    targetType: 'cancellation_request', targetId: cancellationRequest.id,
+    source: 'api',
+    metadata: { effective_termination_date: input.effective_termination_date, review_notes: input.review_notes },
+  })
+
+  response.status(200).json({ cancellation_request: cancellationRequest })
 })
 
 app.get('/admin/subscriptions', async (request, response) => {
