@@ -56,7 +56,9 @@ interface DelinquencyNotification {
 interface SuspensionNotification {
   id: string
   subscription_id: string
-  triggering_invoice_id: string
+  triggering_invoice_id: string | null
+  reason: 'non_payment' | 'manual'
+  manual_reason: string | null
 }
 
 function isOverdueTransitionResult(
@@ -110,10 +112,10 @@ export async function runOverdueInvoiceJob(): Promise<OverdueInvoiceResult> {
   }
 }
 
-async function sendSuspensionNotifications() {
+export async function sendSuspensionNotifications() {
   const { data: history, error } = await supabase
     .from('subscription_suspension_history')
-    .select('id, subscription_id, triggering_invoice_id')
+    .select('id, subscription_id, triggering_invoice_id, reason, manual_reason')
     .is('email_claimed_at', null)
     .order('suspended_at')
     .order('id')
@@ -150,25 +152,25 @@ async function sendSuspensionNotifications() {
       continue
     }
 
-    const [subscriptionResult, invoiceResult] = await Promise.all([
-      supabase
-        .from('subscriptions')
-        .select('user_id')
-        .eq('id', notification.subscription_id)
-        .eq('status', 'suspended')
-        .maybeSingle<{ user_id: string }>(),
-      supabase
-        .from('invoices')
-        .select('id, amount_cents, due_date')
-        .eq('id', notification.triggering_invoice_id)
-        .maybeSingle<{ id: string; amount_cents: number; due_date: string }>(),
-    ])
+    const subscriptionResult = await supabase
+      .from('subscriptions')
+      .select('user_id')
+      .eq('id', notification.subscription_id)
+      .eq('status', 'suspended')
+      .maybeSingle<{ user_id: string }>()
+    const invoiceResult = notification.triggering_invoice_id
+      ? await supabase
+          .from('invoices')
+          .select('id, amount_cents, due_date')
+          .eq('id', notification.triggering_invoice_id)
+          .maybeSingle<{ id: string; amount_cents: number; due_date: string }>()
+      : { data: null, error: null }
 
     if (
       subscriptionResult.error ||
-      invoiceResult.error ||
       !subscriptionResult.data ||
-      !invoiceResult.data
+      (notification.reason === 'non_payment' &&
+        (invoiceResult.error || !invoiceResult.data))
     ) {
       console.error('Failed to load suspension notification details', {
         historyId: notification.id,
@@ -194,19 +196,14 @@ async function sendSuspensionNotifications() {
       continue
     }
 
-    const invoice = invoiceResult.data
-    const reference = invoice.id.slice(0, 8).toUpperCase()
-    const amount = formatMoney(invoice.amount_cents)
-    const invoiceUrl = new URL(
-      `/account/invoices/${encodeURIComponent(invoice.id)}`,
-      env.appUrl,
-    ).toString()
-    const result = await sendEmail({
-      to: email,
-      subject: 'Your ISP account service is suspended for non-payment',
-      text: `Your account service has been placed in suspended status because invoice #${reference} for ${amount}, due on ${invoice.due_date}, remains unpaid. This is an operational platform status and does not confirm that your physical internet connection was disabled. View or pay your invoice: ${invoiceUrl}`,
-      html: `<p>Your account service has been placed in <strong>suspended</strong> status because invoice <strong>#${reference}</strong> for <strong>${amount}</strong>, due on ${invoice.due_date}, remains unpaid.</p><p>This is an operational platform status and does not confirm that your physical internet connection was disabled.</p><p><a href="${invoiceUrl}">View or pay your invoice</a></p>`,
-    })
+    const result = notification.reason === 'manual'
+      ? await sendEmail({
+          to: email,
+          subject: 'Your ISP account service status was suspended',
+          text: `An administrator placed your account service in suspended status. Reason: ${notification.manual_reason ?? 'Operational review'}. This is an operational platform status and does not confirm that your physical internet connection was disabled.`,
+          html: `<p>An administrator placed your account service in <strong>suspended</strong> status.</p><p><strong>Reason:</strong> ${escapeHtml(notification.manual_reason ?? 'Operational review')}</p><p>This is an operational platform status and does not confirm that your physical internet connection was disabled.</p>`,
+        })
+      : await sendNonPaymentSuspensionEmail(email, invoiceResult.data!)
 
     if (result.success) {
       sentSuspensionNotifications += 1
@@ -222,6 +219,34 @@ async function sendSuspensionNotifications() {
     sentSuspensionNotifications,
     skippedSuspensionNotifications,
   }
+}
+
+async function sendNonPaymentSuspensionEmail(
+  email: string,
+  invoice: { id: string; amount_cents: number; due_date: string },
+) {
+  const reference = invoice.id.slice(0, 8).toUpperCase()
+  const amount = formatMoney(invoice.amount_cents)
+  const invoiceUrl = new URL(
+    `/account/invoices/${encodeURIComponent(invoice.id)}`,
+    env.appUrl,
+  ).toString()
+
+  return sendEmail({
+    to: email,
+    subject: 'Your ISP account service is suspended for non-payment',
+    text: `Your account service has been placed in suspended status because invoice #${reference} for ${amount}, due on ${invoice.due_date}, remains unpaid. This is an operational platform status and does not confirm that your physical internet connection was disabled. View or pay your invoice: ${invoiceUrl}`,
+    html: `<p>Your account service has been placed in <strong>suspended</strong> status because invoice <strong>#${reference}</strong> for <strong>${amount}</strong>, due on ${invoice.due_date}, remains unpaid.</p><p>This is an operational platform status and does not confirm that your physical internet connection was disabled.</p><p><a href="${invoiceUrl}">View or pay your invoice</a></p>`,
+  })
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
 }
 
 async function sendDelinquencyNotifications() {

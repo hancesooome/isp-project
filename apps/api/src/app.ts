@@ -7,7 +7,10 @@ import { z } from 'zod'
 import { env } from './config/env.js'
 import { runMonthlyBillingJob } from './jobs/monthly-billing.js'
 import { applyScheduledPlanChanges } from './jobs/apply-plan-changes.js'
-import { runOverdueInvoiceJob } from './jobs/overdue-invoices.js'
+import {
+  runOverdueInvoiceJob,
+  sendSuspensionNotifications,
+} from './jobs/overdue-invoices.js'
 import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
 import { sendRestorationNotifications } from './jobs/restoration-notifications.js'
 import { recordAuditEvent } from './lib/audit.js'
@@ -581,6 +584,11 @@ const adminSubscriptionStatusSchema = z
     status: z.literal('canceled'),
   })
   .strict()
+
+const manualServiceStatusSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('suspended'), reason: z.string().trim().min(3).max(1000) }).strict(),
+  z.object({ status: z.literal('active'), reason: z.string().trim().min(3).max(1000) }).strict(),
+])
 
 const installationScheduleSchema = z
   .object({
@@ -5116,6 +5124,93 @@ app.get('/admin/subscriptions/:id', async (request, response) => {
       },
     },
   })
+})
+
+app.patch('/admin/subscriptions/:id/service-status', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message =
+      auth.status === 500
+        ? 'Unable to update service status'
+        : auth.status === 403
+          ? 'Admin access required'
+          : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = subscriptionIdSchema.safeParse(request.params.id)
+  const statusResult = manualServiceStatusSchema.safeParse(request.body)
+
+  if (!idResult.success || !statusResult.success) {
+    response.status(400).json({ error: 'Enter a valid status and reason' })
+    return
+  }
+
+  const input = statusResult.data
+  const functionName = input.status === 'suspended'
+    ? 'manually_suspend_subscription'
+    : 'manually_restore_subscription'
+  const { data: subscription, error } = await supabase
+    .rpc(functionName, {
+      p_subscription_id: idResult.data,
+      p_actor_id: auth.userId,
+      p_reason: input.reason,
+    })
+    .single<{
+      id: string
+      status: 'active' | 'suspended'
+      started_at: string | null
+      ended_at: string | null
+      updated_at: string
+    }>()
+
+  if (error || !subscription) {
+    if (error?.code !== 'P0001' && error?.code !== 'P0002') {
+      console.error('Failed to update manual service status', {
+        code: error?.code ?? 'SUBSCRIPTION_NOT_UPDATED',
+        subscriptionId: idResult.data,
+      })
+    }
+    response.status(error?.code === 'P0002' ? 404 : error?.code === 'P0001' ? 409 : 500).json({
+      error:
+        error?.code === 'P0002'
+          ? 'Subscription not found'
+          : error?.code === 'P0001'
+            ? 'Service status has changed or is not eligible'
+            : 'Unable to update service status',
+    })
+    return
+  }
+
+  await recordAuditEvent({
+    actorType: 'admin',
+    actorId: auth.userId,
+    action: input.status === 'suspended'
+      ? 'subscription.manually_suspended'
+      : 'subscription.manually_restored',
+    targetType: 'subscription',
+    targetId: subscription.id,
+    source: 'api',
+    metadata: { reason: input.reason },
+  })
+
+  try {
+    if (input.status === 'suspended') {
+      await sendSuspensionNotifications()
+    } else {
+      await sendRestorationNotifications()
+    }
+  } catch (notificationError) {
+    logger.error('Manual service status notification failed', {
+      error: notificationError,
+      subscriptionId: subscription.id,
+      requestId: response.locals.requestId,
+    })
+  }
+
+  response.status(200).json({ subscription })
 })
 
 app.patch('/admin/subscriptions/:id/status', async (request, response) => {

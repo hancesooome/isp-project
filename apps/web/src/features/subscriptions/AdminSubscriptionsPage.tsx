@@ -281,6 +281,8 @@ export function AdminSubscriptionDetailsPage({ subscriptionId }: { subscriptionI
   const [statusError, setStatusError] = useState<string | null>(null)
   const [statusSuccess, setStatusSuccess] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [manualAction, setManualAction] = useState<'suspended' | 'active' | null>(null)
+  const [manualReason, setManualReason] = useState('')
 
   useEffect(() => {
     if (!session) return
@@ -347,6 +349,45 @@ export function AdminSubscriptionDetailsPage({ subscriptionId }: { subscriptionI
     }
   }
 
+  async function updateManualServiceStatus() {
+    if (!session || !subscription || !manualAction || isUpdating) return
+
+    const reason = manualReason.trim()
+    if (reason.length < 3) {
+      setStatusError('Enter a reason with at least 3 characters.')
+      return
+    }
+
+    setIsUpdating(true)
+    setStatusError(null)
+    setStatusSuccess(null)
+
+    try {
+      const response = await fetch(`/api/admin/subscriptions/${encodeURIComponent(subscription.id)}/service-status`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: manualAction, reason }),
+      })
+      const result: unknown = await response.json()
+      if (!response.ok || typeof result !== 'object' || result === null || !('subscription' in result) || !isStatusUpdate(result.subscription)) {
+        throw new Error('ADMIN_SERVICE_STATUS_FAILED')
+      }
+
+      const updated = result.subscription
+      setSubscription((current) => current ? { ...current, status: updated.status, ended_at: updated.ended_at, updated_at: updated.updated_at } : current)
+      setStatusSuccess(updated.status === 'suspended' ? 'Service suspended and reason recorded.' : 'Service restored and reason recorded.')
+      setManualAction(null)
+      setManualReason('')
+    } catch {
+      setStatusError('We could not update the service status. Refresh and try again.')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   if (error) return <ErrorPanel message={error} title="Subscription unavailable" />
   if (subscription === undefined) return <PageSkeleton type="detail" />
   if (subscription === null) return <EmptyState description="This subscription does not exist." title="Subscription not found" />
@@ -385,8 +426,54 @@ export function AdminSubscriptionDetailsPage({ subscriptionId }: { subscriptionI
 
       <section className="mt-5 rounded-[12px] border border-white/8 bg-[#11161f] p-5" aria-labelledby="status-actions-heading">
         <h2 className="text-sm font-semibold text-white" id="status-actions-heading">Status actions</h2>
+        {(subscription.status === 'active' || subscription.status === 'past_due' || subscription.status === 'suspended') ? (
+          <div className="mt-4">
+            <button
+              className="min-h-10 rounded-[9px] border border-white/10 bg-white/6 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isUpdating}
+              onClick={() => {
+                setManualAction(subscription.status === 'suspended' ? 'active' : 'suspended')
+                setManualReason('')
+                setStatusError(null)
+                setStatusSuccess(null)
+              }}
+              type="button"
+            >
+              {subscription.status === 'suspended' ? 'Restore service' : 'Suspend service'}
+            </button>
+          </div>
+        ) : null}
+        {manualAction ? (
+          <div className="mt-4 max-w-2xl rounded-[10px] border border-amber-400/25 bg-amber-400/8 p-4">
+            <h3 className="text-sm font-semibold text-white">
+              Confirm service {manualAction === 'suspended' ? 'suspension' : 'restoration'}
+            </h3>
+            <p className="mt-2 text-xs leading-5 text-slate-300">
+              This changes the account&apos;s operational service status. It does not directly disable or enable physical network equipment.
+            </p>
+            <label className="mt-4 block text-xs font-semibold text-slate-200" htmlFor="manual-service-reason">
+              Reason
+            </label>
+            <textarea
+              className="mt-2 min-h-24 w-full rounded-[9px] border border-white/10 bg-[#0b1018] px-3 py-2 text-sm text-white placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              id="manual-service-reason"
+              maxLength={1000}
+              onChange={(event) => setManualReason(event.target.value)}
+              placeholder="Explain why this action is required"
+              value={manualReason}
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button className="min-h-10 rounded-[9px] bg-amber-400 px-4 text-xs font-bold text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50" disabled={isUpdating || manualReason.trim().length < 3} onClick={() => void updateManualServiceStatus()} type="button">
+                {isUpdating ? 'Updating…' : `Confirm ${manualAction === 'suspended' ? 'suspension' : 'restoration'}`}
+              </button>
+              <button className="min-h-10 rounded-[9px] border border-white/10 px-4 text-xs font-semibold text-slate-300 hover:bg-white/6 disabled:opacity-50" disabled={isUpdating} onClick={() => { setManualAction(null); setManualReason('') }} type="button">
+                Keep current status
+              </button>
+            </div>
+          </div>
+        ) : null}
         {statusActions[subscription.status].length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">{subscription.status === 'pending_activation' ? 'Activation is handled by the installation workflow.' : 'Canceled subscriptions are retained as history and cannot be reactivated.'}</p>
+          subscription.status === 'pending_activation' || subscription.status === 'canceled' ? <p className="mt-3 text-sm text-slate-500">{subscription.status === 'pending_activation' ? 'Activation is handled by the installation workflow.' : 'Canceled subscriptions are retained as history and cannot be reactivated.'}</p> : null
         ) : (
           <div className="mt-4 flex flex-wrap gap-2">
             {statusActions[subscription.status].map((action) => (

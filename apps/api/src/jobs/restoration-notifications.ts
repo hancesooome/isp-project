@@ -5,14 +5,16 @@ import { supabase } from '../lib/supabase.js'
 interface RestorationNotification {
   id: string
   subscription_id: string
-  triggering_invoice_id: string
+  triggering_invoice_id: string | null
   restored_at: string
+  reason: 'verified_payment' | 'manual'
+  manual_reason: string | null
 }
 
 export async function sendRestorationNotifications() {
   const { data: history, error } = await supabase
     .from('subscription_restoration_history')
-    .select('id, subscription_id, triggering_invoice_id, restored_at')
+    .select('id, subscription_id, triggering_invoice_id, restored_at, reason, manual_reason')
     .is('email_claimed_at', null)
     .order('restored_at')
     .order('id')
@@ -79,15 +81,21 @@ export async function sendRestorationNotifications() {
       continue
     }
 
-    const invoiceReference = notification.triggering_invoice_id
-      .slice(0, 8)
-      .toUpperCase()
     const accountUrl = new URL('/account', env.appUrl).toString()
+    const invoiceReference = notification.triggering_invoice_id
+      ?.slice(0, 8)
+      .toUpperCase()
+    const reasonText = notification.reason === 'manual'
+      ? `An administrator restored your account service to active status. Reason: ${notification.manual_reason ?? 'Operational review'}.`
+      : `Your account service has been restored to active status after verified payment of invoice #${invoiceReference ?? 'unknown'} resolved all due debt.`
+    const reasonHtml = notification.reason === 'manual'
+      ? `<p>An administrator restored your account service to <strong>active</strong> status.</p><p><strong>Reason:</strong> ${escapeHtml(notification.manual_reason ?? 'Operational review')}</p>`
+      : `<p>Your account service has been restored to <strong>active</strong> status after verified payment of invoice <strong>#${invoiceReference ?? 'unknown'}</strong> resolved all due debt.</p>`
     const result = await sendEmail({
       to: email,
       subject: 'Your ISP account service is active again',
-      text: `Your account service has been restored to active status after verified payment of invoice #${invoiceReference} resolved all due debt. This confirms the platform account status only and does not confirm a physical network change. View your account: ${accountUrl}`,
-      html: `<p>Your account service has been restored to <strong>active</strong> status after verified payment of invoice <strong>#${invoiceReference}</strong> resolved all due debt.</p><p>This confirms the platform account status only and does not confirm a physical network change.</p><p><a href="${accountUrl}">View your account</a></p>`,
+      text: `${reasonText} This confirms the platform account status only and does not confirm a physical network change. View your account: ${accountUrl}`,
+      html: `${reasonHtml}<p>This confirms the platform account status only and does not confirm a physical network change.</p><p><a href="${accountUrl}">View your account</a></p>`,
     })
 
     if (result.success) {
@@ -104,6 +112,15 @@ export async function sendRestorationNotifications() {
     sentRestorationNotifications,
     skippedRestorationNotifications,
   }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
 }
 
 async function releaseClaim(historyId: string, claimedAt: string) {
