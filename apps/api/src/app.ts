@@ -5433,6 +5433,66 @@ app.get('/admin/subscriptions/:id', async (request, response) => {
   })
 })
 
+app.get('/admin/subscriptions/:id/service-history', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+  if (auth.status !== 200) {
+    response.status(auth.status).json({ error: auth.status === 403 ? 'Admin access required' : auth.status === 500 ? 'Unable to load service history' : 'Authentication required' })
+    return
+  }
+
+  const idResult = subscriptionIdSchema.safeParse(request.params.id)
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid subscription ID' })
+    return
+  }
+
+  const { data: subscription, error: subscriptionError } = await supabase
+    .from('subscriptions')
+    .select('id, user_id')
+    .eq('id', idResult.data)
+    .maybeSingle<{ id: string; user_id: string }>()
+
+  if (subscriptionError) {
+    console.error('Failed to load admin service-history subscription', { code: subscriptionError.code })
+    response.status(500).json({ error: 'Unable to load service history' })
+    return
+  }
+  if (!subscription) {
+    response.status(404).json({ error: 'Subscription not found' })
+    return
+  }
+
+  const { error: syncError } = await supabase.rpc(
+    'sync_customer_service_lifecycle_events',
+    { p_user_id: subscription.user_id },
+  )
+  if (syncError) {
+    console.error('Failed to synchronize admin service history', { code: syncError.code })
+    response.status(500).json({ error: 'Unable to load service history' })
+    return
+  }
+
+  const { data: events, error } = await supabase
+    .from('service_lifecycle_events')
+    .select(`
+      id, event_type, occurred_at, summary, reason,
+      related_entity_type, related_entity_id,
+      actor:profiles!service_lifecycle_events_actor_id_fkey(full_name, role)
+    `)
+    .eq('subscription_id', subscription.id)
+    .order('occurred_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(300)
+
+  if (error) {
+    console.error('Failed to load admin service history', { code: error.code })
+    response.status(500).json({ error: 'Unable to load service history' })
+    return
+  }
+
+  response.status(200).json({ service_history: events })
+})
+
 app.patch('/admin/subscriptions/:id/service-status', async (request, response) => {
   const auth = await authorizeRole(request.header('authorization'), 'admin')
 

@@ -8,6 +8,7 @@ import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { moneyFormatter as currencyFormatter } from '../../lib/money'
 import { useAuth } from '../auth/auth-context'
+import { AdminServiceHistory } from './AdminServiceHistory'
 
 type SubscriptionStatus = 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
 type StatusFilter = SubscriptionStatus | 'all'
@@ -424,6 +425,8 @@ export function AdminSubscriptionDetailsPage({ subscriptionId }: { subscriptionI
           <Detail label="Overdue invoices" value={String(subscription.billing.overdue_invoices)} />
         </InfoCard>
       </div>
+
+      <AdminServiceHistory subscriptionId={subscription.id} />
 
       <section className="mt-5 rounded-[12px] border border-white/8 bg-[#11161f] p-5" aria-labelledby="status-actions-heading">
         <h2 className="text-sm font-semibold text-white" id="status-actions-heading">Status actions</h2>
