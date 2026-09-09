@@ -1,29 +1,78 @@
-import { useState } from 'react'
-import { CircleHelp, ClipboardList, FileText, History, House, LogOut, MessageCircle, ReceiptText, Wrench } from 'lucide-react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { CircleHelp, ClipboardList, FileText, History, House, LogOut, MessageCircle, ReceiptText, Wifi, Wrench } from 'lucide-react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/auth-context'
+import {
+  hasCustomerCapability,
+  resolveCustomerEntitlements,
+  type CustomerApplicationStatus,
+  type CustomerCapability,
+  type CustomerEntitlements,
+  type CustomerSubscriptionStatus,
+} from './customer-entitlements'
 
 const navItems = [
-  { label: 'Overview', shortLabel: 'Overview', to: '/account', end: true, icon: 'overview' },
-  { label: 'Application Status', shortLabel: 'Application', to: '/account/application', end: false, icon: 'application' },
-  { label: 'Installation', shortLabel: 'Install', to: '/account/installation', end: false, icon: 'installation' },
-  { label: 'Invoices', shortLabel: 'Invoices', to: '/account/invoices', end: false, icon: 'invoices' },
-  { label: 'Statements', shortLabel: 'Statements', to: '/account/statements', end: false, icon: 'statements' },
-  { label: 'Service History', shortLabel: 'History', to: '/account/service-history', end: false, icon: 'history' },
-  { label: 'Support', shortLabel: 'Support', to: '/account/support', end: false, icon: 'support' },
-  { label: 'Help Center', shortLabel: 'Help', to: '/account/help', end: false, icon: 'help' },
+  { label: 'Overview', shortLabel: 'Overview', to: '/account', end: true, icon: 'overview', capability: 'overview' },
+  { label: 'Get connected', shortLabel: 'Apply', to: '/availability', end: false, icon: 'apply', capability: 'apply' },
+  { label: 'Application Status', shortLabel: 'Application', to: '/account/application', end: false, icon: 'application', capability: 'application' },
+  { label: 'Installation', shortLabel: 'Install', to: '/account/installation', end: false, icon: 'installation', capability: 'installation' },
+  { label: 'Invoices', shortLabel: 'Invoices', to: '/account/invoices', end: false, icon: 'invoices', capability: 'invoices' },
+  { label: 'Statements', shortLabel: 'Statements', to: '/account/statements', end: false, icon: 'statements', capability: 'statements' },
+  { label: 'Service History', shortLabel: 'History', to: '/account/service-history', end: false, icon: 'history', capability: 'serviceHistory' },
+  { label: 'Support', shortLabel: 'Support', to: '/account/support', end: false, icon: 'support', capability: 'support' },
+  { label: 'Help Center', shortLabel: 'Help', to: '/account/help', end: false, icon: 'help', capability: 'support' },
 ] as const
-
-const mobileNavItems = navItems.filter((item) => item.icon !== 'help')
 
 export function CustomerLayout() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { pathname } = useLocation()
+  const { session, user } = useAuth()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState<string | null>(null)
+  const [entitlements, setEntitlements] = useState<CustomerEntitlements | null>(null)
+  const [entitlementError, setEntitlementError] = useState(false)
   const email = user?.email ?? null
+
+  useEffect(() => {
+    if (!session) return
+    const controller = new AbortController()
+
+    async function loadEntitlements() {
+      try {
+        const headers = { Authorization: `Bearer ${session?.access_token ?? ''}` }
+        const [subscriptionResponse, applicationResponse] = await Promise.all([
+          fetch('/api/subscription', { headers, signal: controller.signal }),
+          fetch('/api/applications/current', { headers, signal: controller.signal }),
+        ])
+        if (!subscriptionResponse.ok || !applicationResponse.ok) throw new Error('ENTITLEMENTS_REQUEST_FAILED')
+
+        const subscriptionResult: unknown = await subscriptionResponse.json()
+        const applicationResult: unknown = await applicationResponse.json()
+        const subscriptionStatus = readStatus(subscriptionResult, 'subscription', subscriptionStatuses)
+        const applicationStatus = readStatus(applicationResult, 'application', applicationStatuses)
+        setEntitlements(resolveCustomerEntitlements({ subscriptionStatus, applicationStatus }))
+        setEntitlementError(false)
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return
+        setEntitlements(resolveCustomerEntitlements({ subscriptionStatus: null, applicationStatus: null }))
+        setEntitlementError(true)
+      }
+    }
+
+    void loadEntitlements()
+    return () => controller.abort()
+  }, [pathname, session])
+
+  const visibleNavItems = useMemo(
+    () => entitlements ? navItems.filter((item) => hasCustomerCapability(entitlements, item.capability)) : [],
+    [entitlements],
+  )
+  const mobileNavItems = visibleNavItems.filter((item) => item.icon !== 'help')
+  const requiredCapability = getRouteCapability(pathname)
+  const canViewRoute = entitlements !== null &&
+    (requiredCapability === null || hasCustomerCapability(entitlements, requiredCapability))
 
   async function handleSignOut() {
     if (isSigningOut) return
@@ -54,7 +103,7 @@ export function CustomerLayout() {
         <p className="px-3 pt-8 pb-3 text-[11px] font-semibold tracking-[0.14em] text-slate-500 uppercase">
           Customer portal
         </p>
-        <PortalNavigation />
+        <PortalNavigation items={visibleNavItems} loading={entitlements === null} />
         <AccountPanel
           email={email}
           isSigningOut={isSigningOut}
@@ -66,7 +115,7 @@ export function CustomerLayout() {
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-900/8 bg-[rgba(255,255,255,0.82)] px-4 backdrop-blur-xl md:hidden">
           <PortalBrand compact />
           <div className="flex items-center gap-2">
-            <Link className="inline-flex min-h-11 items-center rounded-[10px] px-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/help">Help</Link>
+            {entitlements && hasCustomerCapability(entitlements, 'support') ? <Link className="inline-flex min-h-11 items-center rounded-[10px] px-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/help">Help</Link> : null}
           <details className="group relative">
             <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-[10px] border border-slate-900/10 bg-white/70 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
               <span className="sr-only">Open account menu</span>
@@ -93,7 +142,8 @@ export function CustomerLayout() {
 
         <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(71,118,255,0.07),transparent_28%),#f7f8fb] px-4 pt-8 pb-28 sm:px-6 md:px-8 md:py-10 lg:px-12">
           <div className="customer-portal-content mx-auto max-w-6xl">
-            <Outlet />
+            {entitlementError ? <p className="mb-6 rounded-[10px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status">Some account options could not be loaded. Refresh the page to try again.</p> : null}
+            {entitlements === null ? <PortalLoading /> : canViewRoute ? <Outlet /> : <UnavailablePage />}
           </div>
         </main>
 
@@ -138,11 +188,11 @@ function PortalBrand({ compact = false }: { compact?: boolean }) {
   )
 }
 
-function PortalNavigation() {
+function PortalNavigation({ items, loading }: { items: typeof navItems[number][]; loading: boolean }) {
   return (
     <nav aria-label="Customer portal" className="flex-1">
       <ul className="space-y-1" role="list">
-        {navItems.map((item) => (
+        {loading ? <li className="px-3 py-4 text-sm text-slate-500" role="status">Loading navigation...</li> : items.map((item) => (
           <li key={item.to}>
             <NavLink
               className={({ isActive }) =>
@@ -167,6 +217,45 @@ function PortalNavigation() {
       </ul>
     </nav>
   )
+}
+
+const applicationStatuses = ['pending', 'approved', 'rejected'] as const satisfies readonly CustomerApplicationStatus[]
+const subscriptionStatuses = ['pending_activation', 'active', 'past_due', 'suspended', 'canceled'] as const satisfies readonly CustomerSubscriptionStatus[]
+
+function readStatus<T extends string>(value: unknown, key: string, allowed: readonly T[]): T | null {
+  if (!value || typeof value !== 'object' || !(key in value)) throw new Error('INVALID_ENTITLEMENTS_RESPONSE')
+  const record = value as Record<string, unknown>
+  if (record[key] === null) return null
+  const resource = record[key]
+  if (!resource || typeof resource !== 'object' || !('status' in resource)) throw new Error('INVALID_ENTITLEMENTS_RESPONSE')
+  const status = resource.status
+  if (typeof status !== 'string' || !allowed.includes(status as T)) throw new Error('INVALID_ENTITLEMENTS_RESPONSE')
+  return status as T
+}
+
+function getRouteCapability(pathname: string): CustomerCapability | null {
+  const segment = pathname.slice('/account/'.length).split('/')[0]
+  const capabilities: Record<string, CustomerCapability> = {
+    'application': 'application',
+    'installation': 'installation',
+    'invoices': 'invoices',
+    'statements': 'statements',
+    'service-history': 'serviceHistory',
+    'plan-changes': 'serviceHistory',
+    'change-plan': 'planChanges',
+    'cancel-service': 'cancellation',
+    'support': 'support',
+    'help': 'support',
+  }
+  return segment ? capabilities[segment] ?? null : 'overview'
+}
+
+function PortalLoading() {
+  return <div className="space-y-4" aria-label="Loading customer access" role="status"><div className="h-10 w-64 animate-pulse rounded-lg bg-slate-200" /><div className="h-48 animate-pulse rounded-[18px] bg-white" /><span className="sr-only">Loading customer access...</span></div>
+}
+
+function UnavailablePage() {
+  return <section className="mx-auto max-w-xl rounded-[18px] border border-slate-900/8 bg-white p-8 text-center shadow-sm"><h1 className="text-2xl font-semibold text-slate-950">This option is not available for your account</h1><p className="mt-3 leading-7 text-slate-600">The available portal sections depend on your current application and internet service status.</p><Link className="mt-6 inline-flex min-h-11 items-center rounded-[10px] bg-slate-950 px-5 text-sm font-semibold text-white" to="/account">Return to overview</Link></section>
 }
 
 interface AccountPanelProps {
@@ -209,7 +298,7 @@ function getInitial(email: string | null) {
 function SignOutIcon() { return <LogOut aria-hidden="true" size={17} /> }
 
 function NavIcon({ active, name }: { active: boolean; name: string }) {
-  const icons = { overview: House, application: ClipboardList, installation: Wrench, invoices: ReceiptText, statements: FileText, history: History, support: MessageCircle, help: CircleHelp }
+  const icons = { overview: House, apply: Wifi, application: ClipboardList, installation: Wrench, invoices: ReceiptText, statements: FileText, history: History, support: MessageCircle, help: CircleHelp }
   const Icon = icons[name as keyof typeof icons] ?? House
   return <Icon aria-hidden="true" size={18} strokeWidth={active ? 2 : 1.75} />
 }

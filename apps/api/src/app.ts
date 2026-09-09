@@ -118,7 +118,7 @@ interface CustomerApplication {
 
 interface CustomerSubscription {
   id: string
-  status: 'active' | 'past_due' | 'suspended'
+  status: 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
   started_at: string
   plan: {
     id: string
@@ -2195,7 +2195,7 @@ app.get('/subscription', async (request, response) => {
       `,
     )
     .eq('user_id', auth.userId)
-    .in('status', ['active', 'past_due', 'suspended'])
+    .in('status', ['pending_activation', 'active', 'past_due', 'suspended', 'canceled'])
     .order('started_at', { ascending: false })
     .limit(1)
     .maybeSingle<CustomerSubscription>()

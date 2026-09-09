@@ -22,7 +22,8 @@ service capabilities after its subscription has been canceled.
 | Authoritative state | Access level | Intended portal access |
 | --- | --- | --- |
 | No subscription and no application | `account_only` | Overview, apply, support, account |
-| Application `pending` or `rejected` | `applicant` | Overview, apply, application status, support, account |
+| Application `pending` | `applicant` | Overview, application status, support, account |
+| Application `rejected` | `previous_applicant` | Overview, apply, previous application status, support, account |
 | Application `approved` or subscription `pending_activation` | `awaiting_installation` | Overview, application, installation, support, account |
 | Subscription `active` | `active_subscriber` | Full customer portal and active-service actions |
 | Subscription `past_due` | `past_due_subscriber` | Service visibility, billing/payment/history, cancellation and support; no plan changes |
@@ -34,4 +35,3 @@ subscribers so eligible outstanding invoices can still be resolved. Historical
 records are retained after cancellation. Resource ownership must still be
 enforced by the backend and database; an entitlement never grants access to
 another customer's data.
-

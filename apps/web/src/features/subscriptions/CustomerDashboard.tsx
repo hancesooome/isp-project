@@ -11,7 +11,7 @@ import { moneyFormatter as priceFormatter } from '../../lib/money'
 
 interface CustomerSubscription {
   id: string
-  status: 'active' | 'past_due' | 'suspended'
+  status: 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
   started_at: string
   plan: {
     id: string
@@ -44,7 +44,7 @@ function isSubscription(value: unknown): value is CustomerSubscription {
 
   return (
     typeof subscription.id === 'string' &&
-    (subscription.status === 'active' || subscription.status === 'past_due' || subscription.status === 'suspended') &&
+    (subscription.status === 'pending_activation' || subscription.status === 'active' || subscription.status === 'past_due' || subscription.status === 'suspended' || subscription.status === 'canceled') &&
     typeof subscription.started_at === 'string' &&
     (plan === null ||
       (typeof plan === 'object' &&

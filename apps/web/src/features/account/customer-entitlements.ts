@@ -20,6 +20,7 @@ export type CustomerCapability = (typeof customerCapabilities)[number]
 export type CustomerAccessLevel =
   | 'account_only'
   | 'applicant'
+  | 'previous_applicant'
   | 'awaiting_installation'
   | 'active_subscriber'
   | 'past_due_subscriber'
@@ -68,7 +69,8 @@ const capabilitiesByAccessLevel: Record<
   readonly CustomerCapability[]
 > = {
   account_only: [...baseCapabilities, 'apply'],
-  applicant: [...applicationCapabilities, 'apply'],
+  applicant: applicationCapabilities,
+  previous_applicant: [...applicationCapabilities, 'apply'],
   awaiting_installation: [...applicationCapabilities, 'installation'],
   active_subscriber: fullSubscriberCapabilities,
   past_due_subscriber: [
@@ -132,8 +134,9 @@ function resolveAccessLevel({
     case 'approved':
       return 'awaiting_installation'
     case 'pending':
-    case 'rejected':
       return 'applicant'
+    case 'rejected':
+      return 'previous_applicant'
     case null:
     default:
       return 'account_only'
