@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import {
   Link,
   Route,
@@ -261,7 +262,7 @@ function PasswordResetPlaceholder() {
         className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
         to="/"
       >
-        ← Back to home
+        <ArrowLeft aria-hidden="true" size={16} /> Back to home
       </Link>
       <h1 className="mt-3 text-3xl font-bold text-white">Password reset</h1>
       <p className="mt-4 text-slate-300">

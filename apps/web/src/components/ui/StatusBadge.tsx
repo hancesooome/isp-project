@@ -49,26 +49,26 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
   const defaultStyle = 'border-slate-700 bg-slate-800/80 text-slate-200'
   const appliedStyle = styles[status] ?? defaultStyle
   const formattedText = status.replace(/_/g, ' ')
+  const successStatuses = ['active', 'approved', 'paid', 'resolved', 'applied', 'completed']
+  const pendingStatuses = ['pending', 'pending_scheduling', 'pending_activation', 'open', 'reschedule_required', 'scheduled', 'assigned', 'in_progress']
+  const warningStatuses = ['overdue', 'past_due', 'suspended']
+  const StatusIcon = successStatuses.includes(status)
+    ? CircleCheck
+    : pendingStatuses.includes(status)
+      ? Clock3
+      : warningStatuses.includes(status)
+        ? TriangleAlert
+        : ['rejected', 'failed', 'canceled', 'cancelled'].includes(status)
+          ? CircleX
+          : Info
 
   return (
     <span
       className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider ${appliedStyle} ${className}`}
     >
-      <span
-        className={`mr-1.5 size-1.5 rounded-full ${
-          status === 'active' || status === 'approved' || status === 'paid' || status === 'resolved' || status === 'applied'
-            ? 'bg-emerald-400'
-            : status === 'pending' || status === 'pending_scheduling' || status === 'pending_activation' || status === 'open' || status === 'reschedule_required'
-              ? 'bg-amber-400'
-              : status === 'in_progress' || status === 'scheduled' || status === 'assigned'
-                ? 'bg-blue-400'
-                : status === 'closed'
-                  ? 'bg-slate-400'
-                  : 'bg-red-400'
-        }`}
-        aria-hidden="true"
-      />
+      <StatusIcon aria-hidden="true" className="mr-1.5 shrink-0" size={13} />
       {formattedText}
     </span>
   )
 }
+import { CircleCheck, CircleX, Clock3, Info, TriangleAlert } from 'lucide-react'

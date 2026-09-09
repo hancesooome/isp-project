@@ -19,21 +19,7 @@ export function ErrorPanel({
       role="alert"
     >
       <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-red-900/30 text-red-400">
-        <svg
-          aria-hidden="true"
-          fill="none"
-          height="24"
-          stroke="currentColor"
-          strokeWidth="2"
-          viewBox="0 0 24 24"
-          width="24"
-        >
-          <path
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <TriangleAlert aria-hidden="true" size={24} />
       </div>
 
       <h2 className="mt-4 text-lg font-bold text-white">{title}</h2>
@@ -51,3 +37,4 @@ export function ErrorPanel({
     </div>
   )
 }
+import { TriangleAlert } from 'lucide-react'

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowRight, Search } from 'lucide-react'
 
 import { useAuth } from '../auth/auth-context'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -389,29 +390,9 @@ function ReviewLink({
       className={`inline-flex min-h-10 items-center justify-center rounded-[9px] border border-blue-400/25 px-3.5 text-sm font-semibold text-blue-300 transition hover:border-blue-400/40 hover:bg-blue-400/8 hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${className}`}
       to={`/admin/applications/${encodeURIComponent(applicationId)}`}
     >
-      Review{' '}
-      <span aria-hidden="true" className="ml-2">
-        &rarr;
-      </span>
+      Review <ArrowRight aria-hidden="true" className="ml-2" size={16} />
     </Link>
   )
 }
 
-function SearchIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-slate-500"
-      fill="none"
-      height="18"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeWidth="1.8"
-      viewBox="0 0 24 24"
-      width="18"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-4-4" />
-    </svg>
-  )
-}
+function SearchIcon() { return <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-slate-500" size={18} /> }

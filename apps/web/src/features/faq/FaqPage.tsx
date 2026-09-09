@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Plus, Search } from 'lucide-react'
 
 import { useAuth } from '../auth/auth-context'
 
@@ -103,9 +104,7 @@ export function FaqPage({ customerView = false }: { customerView?: boolean }) {
         <label className="block" htmlFor={customerView ? 'customer-faq-search' : 'public-faq-search'}>
           <span className="sr-only">Search help articles</span>
           <span className="relative block">
-            <svg aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" fill="none" height="19" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" viewBox="0 0 24 24" width="19">
-              <circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" />
-            </svg>
+            <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={19} />
             <input
               className="min-h-14 w-full rounded-[12px] border border-slate-900/10 bg-white py-3 pl-12 pr-4 text-base text-slate-950 shadow-[0_8px_24px_rgba(16,24,40,0.05)] outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               id={customerView ? 'customer-faq-search' : 'public-faq-search'}
@@ -157,7 +156,7 @@ export function FaqPage({ customerView = false }: { customerView?: boolean }) {
                       <span className="mb-1 block text-xs font-medium text-blue-600">{faq.category}</span>
                       {faq.question}
                     </span>
-                    <svg aria-hidden="true" className="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-45" fill="none" height="20" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" viewBox="0 0 24 24" width="20"><path d="M12 5v14M5 12h14" /></svg>
+                    <Plus aria-hidden="true" className="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-45" size={20} />
                   </summary>
                   <div className="px-5 pb-6 sm:px-6">
                     <p className="max-w-3xl whitespace-pre-wrap border-t border-slate-900/8 pt-4 text-[15px] leading-7 text-slate-600">{faq.answer}</p>

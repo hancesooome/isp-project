@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import type { ZodError } from 'zod'
 
 import { useAuth } from '../auth/auth-context'
@@ -240,7 +241,7 @@ export function ServiceApplicationForm() {
         className="mb-7 inline-flex min-h-11 items-center text-sm font-medium text-slate-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         to="/"
       >
-        ← Back to home
+        <ArrowLeft aria-hidden="true" size={16} /> Back to home
       </Link>
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
         Service application

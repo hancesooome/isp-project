@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
+import { CircleHelp, ClipboardList, FileText, History, House, LogOut, MessageCircle, ReceiptText, Wrench } from 'lucide-react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../../lib/supabase'
@@ -205,37 +206,10 @@ function getInitial(email: string | null) {
   return email?.trim().charAt(0).toUpperCase() || 'C'
 }
 
-function SignOutIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" height="17" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" viewBox="0 0 24 24" width="17">
-      <path d="M10 17l5-5-5-5M15 12H3M14 3h4a3 3 0 013 3v12a3 3 0 01-3 3h-4" />
-    </svg>
-  )
-}
+function SignOutIcon() { return <LogOut aria-hidden="true" size={17} /> }
 
 function NavIcon({ active, name }: { active: boolean; name: string }) {
-  const commonProps = {
-    'aria-hidden': true,
-    fill: 'none',
-    height: 18,
-    stroke: 'currentColor',
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    strokeWidth: active ? 2 : 1.7,
-    viewBox: '0 0 24 24',
-    width: 18,
-  }
-
-  const paths: Record<string, ReactNode> = {
-    overview: <><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></>,
-    application: <><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v5h5M10 13h5M10 17h5" /></>,
-    installation: <><path d="M12 2v4M5.6 4.6l2.8 2.8M18.4 4.6l-2.8 2.8" /><path d="M5 13a7 7 0 0114 0v3H5zM3 20h18" /></>,
-    invoices: <><rect height="15" rx="2" width="18" x="3" y="5" /><path d="M3 10h18M7 15h3" /></>,
-    statements: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
-    history: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2M7 4l-3 3" /></>,
-    support: <><path d="M21 12a8 8 0 01-8 8H8l-5 2 2-5a8 8 0 1116-5z" /><path d="M9.5 9a2.5 2.5 0 014.8.9c0 1.8-2.3 2-2.3 3.6M12 17h.01" /></>,
-    help: <><circle cx="12" cy="12" r="9" /><path d="M9.8 9a2.4 2.4 0 014.6.9c0 1.8-2.4 2-2.4 3.6M12 17h.01" /></>,
-  }
-
-  return <svg {...commonProps}>{paths[name]}</svg>
+  const icons = { overview: House, application: ClipboardList, installation: Wrench, invoices: ReceiptText, statements: FileText, history: History, support: MessageCircle, help: CircleHelp }
+  const Icon = icons[name as keyof typeof icons] ?? House
+  return <Icon aria-hidden="true" size={18} strokeWidth={active ? 2 : 1.75} />
 }

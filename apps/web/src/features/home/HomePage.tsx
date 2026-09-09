@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 import { moneyFormatter as priceFormatter } from '../../lib/money'
 
 interface Plan {
@@ -65,7 +66,7 @@ export function HomePage() {
               </h1>
               <p className="mt-7 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">Find available service, choose an active plan, and manage your ISP account through one clear online experience.</p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <Link className={`public-primary-button inline-flex min-h-12 items-center justify-center rounded-[10px] px-6 text-sm font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:-translate-y-0.5 ${focusClass}`} to="/availability">Check availability <span aria-hidden="true" className="ml-2">→</span></Link>
+                <Link className={`public-primary-button inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] px-6 text-sm font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:-translate-y-0.5 ${focusClass}`} to="/availability">Check availability <ArrowRight aria-hidden="true" size={16} /></Link>
                 <Link className={`inline-flex min-h-12 items-center justify-center rounded-[10px] border border-slate-900/12 bg-white/75 px-6 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-white ${focusClass}`} to="/plans">View plans</Link>
               </div>
               <p className="mt-4 text-sm text-slate-500">Start with the address where you want service installed.</p>
@@ -98,11 +99,11 @@ export function HomePage() {
           <div className="mx-auto max-w-7xl">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
               <div><p className="text-xs font-semibold tracking-[0.16em] text-slate-500 uppercase">Internet plans</p><h2 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl" id="plans-heading">Choose your connection.</h2><p className="mt-3 max-w-xl leading-7 text-slate-600">Review currently active plans, then check availability for your address.</p></div>
-              <Link className={`text-sm font-semibold text-slate-950 underline decoration-slate-300 underline-offset-8 transition hover:decoration-blue-500 ${focusClass}`} to="/plans">Compare all plans →</Link>
+              <Link className={`inline-flex items-center gap-1.5 text-sm font-semibold text-slate-950 underline decoration-slate-300 underline-offset-8 transition hover:decoration-blue-500 ${focusClass}`} to="/plans">Compare all plans <ArrowRight aria-hidden="true" size={16} /></Link>
             </div>
             <div className="mt-12">
               {plansError ? (
-                <div className="flex flex-col gap-4 border-y border-slate-900/10 py-8 sm:flex-row sm:items-center sm:justify-between" role="status"><p className="text-slate-600">Plan details are unavailable right now.</p><Link className={`text-sm font-semibold text-blue-700 ${focusClass}`} to="/plans">Open plans page →</Link></div>
+                <div className="flex flex-col gap-4 border-y border-slate-900/10 py-8 sm:flex-row sm:items-center sm:justify-between" role="status"><p className="text-slate-600">Plan details are unavailable right now.</p><Link className={`inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 ${focusClass}`} to="/plans">Open plans page <ArrowRight aria-hidden="true" size={16} /></Link></div>
               ) : plans === null ? (
                 <div aria-label="Loading plans" className="grid gap-px overflow-hidden rounded-[14px] border border-slate-900/10 bg-slate-900/10 md:grid-cols-3" role="status">{[0, 1, 2].map((item) => <div className="h-64 animate-pulse bg-white/80" key={item} />)}</div>
               ) : plans.length === 0 ? (
@@ -124,7 +125,7 @@ export function HomePage() {
         <section className="bg-white px-5 py-20 sm:px-8 sm:py-24 lg:px-10">
           <div className="public-coverage-panel mx-auto grid max-w-7xl overflow-hidden rounded-[18px] bg-slate-950 text-white lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="p-8 sm:p-12 lg:p-14"><p className="text-xs font-semibold tracking-[0.16em] text-slate-400 uppercase">Service availability</p><h2 className="mt-4 max-w-2xl text-3xl leading-tight font-semibold tracking-[-0.035em] sm:text-4xl">See what is available at your address.</h2><p className="mt-4 max-w-xl leading-7 text-slate-300">Enter your installation address in the existing availability flow to begin.</p></div>
-            <div className="border-t border-white/10 p-8 sm:p-12 lg:border-t-0 lg:border-l lg:p-14"><Link className={`public-primary-button inline-flex min-h-12 w-full items-center justify-center rounded-[10px] px-6 text-sm font-semibold text-white transition hover:brightness-110 lg:w-auto ${focusClass}`} to="/availability">Check availability →</Link></div>
+            <div className="border-t border-white/10 p-8 sm:p-12 lg:border-t-0 lg:border-l lg:p-14"><Link className={`public-primary-button inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-6 text-sm font-semibold text-white transition hover:brightness-110 lg:w-auto ${focusClass}`} to="/availability">Check availability <ArrowRight aria-hidden="true" size={16} /></Link></div>
           </div>
         </section>
       </div>

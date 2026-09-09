@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 
 import { useAuth } from '../auth/auth-context'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -164,8 +165,7 @@ export function CustomerDashboard() {
         <div>
           <p className="text-xs font-semibold tracking-[0.14em] text-slate-500 uppercase">Customer portal</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl">
-            {firstName ? `${getGreeting()}, ${firstName}` : 'Welcome back'}{' '}
-            <span aria-hidden="true">👋</span>
+            {firstName ? `${getGreeting()}, ${firstName}` : 'Welcome back'}
           </h1>
           <p className="mt-2 text-sm text-slate-500">Here&apos;s what&apos;s happening with your account.</p>
         </div>
@@ -200,10 +200,6 @@ export function CustomerDashboard() {
               <Summary label="Plan price" value={subscription.plan ? `${priceFormatter.format(subscription.plan.price_cents / 100)} per ${subscription.plan.billing_interval === 'monthly' ? 'month' : 'year'}` : 'Unavailable'} />
               <Summary label="Service started" value={dateFormatter.format(new Date(subscription.started_at))} />
             </div>
-            <svg aria-hidden="true" className="absolute right-7 bottom-7 hidden text-blue-500/15 sm:block" fill="none" height="104" stroke="currentColor" strokeLinecap="round" strokeWidth="4" viewBox="0 0 120 100" width="124">
-              <path d="M18 40a62 62 0 0184 0M34 57a40 40 0 0152 0M50 73a18 18 0 0120 0" />
-              <circle cx="60" cy="86" fill="currentColor" r="4" stroke="none" />
-            </svg>
           </article>
 
           <aside className="rounded-[18px] border border-slate-900/8 bg-white p-6 shadow-[0_18px_50px_rgba(18,25,38,0.06)] sm:p-7" aria-labelledby="account-actions-heading">
@@ -229,7 +225,7 @@ export function CustomerDashboard() {
                 </div>
                 <StatusBadge status={application.status} />
               </div>
-              <Link className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/application">View application <span aria-hidden="true" className="ml-2">→</span></Link>
+              <Link className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/application">View application <ArrowRight aria-hidden="true" size={16} /></Link>
             </article>
           ) : null}
         </div>
@@ -264,7 +260,7 @@ function Summary({ label, value }: { label: string; value: string }) {
 function ActionLink({ label, to }: { label: string; to: string }) {
   return (
     <Link className="flex min-h-12 items-center justify-between text-sm font-medium text-slate-700 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to={to}>
-      <span>{label}</span><span aria-hidden="true">→</span>
+      <span>{label}</span><ArrowRight aria-hidden="true" size={16} />
     </Link>
   )
 }

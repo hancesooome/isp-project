@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useAuth } from '../auth/auth-context'
@@ -138,7 +139,7 @@ export function AdminOverviewPage() {
                   <h2 className="text-sm font-semibold text-white" id="recent-applications-heading">Recent applications</h2>
                   <p className="mt-1 text-xs text-slate-500">Latest customer submissions</p>
                 </div>
-                <Link className="text-xs font-semibold text-blue-300 hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" to="/admin/applications">View all →</Link>
+                <Link className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-300 hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" to="/admin/applications">View all <ArrowRight aria-hidden="true" size={14} /></Link>
               </div>
               {data.applications.length === 0 ? (
                 <p className="p-5 text-sm text-slate-400">No service applications have been submitted.</p>
@@ -182,7 +183,7 @@ function OperationLink({ description, label, to }: { description: string; label:
   return (
     <Link className="flex min-h-16 items-center justify-between gap-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" to={to}>
       <span><strong className="block text-sm font-medium text-slate-200">{label}</strong><small className="mt-1 block text-xs text-slate-500">{description}</small></span>
-      <span aria-hidden="true" className="text-blue-300">→</span>
+      <ArrowRight aria-hidden="true" className="text-blue-300" size={16} />
     </Link>
   )
 }

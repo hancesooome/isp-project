@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
@@ -263,7 +264,7 @@ export function AdminSubscriptionsPage() {
                   <p className="text-sm text-slate-300">{subscription.plan?.name ?? 'Plan unavailable'}</p>
                   <p className="text-sm text-slate-400">{subscription.started_at ? dateFormatter.format(new Date(subscription.started_at)) : 'Not activated'}</p>
                   <div><StatusBadge status={subscription.status} /></div>
-                  <Link className="text-sm font-semibold text-blue-300 hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" to={`/admin/subscriptions/${encodeURIComponent(subscription.id)}`}>View details →</Link>
+                  <Link className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-300 hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" to={`/admin/subscriptions/${encodeURIComponent(subscription.id)}`}>View details <ArrowRight aria-hidden="true" size={16} /></Link>
                 </li>
               ))}
             </ul>
@@ -394,7 +395,7 @@ export function AdminSubscriptionDetailsPage({ subscriptionId }: { subscriptionI
 
   return (
     <section className="w-full max-w-6xl">
-      <Link className="text-sm font-semibold text-blue-300 hover:text-blue-200" to="/admin/subscriptions">← Back to subscriptions</Link>
+      <Link className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-300 hover:text-blue-200" to="/admin/subscriptions"><ArrowLeft aria-hidden="true" size={16} /> Back to subscriptions</Link>
       <header className="mt-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold tracking-[0.18em] text-blue-400 uppercase">Subscription</p>

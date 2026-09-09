@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
@@ -235,7 +236,7 @@ export function AdminCustomersPage() {
                     className="text-sm font-semibold text-blue-300 hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                     to={`/admin/customers/${encodeURIComponent(customer.id)}`}
                   >
-                    View details →
+                    View details <ArrowRight aria-hidden="true" className="inline" size={16} />
                   </Link>
                 </li>
               ))}
@@ -302,7 +303,7 @@ export function AdminCustomerDetailsPage({ customerId }: { customerId: string })
 
   return (
     <section className="w-full max-w-6xl">
-      <Link className="text-sm font-semibold text-blue-300 hover:text-blue-200" to="/admin/customers">← Back to customers</Link>
+      <Link className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-300 hover:text-blue-200" to="/admin/customers"><ArrowLeft aria-hidden="true" size={16} /> Back to customers</Link>
       <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           description={customer.email ?? 'No email address available'}

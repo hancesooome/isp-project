@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
+import { ChartNoAxesColumn, CircleHelp, ClipboardList, CreditCard, HardHat, House, Layers, LogOut, MapPinned, MessageCircle, RefreshCw, Repeat2, Users, Wrench, XCircle } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../../lib/supabase'
@@ -202,39 +203,10 @@ function getInitial(email: string | null) {
   return email?.trim().charAt(0).toUpperCase() || 'A'
 }
 
-function SignOutIcon() {
-  return <svg aria-hidden="true" fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" viewBox="0 0 24 24" width="16"><path d="M10 17l5-5-5-5M15 12H3M14 3h4a3 3 0 013 3v12a3 3 0 01-3 3h-4" /></svg>
-}
+function SignOutIcon() { return <LogOut aria-hidden="true" size={16} /> }
 
 function AdminIcon({ active, name }: { active: boolean; name: string }) {
-  const commonProps = {
-    'aria-hidden': true,
-    fill: 'none',
-    height: 17,
-    stroke: 'currentColor',
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    strokeWidth: active ? 2 : 1.7,
-    viewBox: '0 0 24 24',
-    width: 17,
-  }
-
-  const paths: Record<string, ReactNode> = {
-    overview: <><rect height="7" rx="1" width="7" x="3" y="3" /><rect height="7" rx="1" width="7" x="14" y="3" /><rect height="7" rx="1" width="7" x="3" y="14" /><rect height="7" rx="1" width="7" x="14" y="14" /></>,
-    applications: <><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v5h5M10 13h5M10 17h5" /></>,
-    installations: <><path d="M12 2v4M5.6 4.6l2.8 2.8M18.4 4.6l-2.8 2.8" /><path d="M5 13a7 7 0 0114 0v3H5zM3 20h18M9 13h6" /></>,
-    technicians: <><circle cx="9" cy="7" r="4" /><path d="M2 21v-2a5 5 0 015-5h4a5 5 0 015 5v2M18 8v6M15 11h6" /></>,
-    customers: <><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></>,
-    plans: <><path d="M5 12.55a11 11 0 0114.08 0M8.53 16.11a6 6 0 016.95 0M12 20h.01" /></>,
-    coverage: <><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z" /><path d="M9 3v15M15 6v15" /></>,
-    subscriptions: <><rect height="16" rx="2" width="18" x="3" y="4" /><path d="M7 8h10M7 12h7M7 16h4" /></>,
-    planChanges: <><path d="M7 7h11l-3-3M18 7l-3 3" /><path d="M17 17H6l3 3M6 17l3-3" /></>,
-    cancellations: <><circle cx="12" cy="12" r="9" /><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" /></>,
-    billing: <><rect height="15" rx="2" width="18" x="3" y="5" /><path d="M3 10h18M7 15h3M15 15h2" /></>,
-    support: <><path d="M21 12a8 8 0 01-8 8H8l-5 2 2-5a8 8 0 1116-5z" /><path d="M9.5 9a2.5 2.5 0 014.8.9c0 1.8-2.3 2-2.3 3.6M12 17h.01" /></>,
-    faqs: <><circle cx="12" cy="12" r="9" /><path d="M9.8 9a2.4 2.4 0 014.6.9c0 1.8-2.4 2-2.4 3.6M12 17h.01" /></>,
-    reports: <><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></>,
-  }
-
-  return <svg {...commonProps}>{paths[name]}</svg>
+  const icons = { overview: House, applications: ClipboardList, installations: Wrench, technicians: HardHat, customers: Users, plans: Layers, coverage: MapPinned, subscriptions: Repeat2, planChanges: RefreshCw, cancellations: XCircle, billing: CreditCard, support: MessageCircle, faqs: CircleHelp, reports: ChartNoAxesColumn }
+  const Icon = icons[name as keyof typeof icons] ?? House
+  return <Icon aria-hidden="true" size={17} strokeWidth={active ? 2 : 1.75} />
 }
