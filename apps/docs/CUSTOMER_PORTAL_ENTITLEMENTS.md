@@ -6,7 +6,8 @@ policy in ISP-140, and server-side enforcement remains the security boundary
 implemented in ISP-141.
 
 The typed source of truth is
-`apps/web/src/features/account/customer-entitlements.ts`.
+`apps/api/src/lib/customer-entitlements.ts`. The browser receives the resolved
+policy from the authenticated API and never supplies its own lifecycle state.
 
 ## State precedence
 
@@ -35,3 +36,17 @@ subscribers so eligible outstanding invoices can still be resolved. Historical
 records are retained after cancellation. Resource ownership must still be
 enforced by the backend and database; an entitlement never grants access to
 another customer's data.
+
+## Enforcement
+
+The API resolves entitlements from subscription and application rows selected
+with the authenticated Supabase user ID. Customer-provided user IDs and
+lifecycle states are not accepted.
+
+Lifecycle guards cover application submission, installation, plan-change and
+cancellation actions, invoices, statements, payments, service history, and
+support. Resource queries continue to apply their existing `user_id` or
+customer ownership filters. Reading the authenticated customer's latest
+application and subscription remains available because those records explain
+lifecycle state; it never permits access to another customer's records or an
+active-service action.

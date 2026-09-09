@@ -15,6 +15,11 @@ import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
 import { sendRestorationNotifications } from './jobs/restoration-notifications.js'
 import { applyScheduledTerminations } from './jobs/scheduled-terminations.js'
 import { recordAuditEvent } from './lib/audit.js'
+import {
+  customerHasCapability,
+  loadCustomerEntitlements,
+  type CustomerCapability,
+} from './lib/customer-entitlements.js'
 import { sendEmail } from './lib/email.js'
 import { logger } from './lib/logger.js'
 import { formatMoney, PAYMENT_CURRENCY } from './lib/money.js'
@@ -959,6 +964,20 @@ async function authorizeRole(
   return { status: 200, userId: user.id, role: profileRole }
 }
 
+function requiredCustomerCapability(method: string, path: string): CustomerCapability | null {
+  if (method === 'POST' && path === '/applications') return 'apply'
+  if (method === 'GET' && path === '/installation') return 'installation'
+  if (path === '/support-tickets' || path.startsWith('/support-tickets/')) return 'support'
+  if (path === '/subscription/service-history') return 'serviceHistory'
+  if (path === '/subscription/plan-changes') return 'serviceHistory'
+  if (path === '/subscription/cancellation-request') return 'cancellation'
+  if (path === '/subscription/change-options' || path.startsWith('/subscription/change-plan/')) return 'planChanges'
+  if (method === 'GET' && (path === '/invoices' || /^\/invoices\/[^/]+$/.test(path))) return 'invoices'
+  if (path === '/statements' || path.startsWith('/statements/')) return 'statements'
+  if (path === '/payments/methods' || (method === 'POST' && path.startsWith('/invoices/'))) return 'payments'
+  return null
+}
+
 export const app = express()
 
 app.use((_request, response, next) => {
@@ -1542,6 +1561,23 @@ app.get('/auth/portal', async (request, response) => {
   })
 })
 
+app.get('/customer/entitlements', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+  if (auth.status !== 200 || !auth.userId) {
+    const message = auth.status === 500
+      ? 'Unable to load account access'
+      : auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  try {
+    response.status(200).json({ entitlements: await loadCustomerEntitlements(auth.userId) })
+  } catch {
+    response.status(500).json({ error: 'Unable to load account access' })
+  }
+})
+
 app.get('/plans', async (_request, response) => {
   const { data, error } = await supabase
     .from('plans')
@@ -1721,6 +1757,35 @@ app.post('/service-availability', availabilityRateLimiter, async (request, respo
     })
     response.status(502).json({ error: 'Unable to check service availability' })
   }
+})
+
+app.use(async (request, response, next) => {
+  const capability = requiredCustomerCapability(request.method, request.path)
+  if (!capability) {
+    next()
+    return
+  }
+
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+  if (auth.status !== 200 || !auth.userId) {
+    const message = auth.status === 500
+      ? 'Unable to verify account access'
+      : auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  try {
+    if (!await customerHasCapability(auth.userId, capability)) {
+      response.status(403).json({ error: 'This action is not available for your account' })
+      return
+    }
+  } catch {
+    response.status(500).json({ error: 'Unable to verify account access' })
+    return
+  }
+
+  next()
 })
 
 app.post('/applications', async (request, response) => {

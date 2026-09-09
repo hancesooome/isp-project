@@ -4,14 +4,11 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/auth-context'
-import {
-  hasCustomerCapability,
-  resolveCustomerEntitlements,
-  type CustomerApplicationStatus,
-  type CustomerCapability,
-  type CustomerEntitlements,
-  type CustomerSubscriptionStatus,
-} from './customer-entitlements'
+
+type CustomerCapability = 'overview' | 'apply' | 'application' | 'installation' |
+  'internet' | 'billing' | 'invoices' | 'statements' | 'payments' |
+  'planChanges' | 'cancellation' | 'serviceHistory' | 'support' | 'account'
+interface CustomerEntitlements { accessLevel: string; capabilities: CustomerCapability[] }
 
 const navItems = [
   { label: 'Overview', shortLabel: 'Overview', to: '/account', end: true, icon: 'overview', capability: 'overview' },
@@ -42,21 +39,14 @@ export function CustomerLayout() {
     async function loadEntitlements() {
       try {
         const headers = { Authorization: `Bearer ${session?.access_token ?? ''}` }
-        const [subscriptionResponse, applicationResponse] = await Promise.all([
-          fetch('/api/subscription', { headers, signal: controller.signal }),
-          fetch('/api/applications/current', { headers, signal: controller.signal }),
-        ])
-        if (!subscriptionResponse.ok || !applicationResponse.ok) throw new Error('ENTITLEMENTS_REQUEST_FAILED')
-
-        const subscriptionResult: unknown = await subscriptionResponse.json()
-        const applicationResult: unknown = await applicationResponse.json()
-        const subscriptionStatus = readStatus(subscriptionResult, 'subscription', subscriptionStatuses)
-        const applicationStatus = readStatus(applicationResult, 'application', applicationStatuses)
-        setEntitlements(resolveCustomerEntitlements({ subscriptionStatus, applicationStatus }))
+        const response = await fetch('/api/customer/entitlements', { headers, signal: controller.signal })
+        if (!response.ok) throw new Error('ENTITLEMENTS_REQUEST_FAILED')
+        const result: unknown = await response.json()
+        setEntitlements(readEntitlements(result))
         setEntitlementError(false)
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') return
-        setEntitlements(resolveCustomerEntitlements({ subscriptionStatus: null, applicationStatus: null }))
+        setEntitlements({ accessLevel: 'account_only', capabilities: ['overview', 'support', 'account'] })
         setEntitlementError(true)
       }
     }
@@ -66,13 +56,13 @@ export function CustomerLayout() {
   }, [pathname, session])
 
   const visibleNavItems = useMemo(
-    () => entitlements ? navItems.filter((item) => hasCustomerCapability(entitlements, item.capability)) : [],
+    () => entitlements ? navItems.filter((item) => entitlements.capabilities.includes(item.capability)) : [],
     [entitlements],
   )
   const mobileNavItems = visibleNavItems.filter((item) => item.icon !== 'help')
   const requiredCapability = getRouteCapability(pathname)
   const canViewRoute = entitlements !== null &&
-    (requiredCapability === null || hasCustomerCapability(entitlements, requiredCapability))
+    (requiredCapability === null || entitlements.capabilities.includes(requiredCapability))
 
   async function handleSignOut() {
     if (isSigningOut) return
@@ -115,7 +105,7 @@ export function CustomerLayout() {
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-900/8 bg-[rgba(255,255,255,0.82)] px-4 backdrop-blur-xl md:hidden">
           <PortalBrand compact />
           <div className="flex items-center gap-2">
-            {entitlements && hasCustomerCapability(entitlements, 'support') ? <Link className="inline-flex min-h-11 items-center rounded-[10px] px-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/help">Help</Link> : null}
+            {entitlements?.capabilities.includes('support') ? <Link className="inline-flex min-h-11 items-center rounded-[10px] px-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/help">Help</Link> : null}
           <details className="group relative">
             <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-[10px] border border-slate-900/10 bg-white/70 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
               <span className="sr-only">Open account menu</span>
@@ -219,18 +209,20 @@ function PortalNavigation({ items, loading }: { items: typeof navItems[number][]
   )
 }
 
-const applicationStatuses = ['pending', 'approved', 'rejected'] as const satisfies readonly CustomerApplicationStatus[]
-const subscriptionStatuses = ['pending_activation', 'active', 'past_due', 'suspended', 'canceled'] as const satisfies readonly CustomerSubscriptionStatus[]
+function readEntitlements(value: unknown): CustomerEntitlements {
+  if (!value || typeof value !== 'object' || !('entitlements' in value)) throw new Error('INVALID_ENTITLEMENTS_RESPONSE')
+  const entitlements = value.entitlements
+  if (!entitlements || typeof entitlements !== 'object' || !('accessLevel' in entitlements) ||
+    typeof entitlements.accessLevel !== 'string' || !('capabilities' in entitlements) ||
+    !Array.isArray(entitlements.capabilities) || !entitlements.capabilities.every(isCustomerCapability)) {
+    throw new Error('INVALID_ENTITLEMENTS_RESPONSE')
+  }
+  return { accessLevel: entitlements.accessLevel, capabilities: entitlements.capabilities }
+}
 
-function readStatus<T extends string>(value: unknown, key: string, allowed: readonly T[]): T | null {
-  if (!value || typeof value !== 'object' || !(key in value)) throw new Error('INVALID_ENTITLEMENTS_RESPONSE')
-  const record = value as Record<string, unknown>
-  if (record[key] === null) return null
-  const resource = record[key]
-  if (!resource || typeof resource !== 'object' || !('status' in resource)) throw new Error('INVALID_ENTITLEMENTS_RESPONSE')
-  const status = resource.status
-  if (typeof status !== 'string' || !allowed.includes(status as T)) throw new Error('INVALID_ENTITLEMENTS_RESPONSE')
-  return status as T
+const validCapabilities: readonly string[] = ['overview', 'apply', 'application', 'installation', 'internet', 'billing', 'invoices', 'statements', 'payments', 'planChanges', 'cancellation', 'serviceHistory', 'support', 'account']
+function isCustomerCapability(value: unknown): value is CustomerCapability {
+  return typeof value === 'string' && validCapabilities.includes(value)
 }
 
 function getRouteCapability(pathname: string): CustomerCapability | null {
