@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react'
-import { ArrowLeft } from 'lucide-react'
 import {
   Link,
   Route,
@@ -18,6 +17,7 @@ import { ServiceAvailabilityPage } from './features/availability/ServiceAvailabi
 import { AdminRoute } from './features/auth/AdminRoute'
 import { AdminMfaEnrollmentPage } from './features/auth/AdminMfaEnrollmentPage'
 import { AdminMfaChallengePage } from './features/auth/AdminMfaChallengePage'
+import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { TechnicianRoute } from './features/auth/TechnicianRoute'
 import { LoginForm } from './features/auth/LoginForm'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
@@ -92,7 +92,7 @@ export function App() {
       <Route element={<LightCentredPage><OAuthCallbackPage /></LightCentredPage>} path="/auth/callback" />
       <Route element={<LightCentredPage><SetPasswordPage /></LightCentredPage>} path="/auth/set-password" />
       <Route element={<ProtectedRoute><LightCentredPage><RoleLandingPage /></LightCentredPage></ProtectedRoute>} path="/portal" />
-      <Route element={<CentredPage><PasswordResetPlaceholder /></CentredPage>} path="/forgot-password" />
+      <Route element={<LightCentredPage><ForgotPasswordPage /></LightCentredPage>} path="/forgot-password" />
       <Route
         element={<ProtectedRoute><CentredPage><AdminMfaEnrollmentPage /></CentredPage></ProtectedRoute>}
         path="/admin/mfa/enroll"
@@ -264,29 +264,6 @@ function AdminSupportTicketDetailsRoute() {
   )
 }
 
-
-function PasswordResetPlaceholder() {
-  return (
-    <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
-      <Link
-        className="mb-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
-        to="/"
-      >
-        <ArrowLeft aria-hidden="true" size={16} /> Back to home
-      </Link>
-      <h1 className="mt-3 text-3xl font-bold text-white">Password reset</h1>
-      <p className="mt-4 text-slate-300">
-        Password reset will be available in a future ticket.
-      </p>
-      <Link
-        className="mt-6 inline-block font-medium text-sky-400 hover:text-sky-300"
-        to="/login"
-      >
-        Return to sign in
-      </Link>
-    </section>
-  )
-}
 
 function NotFoundPage() {
   return (
