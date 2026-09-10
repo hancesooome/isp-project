@@ -18,6 +18,7 @@ import { AdminRoute } from './features/auth/AdminRoute'
 import { AdminMfaEnrollmentPage } from './features/auth/AdminMfaEnrollmentPage'
 import { AdminMfaChallengePage } from './features/auth/AdminMfaChallengePage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 import { TechnicianRoute } from './features/auth/TechnicianRoute'
 import { LoginForm } from './features/auth/LoginForm'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
@@ -91,6 +92,7 @@ export function App() {
       <Route element={<LightCentredPage><SignupPage /></LightCentredPage>} path="/signup" />
       <Route element={<LightCentredPage><OAuthCallbackPage /></LightCentredPage>} path="/auth/callback" />
       <Route element={<LightCentredPage><SetPasswordPage /></LightCentredPage>} path="/auth/set-password" />
+      <Route element={<LightCentredPage><ResetPasswordPage /></LightCentredPage>} path="/auth/reset-password" />
       <Route element={<ProtectedRoute><LightCentredPage><RoleLandingPage /></LightCentredPage></ProtectedRoute>} path="/portal" />
       <Route element={<LightCentredPage><ForgotPasswordPage /></LightCentredPage>} path="/forgot-password" />
       <Route

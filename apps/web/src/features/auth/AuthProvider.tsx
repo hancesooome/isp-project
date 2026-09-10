@@ -11,12 +11,15 @@ import { AuthContext, type AuthState } from './auth-context'
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
 
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession)
+      if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true)
+      if (event === 'SIGNED_OUT') setIsPasswordRecovery(false)
       setIsLoading(false)
     })
 
@@ -26,10 +29,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthState>(
     () => ({
       isLoading,
+      isPasswordRecovery,
       session,
       user: session?.user ?? null,
     }),
-    [isLoading, session],
+    [isLoading, isPasswordRecovery, session],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

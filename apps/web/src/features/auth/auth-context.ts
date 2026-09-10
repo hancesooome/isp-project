@@ -3,6 +3,7 @@ import { createContext, useContext } from 'react'
 
 export interface AuthState {
   isLoading: boolean
+  isPasswordRecovery: boolean
   session: Session | null
   user: User | null
 }
