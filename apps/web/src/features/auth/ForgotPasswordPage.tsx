@@ -13,7 +13,6 @@ const recoverySchema = z.object({
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
-  const [requestError, setRequestError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
@@ -28,7 +27,6 @@ export function ForgotPasswordPage() {
     }
 
     setEmailError(null)
-    setRequestError(null)
     setIsSubmitting(true)
     try {
       const redirectTo = new URL('/auth/reset-password', window.location.origin).toString()
@@ -38,7 +36,9 @@ export function ForgotPasswordPage() {
       if (error) throw error
       setSubmitted(true)
     } catch {
-      setRequestError('We could not submit the request. Please wait a moment and try again.')
+      // Keep the response indistinguishable for unknown, rate-limited, and
+      // temporarily unavailable accounts. Supabase owns recovery delivery.
+      setSubmitted(true)
     } finally {
       setIsSubmitting(false)
     }
@@ -66,9 +66,8 @@ export function ForgotPasswordPage() {
 
       <form className="mt-7" noValidate onSubmit={(event) => void submitRequest(event)}>
         <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="recovery-email">Email address</label>
-        <input aria-describedby={emailError ? 'recovery-email-error' : undefined} aria-invalid={emailError ? true : undefined} autoComplete="email" autoFocus className="min-h-12 w-full rounded-[10px] border border-slate-900/14 bg-white px-3.5 py-2.5 text-slate-950 shadow-inner shadow-slate-950/3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15" id="recovery-email" name="email" onChange={(event) => { setEmail(event.target.value); setEmailError(null); setRequestError(null) }} type="email" value={email} />
+        <input aria-describedby={emailError ? 'recovery-email-error' : undefined} aria-invalid={emailError ? true : undefined} autoComplete="email" autoFocus className="min-h-12 w-full rounded-[10px] border border-slate-900/14 bg-white px-3.5 py-2.5 text-slate-950 shadow-inner shadow-slate-950/3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15" id="recovery-email" name="email" onChange={(event) => { setEmail(event.target.value); setEmailError(null) }} type="email" value={email} />
         {emailError ? <p className="mt-1.5 text-sm text-red-700" id="recovery-email-error" role="alert">{emailError}</p> : null}
-        {requestError ? <p className="mt-4 rounded-[10px] border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{requestError}</p> : null}
         <button className="public-primary-button mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSubmitting} type="submit">{isSubmitting ? <><LoadingSpinner size="sm" /> Sending...</> : 'Send reset instructions'}</button>
       </form>
     </Panel>

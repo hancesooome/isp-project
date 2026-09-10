@@ -35,7 +35,7 @@ export function OAuthCallbackPage() {
     <section className="w-full max-w-md rounded-[18px] border border-slate-900/8 bg-white p-8 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)]">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Sign-in interrupted</p>
       <h1 className="mt-3 text-2xl font-semibold">We could not complete sign in</h1>
-      <p className="mt-3 leading-7 text-slate-600">{providerError ?? 'No authenticated session was returned. Please try again.'}</p>
+      <p className="mt-3 leading-7 text-slate-600">We could not verify the sign-in response. Please return to sign in and try again.</p>
       <Link className="public-primary-button mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-[10px] px-4 py-3 font-semibold text-white" to={`/login?${new URLSearchParams({ redirect: destination }).toString()}`}>
         Return to sign in
       </Link>
