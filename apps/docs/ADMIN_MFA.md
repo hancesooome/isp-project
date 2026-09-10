@@ -22,4 +22,9 @@ ISP-143 redirects administrators without a verified TOTP factor to
 `/admin/mfa/enroll`. Enrollment starts only after an explicit action, displays
 the provider-issued QR code, and verifies a six-digit authenticator code through
 Supabase. An admin can leave this flow only by completing enrollment or signing
-out. Login challenges and API AAL2 enforcement belong to ISP-144.
+out.
+
+ISP-144 redirects enrolled administrators whose current session is only AAL1
+to `/admin/mfa/challenge`. A valid authenticator code upgrades the Supabase
+session to AAL2. The backend independently requires verified AAL2 for admin API
+access, including routes shared with technicians when the caller is an admin.

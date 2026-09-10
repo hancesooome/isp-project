@@ -15,7 +15,7 @@ import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
 import { sendRestorationNotifications } from './jobs/restoration-notifications.js'
 import { applyScheduledTerminations } from './jobs/scheduled-terminations.js'
 import { recordAuditEvent } from './lib/audit.js'
-import { getAdminMfaStatus } from './lib/admin-mfa.js'
+import { getAdminMfaStatus, isAdminMfaVerified } from './lib/admin-mfa.js'
 import {
   customerHasCapability,
   loadCustomerEntitlements,
@@ -923,6 +923,7 @@ function isValidDatabaseDate(value: string): boolean {
 async function authorizeRole(
   authorizationHeader: string | undefined,
   requiredRole: UserRole | UserRole[],
+  enforceAdminMfa = true,
 ): Promise<AuthorizationResult> {
   if (!authorizationHeader?.startsWith('Bearer ')) {
     return { status: 401 }
@@ -960,6 +961,15 @@ async function authorizeRole(
   const profileRole = profile?.role as UserRole | undefined
   if (!profileRole || !allowedRoles.includes(profileRole)) {
     return { status: 403 }
+  }
+
+  if (profileRole === 'admin' && enforceAdminMfa) {
+    try {
+      const mfa = await getAdminMfaStatus(user.id, token)
+      if (!isAdminMfaVerified(mfa)) return { status: 403 }
+    } catch {
+      return { status: 500 }
+    }
   }
 
   return { status: 200, userId: user.id, role: profileRole }
@@ -1539,7 +1549,7 @@ app.get('/auth/portal', async (request, response) => {
     'customer',
     'admin',
     'technician',
-  ])
+  ], false)
 
   if (auth.status !== 200 || !auth.role) {
     const message =
@@ -3700,7 +3710,7 @@ app.get('/admin/access', async (request, response) => {
 
 app.get('/admin/mfa-status', async (request, response) => {
   const authorization = request.header('authorization')
-  const auth = await authorizeRole(authorization, 'admin')
+  const auth = await authorizeRole(authorization, 'admin', false)
 
   if (auth.status !== 200 || !auth.userId) {
     const message = auth.status === 500

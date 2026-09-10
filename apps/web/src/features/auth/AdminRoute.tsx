@@ -9,7 +9,7 @@ interface AdminRouteProps {
   children: ReactNode
 }
 
-type AdminAccessState = 'checking' | 'allowed' | 'enrollment_required' | 'denied' | 'error'
+type AdminAccessState = 'checking' | 'allowed' | 'enrollment_required' | 'challenge_required' | 'denied' | 'error'
 
 export function AdminRoute({ children }: AdminRouteProps) {
   const { session } = useAuth()
@@ -24,6 +24,12 @@ export function AdminRoute({ children }: AdminRouteProps) {
 
     async function verifyAdminAccess() {
       try {
+        const mfa = await fetchAdminMfaStatus(session?.access_token ?? '', controller.signal)
+        if (mfa.requirement !== 'verified') {
+          setAccess(mfa.requirement)
+          return
+        }
+
         const response = await fetch('/api/admin/access', {
           headers: {
             Authorization: `Bearer ${session?.access_token ?? ''}`,
@@ -40,8 +46,7 @@ export function AdminRoute({ children }: AdminRouteProps) {
           throw new Error('ADMIN_ACCESS_CHECK_FAILED')
         }
 
-        const mfa = await fetchAdminMfaStatus(session?.access_token ?? '', controller.signal)
-        setAccess(mfa.requirement === 'enrollment_required' ? 'enrollment_required' : 'allowed')
+        setAccess('allowed')
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           return
@@ -87,6 +92,10 @@ export function AdminRoute({ children }: AdminRouteProps) {
 
   if (access === 'enrollment_required') {
     return <Navigate replace to="/admin/mfa/enroll" />
+  }
+
+  if (access === 'challenge_required') {
+    return <Navigate replace to="/admin/mfa/challenge" />
   }
 
   if (access === 'error') {

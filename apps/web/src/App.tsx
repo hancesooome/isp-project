@@ -17,6 +17,7 @@ import { ServiceApplicationForm } from './features/applications/ServiceApplicati
 import { ServiceAvailabilityPage } from './features/availability/ServiceAvailabilityPage'
 import { AdminRoute } from './features/auth/AdminRoute'
 import { AdminMfaEnrollmentPage } from './features/auth/AdminMfaEnrollmentPage'
+import { AdminMfaChallengePage } from './features/auth/AdminMfaChallengePage'
 import { TechnicianRoute } from './features/auth/TechnicianRoute'
 import { LoginForm } from './features/auth/LoginForm'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
@@ -95,6 +96,10 @@ export function App() {
       <Route
         element={<ProtectedRoute><CentredPage><AdminMfaEnrollmentPage /></CentredPage></ProtectedRoute>}
         path="/admin/mfa/enroll"
+      />
+      <Route
+        element={<ProtectedRoute><CentredPage><AdminMfaChallengePage /></CentredPage></ProtectedRoute>}
+        path="/admin/mfa/challenge"
       />
       <Route
         element={
