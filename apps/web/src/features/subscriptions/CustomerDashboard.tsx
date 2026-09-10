@@ -12,7 +12,7 @@ import { moneyFormatter as priceFormatter } from '../../lib/money'
 interface CustomerSubscription {
   id: string
   status: 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
-  started_at: string
+  started_at: string | null
   plan: {
     id: string
     name: string
@@ -45,7 +45,7 @@ function isSubscription(value: unknown): value is CustomerSubscription {
   return (
     typeof subscription.id === 'string' &&
     (subscription.status === 'pending_activation' || subscription.status === 'active' || subscription.status === 'past_due' || subscription.status === 'suspended' || subscription.status === 'canceled') &&
-    typeof subscription.started_at === 'string' &&
+    (typeof subscription.started_at === 'string' || subscription.started_at === null) &&
     (plan === null ||
       (typeof plan === 'object' &&
         plan !== null &&
@@ -198,7 +198,12 @@ export function CustomerDashboard() {
             </div>
             <div className="relative z-10 mt-8 grid gap-5 border-t border-slate-900/8 pt-6 sm:grid-cols-2">
               <Summary label="Plan price" value={subscription.plan ? `${priceFormatter.format(subscription.plan.price_cents / 100)} per ${subscription.plan.billing_interval === 'monthly' ? 'month' : 'year'}` : 'Unavailable'} />
-              <Summary label="Service started" value={dateFormatter.format(new Date(subscription.started_at))} />
+              <Summary
+                label="Service started"
+                value={subscription.started_at
+                  ? dateFormatter.format(new Date(subscription.started_at))
+                  : 'Awaiting activation'}
+              />
             </div>
           </article>
 
