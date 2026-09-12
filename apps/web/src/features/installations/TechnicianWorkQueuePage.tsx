@@ -12,7 +12,6 @@ type WorkStatus = 'assigned' | 'in_progress' | 'completed' | 'failed' | 'cancell
 
 interface WorkOrder {
   id: string
-  subscription_id: string
   status: WorkStatus
   service_address: string
   service_latitude: number | null
@@ -20,13 +19,18 @@ interface WorkOrder {
   scheduled_start_at: string | null
   scheduled_end_at: string | null
   schedule_timezone: 'Asia/Manila'
-  internal_notes: string | null
   completed_at: string | null
   completion_notes: string | null
   failure_reason: string | null
   reschedule_required_reason: string | null
   updated_at: string
-  customer: { full_name: string | null } | null
+  customer: {
+    full_name: string | null
+    customer_profile: {
+      phone: string | null
+      installation_landmark: string | null
+    } | null
+  } | null
   plan: { name: string } | null
 }
 
@@ -36,9 +40,25 @@ const timeFormatter = new Intl.DateTimeFormat('en-PH', { hour: 'numeric', minute
 function isWorkOrder(value: unknown): value is WorkOrder {
   if (!value || typeof value !== 'object') return false
   const order = value as Record<string, unknown>
-  return typeof order.id === 'string' && typeof order.subscription_id === 'string' &&
-    typeof order.status === 'string' && typeof order.service_address === 'string' &&
-    (order.internal_notes === null || typeof order.internal_notes === 'string')
+  const customer = order.customer
+  const validCustomer = customer === null || (
+    typeof customer === 'object' &&
+    customer !== null &&
+    'full_name' in customer &&
+    (typeof customer.full_name === 'string' || customer.full_name === null) &&
+    'customer_profile' in customer &&
+    (customer.customer_profile === null || (
+      typeof customer.customer_profile === 'object' &&
+      customer.customer_profile !== null &&
+      'phone' in customer.customer_profile &&
+      (typeof customer.customer_profile.phone === 'string' || customer.customer_profile.phone === null) &&
+      'installation_landmark' in customer.customer_profile &&
+      (typeof customer.customer_profile.installation_landmark === 'string' || customer.customer_profile.installation_landmark === null)
+    ))
+  )
+
+  return typeof order.id === 'string' && typeof order.status === 'string' &&
+    typeof order.service_address === 'string' && validCustomer
 }
 
 export function TechnicianWorkQueuePage() {
@@ -101,6 +121,8 @@ function WorkOrderCard({ onUpdated, order, token }: { onUpdated: (order: Partial
   const [actionError, setActionError] = useState<string | null>(null)
   const hasSchedule = order.scheduled_start_at && order.scheduled_end_at
   const hasPin = order.service_latitude !== null && order.service_longitude !== null
+  const phone = order.customer?.customer_profile?.phone ?? null
+  const landmark = order.customer?.customer_profile?.installation_landmark ?? null
 
   async function changeStatus(status: 'in_progress' | 'failed' | 'reschedule_required', statusReason: string | null) {
     setSaving(true); setActionError(null)
@@ -126,7 +148,14 @@ function WorkOrderCard({ onUpdated, order, token }: { onUpdated: (order: Partial
 
   return <article className="overflow-hidden rounded-[14px] border border-white/10 bg-[rgba(17,22,31,0.84)] shadow-[0_12px_35px_rgba(0,0,0,0.2)]">
     <div className="flex items-start justify-between gap-4 border-b border-white/8 p-5"><div className="min-w-0"><p className="text-xs font-medium text-slate-500">JOB #{order.id.slice(0, 8).toUpperCase()}</p><h2 className="mt-1 truncate text-lg font-semibold text-white">{order.customer?.full_name ?? 'Customer name unavailable'}</h2><p className="mt-1 text-sm text-slate-400">{order.plan?.name ?? 'Service plan unavailable'}</p></div><StatusBadge className="shrink-0" status={order.status} /></div>
-    <div className="grid gap-5 p-5 sm:grid-cols-2"><Detail label="Appointment">{hasSchedule ? <><strong className="block font-semibold text-white">{dateFormatter.format(new Date(order.scheduled_start_at!))}</strong><span>{timeFormatter.format(new Date(order.scheduled_start_at!))} – {timeFormatter.format(new Date(order.scheduled_end_at!))} PHT</span></> : 'Appointment unavailable'}</Detail><Detail label="Service reference"><span className="break-all">{order.subscription_id}</span></Detail><Detail label="Installation address"><span className="leading-6 text-slate-200">{order.service_address}</span>{hasPin ? <a className="mt-2 block font-semibold text-blue-300 hover:text-blue-200" href={`https://www.openstreetmap.org/?mlat=${order.service_latitude}&mlon=${order.service_longitude}#map=17/${order.service_latitude}/${order.service_longitude}`} rel="noreferrer" target="_blank">Open location in map ↗</a> : null}</Detail><Detail label="Operational notes">{order.internal_notes ?? 'No operational notes provided.'}</Detail>{order.failure_reason ? <Detail label="Failure reason">{order.failure_reason}</Detail> : null}{order.reschedule_required_reason ? <Detail label="Reschedule reason">{order.reschedule_required_reason}</Detail> : null}{order.completion_notes ? <Detail label="Completion record">{order.completion_notes}</Detail> : null}</div>
+    <div className="grid gap-5 p-5 sm:grid-cols-2">
+      <Detail label="Appointment">{hasSchedule ? <><strong className="block font-semibold text-white">{dateFormatter.format(new Date(order.scheduled_start_at!))}</strong><span>{timeFormatter.format(new Date(order.scheduled_start_at!))} – {timeFormatter.format(new Date(order.scheduled_end_at!))} PHT</span></> : 'Appointment unavailable'}</Detail>
+      <Detail label="Customer contact">
+        {phone ? <a className="inline-flex min-h-11 items-center rounded-[9px] bg-blue-500 px-4 font-semibold text-white transition hover:bg-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300" href={`tel:${phone}`}>Call {phone}</a> : <span className="text-amber-300">Phone number unavailable</span>}
+      </Detail>
+      <Detail label="Installation address"><span className="leading-6 text-slate-200">{order.service_address}</span>{landmark ? <span className="mt-1 block text-slate-400">Landmark: {landmark}</span> : null}{hasPin ? <a className="mt-2 block font-semibold text-blue-300 hover:text-blue-200" href={`https://www.openstreetmap.org/?mlat=${order.service_latitude}&mlon=${order.service_longitude}#map=17/${order.service_latitude}/${order.service_longitude}`} rel="noreferrer" target="_blank">Open location in map ↗</a> : null}</Detail>
+      {order.failure_reason ? <Detail label="Failure reason">{order.failure_reason}</Detail> : null}{order.reschedule_required_reason ? <Detail label="Reschedule reason">{order.reschedule_required_reason}</Detail> : null}{order.completion_notes ? <Detail label="Completion record">{order.completion_notes}</Detail> : null}
+    </div>
     {(order.status === 'assigned' || order.status === 'in_progress' || order.status === 'failed') ? <div className="border-t border-white/8 p-5">{action ? <form onSubmit={(event) => { event.preventDefault(); if (action === 'completed') void completeInstallation(); else void changeStatus(action, reason) }}><label className="text-xs font-medium text-slate-400">{action === 'completed' ? 'Completion notes' : action === 'failed' ? 'Failure reason' : 'Why is rescheduling needed?'}<textarea className="mt-2 min-h-24 w-full rounded-[9px] border border-white/10 bg-[#0d121a] p-3 text-sm text-white outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20" maxLength={action === 'completed' ? 2000 : 1000} minLength={action === 'completed' ? 5 : 3} onChange={(event) => setReason(event.target.value)} required value={reason} /></label><div className="mt-3 flex gap-2"><button className="min-h-11 rounded-[9px] bg-blue-500 px-4 text-sm font-semibold text-white disabled:opacity-60" disabled={saving} type="submit">{saving ? 'Saving…' : action === 'completed' ? 'Confirm completion' : 'Confirm status'}</button><button className="min-h-11 rounded-[9px] border border-white/10 px-4 text-sm text-slate-300" disabled={saving} onClick={() => { setAction(null); setReason('') }} type="button">Cancel</button></div></form> : <div className="flex flex-wrap gap-2">{order.status === 'assigned' ? <button className="min-h-11 rounded-[9px] bg-blue-500 px-4 text-sm font-semibold text-white disabled:opacity-60" disabled={saving} onClick={() => void changeStatus('in_progress', null)} type="button">Start work</button> : null}{order.status === 'in_progress' ? <><button className="min-h-11 rounded-[9px] bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500" onClick={() => setAction('completed')} type="button">Complete installation</button><button className="min-h-11 rounded-[9px] border border-red-400/25 px-4 text-sm font-semibold text-red-300 hover:bg-red-400/8" onClick={() => setAction('failed')} type="button">Report failed attempt</button></> : null}<button className="min-h-11 rounded-[9px] border border-amber-400/25 px-4 text-sm font-semibold text-amber-300 hover:bg-amber-400/8" onClick={() => setAction('reschedule_required')} type="button">Request reschedule</button></div>}{actionError ? <p className="mt-3 text-sm text-red-300" role="alert">{actionError}</p> : null}</div> : null}
   </article>
 }

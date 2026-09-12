@@ -3686,7 +3686,6 @@ app.get('/technician/installations', async (request, response) => {
     .from('installation_orders')
     .select(`
       id,
-      subscription_id,
       status,
       service_address,
       service_latitude,
@@ -3694,13 +3693,15 @@ app.get('/technician/installations', async (request, response) => {
       scheduled_start_at,
       scheduled_end_at,
       schedule_timezone,
-      internal_notes,
       completed_at,
       completion_notes,
       failure_reason,
       reschedule_required_reason,
       updated_at,
-      customer:profiles!installation_orders_customer_id_fkey(full_name),
+      customer:profiles!installation_orders_customer_id_fkey(
+        full_name,
+        customer_profile:customer_profiles(phone, installation_landmark)
+      ),
       plan:plans!installation_orders_plan_id_fkey(name)
     `)
     .eq('technician_id', auth.userId)
