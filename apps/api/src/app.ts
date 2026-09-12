@@ -387,6 +387,17 @@ const applicationSchema = z
   })
   .strict()
 
+const customerPhoneSchema = z
+  .object({
+    phone: z
+      .string()
+      .trim()
+      .min(7)
+      .max(30)
+      .regex(/^[0-9+() -]+$/),
+  })
+  .strict()
+
 const adminApplicationsQuerySchema = z
   .object({
     status: z.enum(['pending', 'approved', 'rejected']).optional(),
@@ -1806,6 +1817,71 @@ app.use(async (request, response, next) => {
   }
 
   next()
+})
+
+app.get('/customer-profile', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message = auth.status === 500
+      ? 'Unable to load customer profile'
+      : auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const { data: profile, error } = await supabase
+    .from('customer_profiles')
+    .select('phone')
+    .eq('user_id', auth.userId)
+    .maybeSingle<{ phone: string | null }>()
+
+  if (error) {
+    console.error('Failed to load customer profile phone', { code: error.code })
+    response.status(500).json({ error: 'Unable to load customer profile' })
+    return
+  }
+
+  response.status(200).json({ profile: { phone: profile?.phone ?? null } })
+})
+
+app.patch('/customer-profile', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message = auth.status === 500
+      ? 'Unable to update customer profile'
+      : auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const result = customerPhoneSchema.safeParse(request.body)
+  if (!result.success) {
+    response.status(400).json({ error: 'Enter a valid phone number' })
+    return
+  }
+
+  const { data: profile, error } = await supabase
+    .from('customer_profiles')
+    .upsert(
+      {
+        user_id: auth.userId,
+        phone: result.data.phone,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id' },
+    )
+    .select('phone')
+    .single<{ phone: string }>()
+
+  if (error) {
+    console.error('Failed to update customer profile phone', { code: error.code })
+    response.status(500).json({ error: 'Unable to update customer profile' })
+    return
+  }
+
+  response.status(200).json({ profile })
 })
 
 app.post('/applications', async (request, response) => {

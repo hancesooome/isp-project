@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 
@@ -28,6 +28,10 @@ interface CustomerApplication {
   submitted_at: string
   rejection_reason: string | null
   plan: { name: string } | null
+}
+
+interface CustomerProfile {
+  phone: string | null
 }
 
 const dateFormatter = new Intl.DateTimeFormat('en-PH', {
@@ -87,6 +91,15 @@ function isApplication(value: unknown): value is CustomerApplication {
   )
 }
 
+function isCustomerProfile(value: unknown): value is CustomerProfile {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'phone' in value &&
+    (typeof value.phone === 'string' || value.phone === null)
+  )
+}
+
 export function CustomerDashboard() {
   const { session, user } = useAuth()
   const firstName = getFirstName(user?.user_metadata.full_name)
@@ -94,6 +107,11 @@ export function CustomerDashboard() {
     CustomerSubscription | null
   >()
   const [application, setApplication] = useState<CustomerApplication | null>()
+  const [profile, setProfile] = useState<CustomerProfile>()
+  const [phone, setPhone] = useState('')
+  const [phoneMessage, setPhoneMessage] = useState<string | null>(null)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [isSavingPhone, setIsSavingPhone] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -106,20 +124,22 @@ export function CustomerDashboard() {
     async function loadDashboard() {
       try {
         const headers = { Authorization: `Bearer ${session?.access_token ?? ''}` }
-        const [subscriptionResponse, applicationResponse] = await Promise.all([
+        const [subscriptionResponse, applicationResponse, profileResponse] = await Promise.all([
           fetch('/api/subscription', { headers, signal: controller.signal }),
           fetch('/api/applications/current', {
             headers,
             signal: controller.signal,
           }),
+          fetch('/api/customer-profile', { headers, signal: controller.signal }),
         ])
 
-        if (!subscriptionResponse.ok || !applicationResponse.ok) {
+        if (!subscriptionResponse.ok || !applicationResponse.ok || !profileResponse.ok) {
           throw new Error('DASHBOARD_REQUEST_FAILED')
         }
 
         const subscriptionResult: unknown = await subscriptionResponse.json()
         const applicationResult: unknown = await applicationResponse.json()
+        const profileResult: unknown = await profileResponse.json()
 
         if (
           typeof subscriptionResult !== 'object' ||
@@ -131,13 +151,19 @@ export function CustomerDashboard() {
           applicationResult === null ||
           !('application' in applicationResult) ||
           (applicationResult.application !== null &&
-            !isApplication(applicationResult.application))
+            !isApplication(applicationResult.application)) ||
+          typeof profileResult !== 'object' ||
+          profileResult === null ||
+          !('profile' in profileResult) ||
+          !isCustomerProfile(profileResult.profile)
         ) {
           throw new Error('INVALID_DASHBOARD_RESPONSE')
         }
 
         setSubscription(subscriptionResult.subscription)
         setApplication(applicationResult.application)
+        setProfile(profileResult.profile)
+        setPhone(profileResult.profile.phone ?? '')
       } catch (requestError) {
         if (requestError instanceof Error && requestError.name === 'AbortError') {
           return
@@ -151,11 +177,50 @@ export function CustomerDashboard() {
     return () => controller.abort()
   }, [session])
 
+  async function handlePhoneSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!session || isSavingPhone) return
+
+    const normalizedInput = phone.trim()
+    if (normalizedInput.length < 7 || normalizedInput.length > 30 || !/^[0-9+() -]+$/.test(normalizedInput)) {
+      setPhoneError('Enter a valid phone number.')
+      return
+    }
+
+    setIsSavingPhone(true)
+    setPhoneError(null)
+    setPhoneMessage(null)
+    try {
+      const response = await fetch('/api/customer-profile', {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phone: normalizedInput }),
+      })
+      if (!response.ok) throw new Error('PROFILE_UPDATE_FAILED')
+
+      const result: unknown = await response.json()
+      if (typeof result !== 'object' || result === null || !('profile' in result) || !isCustomerProfile(result.profile)) {
+        throw new Error('INVALID_PROFILE_RESPONSE')
+      }
+
+      setProfile(result.profile)
+      setPhone(result.profile.phone ?? '')
+      setPhoneMessage('Phone number saved.')
+    } catch {
+      setPhoneError('We could not save your phone number. Please try again.')
+    } finally {
+      setIsSavingPhone(false)
+    }
+  }
+
   if (error) {
     return <ErrorPanel message={error} title="Account unavailable" />
   }
 
-  if (subscription === undefined || application === undefined) {
+  if (subscription === undefined || application === undefined || profile === undefined) {
     return <PageSkeleton type="detail" />
   }
 
@@ -171,6 +236,50 @@ export function CustomerDashboard() {
         </div>
         {user?.email ? <p className="hidden text-sm text-slate-500 sm:block">{user.email}</p> : null}
       </header>
+
+      <form
+        className={`mt-8 rounded-[18px] border p-5 shadow-[0_18px_50px_rgba(18,25,38,0.06)] sm:p-6 ${profile.phone ? 'border-slate-900/8 bg-white' : 'border-amber-300 bg-amber-50/80'}`}
+        onSubmit={handlePhoneSubmit}
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">Contact information</p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-950">
+              {profile.phone ? 'Customer phone number' : 'Phone number required'}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {profile.phone ? 'Keep this number current for installation updates.' : 'Add a number before your installation can be scheduled or assigned.'}
+            </p>
+          </div>
+          <div className="w-full lg:max-w-md">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <label className="sr-only" htmlFor="customer-phone">Phone number</label>
+              <input
+                aria-describedby={phoneError ? 'customer-phone-error' : undefined}
+                aria-invalid={Boolean(phoneError)}
+                autoComplete="tel"
+                className="min-h-11 flex-1 rounded-[10px] border border-slate-300 bg-white px-3.5 text-sm text-slate-950 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+                disabled={isSavingPhone}
+                id="customer-phone"
+                maxLength={30}
+                onChange={(event) => {
+                  setPhone(event.target.value)
+                  setPhoneError(null)
+                  setPhoneMessage(null)
+                }}
+                placeholder="Phone number"
+                type="tel"
+                value={phone}
+              />
+              <button className="min-h-11 rounded-[10px] bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60" disabled={isSavingPhone} type="submit">
+                {isSavingPhone ? 'Saving…' : profile.phone ? 'Update' : 'Save number'}
+              </button>
+            </div>
+            {phoneError ? <p className="mt-2 text-sm font-medium text-red-700" id="customer-phone-error" role="alert">{phoneError}</p> : null}
+            {phoneMessage ? <p className="mt-2 text-sm font-medium text-emerald-700" role="status">{phoneMessage}</p> : null}
+          </div>
+        </div>
+      </form>
 
       {subscription ? (
         <div className="mt-8 grid gap-4 lg:grid-cols-[1.45fr_0.8fr]">
