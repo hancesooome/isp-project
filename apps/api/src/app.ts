@@ -462,6 +462,13 @@ const supportTicketResponseSchema = z
   })
   .strict()
 
+const adminSupportTicketResponseSchema = z
+  .object({
+    body: z.string().trim().min(1).max(5000),
+    is_internal: z.boolean().default(false),
+  })
+  .strict()
+
 const adminSupportTicketStatusSchema = z
   .object({
     status: z.enum(['open', 'in_progress', 'resolved', 'closed']),
@@ -6130,7 +6137,7 @@ app.post('/admin/support-tickets/:id/responses', async (request, response) => {
   }
 
   const idResult = supportTicketIdSchema.safeParse(request.params.id)
-  const bodyResult = supportTicketResponseSchema.safeParse(request.body)
+  const bodyResult = adminSupportTicketResponseSchema.safeParse(request.body)
 
   if (!idResult.success || !bodyResult.success) {
     response.status(400).json({ error: 'Enter a valid support response' })
@@ -6162,7 +6169,7 @@ app.post('/admin/support-tickets/:id/responses', async (request, response) => {
       ticket_id: ticket.id,
       sender_id: auth.userId,
       sender_role: 'admin',
-      is_internal: false,
+      is_internal: bodyResult.data.is_internal,
       body: bodyResult.data.body,
     })
     .select(
@@ -6193,7 +6200,10 @@ app.post('/admin/support-tickets/:id/responses', async (request, response) => {
     targetType: 'support_ticket',
     targetId: ticket.id,
     source: 'api',
-    metadata: { response_id: ticketResponse.id },
+    metadata: {
+      response_id: ticketResponse.id,
+      is_internal: ticketResponse.is_internal,
+    },
   })
 
   response.status(201).json({ response: ticketResponse })

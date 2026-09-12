@@ -29,6 +29,8 @@ interface SupportResponse {
   id: string
   body: string
   created_at: string
+  sender_role: 'customer' | 'admin'
+  is_internal: boolean
   author: { full_name: string | null } | null
 }
 
@@ -97,6 +99,8 @@ function isSupportResponse(value: unknown): value is SupportResponse {
     typeof response.id === 'string' &&
     typeof response.body === 'string' &&
     typeof response.created_at === 'string' &&
+    (response.sender_role === 'customer' || response.sender_role === 'admin') &&
+    typeof response.is_internal === 'boolean' &&
     (author === null ||
       (typeof author === 'object' &&
         'full_name' in author &&
@@ -240,6 +244,7 @@ export function AdminSupportTicketDetailsPage({ ticketId }: { ticketId: string }
   const [responseBody, setResponseBody] = useState('')
   const [responseError, setResponseError] = useState<string | null>(null)
   const [responseSuccess, setResponseSuccess] = useState<string | null>(null)
+  const [isInternalNote, setIsInternalNote] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
   const [statusSuccess, setStatusSuccess] = useState<string | null>(null)
@@ -310,7 +315,7 @@ export function AdminSupportTicketDetailsPage({ ticketId }: { ticketId: string }
             Authorization: `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ body }),
+          body: JSON.stringify({ body, is_internal: isInternalNote }),
         },
       )
 
@@ -327,13 +332,16 @@ export function AdminSupportTicketDetailsPage({ ticketId }: { ticketId: string }
       }
 
       const createdResponse = result.response
-      setTicket((current) =>
-        current
-          ? { ...current, responses: [...current.responses, createdResponse] }
-          : current,
-      )
+      setTicket((current) => {
+        if (!current || current.responses.some((item) => item.id === createdResponse.id)) {
+          return current
+        }
+
+        return { ...current, responses: [...current.responses, createdResponse] }
+      })
       setResponseBody('')
-      setResponseSuccess('Response sent successfully.')
+      setIsInternalNote(false)
+      setResponseSuccess(createdResponse.is_internal ? 'Internal note added.' : 'Response sent to the customer.')
     } catch {
       setResponseError('We could not send this response. Please try again later.')
     } finally {
@@ -463,14 +471,24 @@ export function AdminSupportTicketDetailsPage({ ticketId }: { ticketId: string }
             </div>
 
             {ticket.responses.length === 0 ? (
-              <p className="mt-4 rounded-[10px] border border-dashed border-white/10 p-4 text-sm text-slate-500">No staff responses yet.</p>
+              <p className="mt-4 rounded-[10px] border border-dashed border-white/10 p-4 text-sm text-slate-500">No replies or internal notes yet.</p>
             ) : (
-              <ol className="mt-4 space-y-3" aria-label="Staff responses">
+              <ol className="mt-4 space-y-3" aria-label="Ticket conversation">
                 {ticket.responses.map((response) => (
-                  <li className="ml-auto max-w-[94%] rounded-[12px] border border-blue-400/20 bg-blue-500/8 p-4" key={response.id}>
+                  <li
+                    className={response.is_internal
+                      ? 'rounded-[12px] border border-amber-400/25 bg-amber-400/8 p-4'
+                      : response.sender_role === 'admin'
+                        ? 'rounded-[12px] border border-blue-400/20 bg-blue-500/8 p-4'
+                        : 'rounded-[12px] border border-white/8 bg-white/[0.025] p-4'}
+                    key={response.id}
+                  >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-blue-200">{response.author?.full_name ?? 'Administrator'}</p>
-                      <time className="text-[11px] text-blue-300/60" dateTime={response.created_at}>{dateFormatter.format(new Date(response.created_at))}</time>
+                      <p className={response.is_internal ? 'text-xs font-semibold text-amber-200' : response.sender_role === 'admin' ? 'text-xs font-semibold text-blue-200' : 'text-xs font-semibold text-slate-200'}>
+                        {response.sender_role === 'admin' ? response.author?.full_name ?? 'Administrator' : response.author?.full_name ?? 'Customer'}
+                        {response.is_internal ? <span className="ml-2 rounded-full border border-amber-300/25 px-2 py-0.5 text-[10px] tracking-wide text-amber-200 uppercase">Internal note</span> : null}
+                      </p>
+                      <time className="text-[11px] text-slate-500" dateTime={response.created_at}>{dateFormatter.format(new Date(response.created_at))}</time>
                     </div>
                     <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">{response.body}</p>
                   </li>
@@ -480,8 +498,12 @@ export function AdminSupportTicketDetailsPage({ ticketId }: { ticketId: string }
           </article>
 
           <form className="rounded-[14px] border border-white/10 bg-[#11161f] p-5 shadow-lg sm:p-6" noValidate onSubmit={handleSubmit}>
-            <label className="text-sm font-semibold text-white" htmlFor="support-response">Add staff response</label>
-            <p className="mt-1 text-xs text-slate-500">The customer will see this response in their ticket conversation.</p>
+            <label className="text-sm font-semibold text-white" htmlFor="support-response">
+              {isInternalNote ? 'Add internal note' : 'Reply to customer'}
+            </label>
+            <p className="mt-1 text-xs text-slate-500">
+              {isInternalNote ? 'Only administrators can see this note.' : 'The customer will see this response in their ticket conversation.'}
+            </p>
             <textarea
               aria-describedby={responseError ? 'support-response-error' : 'support-response-help'}
               aria-invalid={Boolean(responseError)}
@@ -502,12 +524,25 @@ export function AdminSupportTicketDetailsPage({ ticketId }: { ticketId: string }
               <p className="mt-2 text-xs text-slate-500" id="support-response-help">Up to 5,000 characters.</p>
             )}
             {responseSuccess ? <p className="mt-3 text-sm text-emerald-300" role="status">{responseSuccess}</p> : null}
+            <label className="mt-4 flex min-h-10 cursor-pointer items-center gap-3 rounded-[9px] border border-white/10 bg-white/[0.025] px-3.5 text-sm text-slate-300">
+              <input
+                checked={isInternalNote}
+                className="size-4 accent-amber-400"
+                disabled={isSubmitting}
+                onChange={(event) => {
+                  setIsInternalNote(event.target.checked)
+                  setResponseSuccess(null)
+                }}
+                type="checkbox"
+              />
+              Keep this as an internal note
+            </label>
             <button
               className="mt-4 flex min-h-10 items-center justify-center gap-2 rounded-[9px] bg-blue-500 px-4 text-sm font-semibold text-white transition hover:bg-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isSubmitting}
               type="submit"
             >
-              {isSubmitting ? <><LoadingSpinner /><span>Sending...</span></> : 'Send response'}
+              {isSubmitting ? <><LoadingSpinner /><span>Saving...</span></> : isInternalNote ? 'Add internal note' : 'Send response'}
             </button>
           </form>
         </div>
