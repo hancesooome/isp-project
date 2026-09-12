@@ -183,6 +183,8 @@ interface SupportTicketResponse {
   id: string
   body: string
   created_at: string
+  sender_role: 'customer' | 'admin'
+  is_internal: boolean
   author: { full_name: string | null } | null
 }
 
@@ -2222,10 +2224,13 @@ app.get('/support-tickets/:id', async (request, response) => {
         id,
         body,
         created_at,
-        author:profiles!support_ticket_responses_admin_id_fkey(full_name)
+        sender_role,
+        is_internal,
+        author:profiles!support_ticket_responses_sender_id_fkey(full_name)
       `,
     )
     .eq('ticket_id', ticket.id)
+    .eq('is_internal', false)
     .order('created_at')
     .order('id')
     .returns<SupportTicketResponse[]>()
@@ -2240,6 +2245,74 @@ app.get('/support-tickets/:id', async (request, response) => {
   }
 
   response.status(200).json({ ticket: { ...ticket, responses } })
+})
+
+app.post('/support-tickets/:id/responses', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+
+  if (auth.status !== 200 || !auth.userId) {
+    const message = auth.status === 500
+      ? 'Unable to add support reply'
+      : auth.status === 403 ? 'Customer access required' : 'Authentication required'
+    response.status(auth.status).json({ error: message })
+    return
+  }
+
+  const idResult = supportTicketIdSchema.safeParse(request.params.id)
+  const bodyResult = supportTicketResponseSchema.safeParse(request.body)
+  if (!idResult.success || !bodyResult.success) {
+    response.status(400).json({ error: 'Enter a valid support reply' })
+    return
+  }
+
+  const { data: ticket, error: ticketError } = await supabase
+    .from('support_tickets')
+    .select('id, status')
+    .eq('id', idResult.data)
+    .eq('user_id', auth.userId)
+    .maybeSingle<{ id: string; status: CustomerSupportTicket['status'] }>()
+
+  if (ticketError) {
+    console.error('Failed to verify customer support reply target', { code: ticketError.code })
+    response.status(500).json({ error: 'Unable to add support reply' })
+    return
+  }
+  if (!ticket) {
+    response.status(404).json({ error: 'Support ticket not found' })
+    return
+  }
+  if (ticket.status === 'resolved' || ticket.status === 'closed') {
+    response.status(409).json({ error: 'This support ticket is closed to new replies' })
+    return
+  }
+
+  const { data: ticketResponse, error } = await supabase
+    .from('support_ticket_responses')
+    .insert({
+      ticket_id: ticket.id,
+      sender_id: auth.userId,
+      sender_role: 'customer',
+      is_internal: false,
+      body: bodyResult.data.body,
+    })
+    .select(`
+      id,
+      body,
+      created_at,
+      sender_role,
+      is_internal,
+      author:profiles!support_ticket_responses_sender_id_fkey(full_name)
+    `)
+    .single<SupportTicketResponse>()
+
+  if (error) {
+    const status = error.code === '23514' ? 409 : 500
+    if (status === 500) console.error('Failed to create customer support reply', { code: error.code })
+    response.status(status).json({ error: status === 409 ? 'This support ticket is closed to new replies' : 'Unable to add support reply' })
+    return
+  }
+
+  response.status(201).json({ response: ticketResponse })
 })
 
 app.get('/subscription', async (request, response) => {
@@ -6019,7 +6092,9 @@ app.get('/admin/support-tickets/:id', async (request, response) => {
         id,
         body,
         created_at,
-        author:profiles!support_ticket_responses_admin_id_fkey(full_name)
+        sender_role,
+        is_internal,
+        author:profiles!support_ticket_responses_sender_id_fkey(full_name)
       `,
     )
     .eq('ticket_id', ticket.id)
@@ -6085,7 +6160,9 @@ app.post('/admin/support-tickets/:id/responses', async (request, response) => {
     .from('support_ticket_responses')
     .insert({
       ticket_id: ticket.id,
-      admin_id: auth.userId,
+      sender_id: auth.userId,
+      sender_role: 'admin',
+      is_internal: false,
       body: bodyResult.data.body,
     })
     .select(
@@ -6093,7 +6170,9 @@ app.post('/admin/support-tickets/:id/responses', async (request, response) => {
         id,
         body,
         created_at,
-        author:profiles!support_ticket_responses_admin_id_fkey(full_name)
+        sender_role,
+        is_internal,
+        author:profiles!support_ticket_responses_sender_id_fkey(full_name)
       `,
     )
     .single<SupportTicketResponse>()
