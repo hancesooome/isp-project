@@ -88,3 +88,4 @@ ISP_PHASE_16_DETAILED_TICKETS_131-155.md
 supabase/migrations/202609120001_generalize_support_ticket_responses.sql
 supabase/migrations/202609120002_require_customer_phone_for_installation.sql
 supabase/migrations/202609120003_normalize_philippine_mobile_numbers.sql
+supabase/migrations/202609120004_create_notifications.sql

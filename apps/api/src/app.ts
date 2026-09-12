@@ -417,6 +417,10 @@ const coverageAreaIdSchema = z.string().uuid()
 const customerIdSchema = z.string().uuid()
 const invoiceIdSchema = z.string().uuid()
 const installationOrderIdSchema = z.string().uuid()
+const notificationIdSchema = z.string().uuid()
+const notificationListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+}).strict()
 const payMongoPaymentIntentIdSchema = z.string().regex(/^pi_[A-Za-z0-9]+$/)
 const payMongoMethodSchema = z.enum(['gcash', 'maya', 'qrph'])
 const payMongoEventEnvelopeSchema = z.object({
@@ -1825,6 +1829,98 @@ app.use(async (request, response, next) => {
   }
 
   next()
+})
+
+app.get('/notifications', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    ['customer', 'admin'],
+  )
+
+  if (auth.status !== 200 || !auth.userId || !auth.role) {
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to load notifications' : 'Authentication required',
+    })
+    return
+  }
+
+  const queryResult = notificationListQuerySchema.safeParse(request.query)
+  if (!queryResult.success) {
+    response.status(400).json({ error: 'Enter valid notification query options' })
+    return
+  }
+
+  const [notificationsResult, unreadResult] = await Promise.all([
+    supabase
+      .from('notifications')
+      .select('id, notification_type, title, message, related_entity_type, related_entity_id, navigation_path, read_at, created_at')
+      .eq('recipient_id', auth.userId)
+      .eq('audience', auth.role)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(queryResult.data.limit),
+    supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('recipient_id', auth.userId)
+      .eq('audience', auth.role)
+      .is('read_at', null),
+  ])
+
+  if (notificationsResult.error || unreadResult.error) {
+    console.error('Failed to load notifications', {
+      notificationsCode: notificationsResult.error?.code,
+      unreadCode: unreadResult.error?.code,
+    })
+    response.status(500).json({ error: 'Unable to load notifications' })
+    return
+  }
+
+  response.status(200).json({
+    notifications: notificationsResult.data,
+    unread_count: unreadResult.count ?? 0,
+  })
+})
+
+app.patch('/notifications/:id/read', async (request, response) => {
+  const auth = await authorizeRole(
+    request.header('authorization'),
+    ['customer', 'admin'],
+  )
+
+  if (auth.status !== 200 || !auth.userId || !auth.role) {
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to update notification' : 'Authentication required',
+    })
+    return
+  }
+
+  const idResult = notificationIdSchema.safeParse(request.params.id)
+  if (!idResult.success) {
+    response.status(400).json({ error: 'Invalid notification ID' })
+    return
+  }
+
+  const { data: notification, error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', idResult.data)
+    .eq('recipient_id', auth.userId)
+    .eq('audience', auth.role)
+    .select('id, read_at')
+    .maybeSingle<{ id: string; read_at: string }>()
+
+  if (error) {
+    console.error('Failed to mark notification read', { code: error.code })
+    response.status(500).json({ error: 'Unable to update notification' })
+    return
+  }
+  if (!notification) {
+    response.status(404).json({ error: 'Notification not found' })
+    return
+  }
+
+  response.status(200).json({ notification })
 })
 
 app.get('/customer-profile', async (request, response) => {
