@@ -350,6 +350,24 @@ interface AdminCoverageArea {
 
 const psgcCodeSchema = z.string().regex(/^[0-9]{10}$/)
 
+function normalizePhilippineMobile(value: string): string | null {
+  const compact = value.trim().replace(/[\s()-]/g, '')
+
+  if (/^09\d{9}$/.test(compact)) return `+63${compact.slice(1)}`
+  if (/^\+639\d{9}$/.test(compact)) return compact
+  return null
+}
+
+const philippineMobileSchema = z.string().max(30).transform((value, context) => {
+  const normalized = normalizePhilippineMobile(value)
+  if (!normalized) {
+    context.addIssue({ code: 'custom', message: 'Invalid Philippine mobile number' })
+    return z.NEVER
+  }
+
+  return normalized
+})
+
 const structuredAddressSchema = z.object({
   region_code: psgcCodeSchema,
   province_code: psgcCodeSchema.nullable(),
@@ -368,12 +386,7 @@ const availabilitySchema = structuredAddressSchema.extend({
 const applicationSchema = z
   .object({
     plan_id: z.string().uuid(),
-    phone: z
-      .string()
-      .trim()
-      .min(7)
-      .max(30)
-      .regex(/^[0-9+() -]+$/),
+    phone: philippineMobileSchema,
     address: z.string().trim().min(5).max(250),
     installation_region_code: psgcCodeSchema,
     installation_province_code: psgcCodeSchema.nullable(),
@@ -389,12 +402,7 @@ const applicationSchema = z
 
 const customerPhoneSchema = z
   .object({
-    phone: z
-      .string()
-      .trim()
-      .min(7)
-      .max(30)
-      .regex(/^[0-9+() -]+$/),
+    phone: philippineMobileSchema,
   })
   .strict()
 

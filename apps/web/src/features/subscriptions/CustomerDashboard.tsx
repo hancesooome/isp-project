@@ -8,6 +8,7 @@ import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { moneyFormatter as priceFormatter } from '../../lib/money'
+import { philippineMobileSchema } from '../applications/application-schema'
 
 interface CustomerSubscription {
   id: string
@@ -181,9 +182,9 @@ export function CustomerDashboard() {
     event.preventDefault()
     if (!session || isSavingPhone) return
 
-    const normalizedInput = phone.trim()
-    if (normalizedInput.length < 7 || normalizedInput.length > 30 || !/^[0-9+() -]+$/.test(normalizedInput)) {
-      setPhoneError('Enter a valid phone number.')
+    const phoneResult = philippineMobileSchema.safeParse(phone)
+    if (!phoneResult.success) {
+      setPhoneError(phoneResult.error.issues[0]?.message ?? 'Enter a valid Philippine mobile number.')
       return
     }
 
@@ -197,7 +198,7 @@ export function CustomerDashboard() {
           Authorization: `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ phone: normalizedInput }),
+        body: JSON.stringify({ phone: phoneResult.data }),
       })
       if (!response.ok) throw new Error('PROFILE_UPDATE_FAILED')
 
@@ -267,7 +268,7 @@ export function CustomerDashboard() {
                   setPhoneError(null)
                   setPhoneMessage(null)
                 }}
-                placeholder="Phone number"
+                placeholder="0917 123 4567"
                 type="tel"
                 value={phone}
               />

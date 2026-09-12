@@ -1,13 +1,32 @@
 import { z } from 'zod'
 
+export function normalizePhilippineMobile(value: string): string | null {
+  const compact = value.trim().replace(/[\s()-]/g, '')
+
+  if (/^09\d{9}$/.test(compact)) return `+63${compact.slice(1)}`
+  if (/^\+639\d{9}$/.test(compact)) return compact
+  return null
+}
+
+export const philippineMobileSchema = z.string().max(
+  30,
+  'Enter a Philippine mobile number like 0917 123 4567',
+).transform((value, context) => {
+  const normalized = normalizePhilippineMobile(value)
+  if (!normalized) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Enter a Philippine mobile number like 0917 123 4567',
+    })
+    return z.NEVER
+  }
+
+  return normalized
+})
+
 export const applicationSchema = z.object({
   planId: z.string().uuid('Select an available plan'),
-  phone: z
-    .string()
-    .trim()
-    .min(7, 'Enter a valid phone number')
-    .max(30, 'Phone number must be 30 characters or fewer')
-    .regex(/^[0-9+() -]+$/, 'Enter a valid phone number'),
+  phone: philippineMobileSchema,
   address: z
     .string()
     .trim()
