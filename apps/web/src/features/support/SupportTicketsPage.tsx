@@ -23,6 +23,8 @@ interface SupportResponse {
   id: string
   body: string
   created_at: string
+  sender_role: 'customer' | 'admin'
+  is_internal: false
   author: { full_name: string | null } | null
 }
 
@@ -41,6 +43,14 @@ const ticketSchema = z.object({
     .trim()
     .min(10, 'Description must be at least 10 characters')
     .max(5000, 'Description must be 5,000 characters or fewer'),
+})
+
+const replySchema = z.object({
+  body: z
+    .string()
+    .trim()
+    .min(1, 'Enter a reply before sending')
+    .max(5000, 'Reply must be 5,000 characters or fewer'),
 })
 
 type TicketFormValues = z.infer<typeof ticketSchema>
@@ -83,6 +93,8 @@ function isSupportResponse(value: unknown): value is SupportResponse {
     typeof response.id === 'string' &&
     typeof response.body === 'string' &&
     typeof response.created_at === 'string' &&
+    (response.sender_role === 'customer' || response.sender_role === 'admin') &&
+    response.is_internal === false &&
     (author === null ||
       (typeof author === 'object' &&
         'full_name' in author &&
@@ -363,6 +375,9 @@ export function SupportTicketDetailsPage({ ticketId }: { ticketId: string }) {
   const { session } = useAuth()
   const [ticket, setTicket] = useState<SupportTicketDetail | null>()
   const [error, setError] = useState<string | null>(null)
+  const [reply, setReply] = useState('')
+  const [replyError, setReplyError] = useState<string | null>(null)
+  const [isReplying, setIsReplying] = useState(false)
 
   useEffect(() => {
     if (!session) return
@@ -400,6 +415,63 @@ export function SupportTicketDetailsPage({ ticketId }: { ticketId: string }) {
     void loadTicket()
     return () => controller.abort()
   }, [session, ticketId])
+
+  async function handleReplySubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!session || !ticket || isReplying) return
+
+    const result = replySchema.safeParse({ body: reply })
+    if (!result.success) {
+      setReplyError(result.error.issues[0]?.message ?? 'Enter a valid reply')
+      return
+    }
+
+    setIsReplying(true)
+    setReplyError(null)
+
+    try {
+      const response = await fetch(`/api/support-tickets/${encodeURIComponent(ticket.id)}/responses`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(result.data),
+      })
+
+      if (!response.ok) {
+        throw new Error(response.status === 409 ? 'TICKET_CLOSED' : 'SUPPORT_REPLY_FAILED')
+      }
+
+      const payload: unknown = await response.json()
+      if (
+        typeof payload !== 'object' ||
+        payload === null ||
+        !('response' in payload) ||
+        !isSupportResponse(payload.response)
+      ) {
+        throw new Error('INVALID_SUPPORT_REPLY_RESPONSE')
+      }
+
+      const createdResponse = payload.response
+      setTicket((currentTicket) => {
+        if (!currentTicket || currentTicket.responses.some((item) => item.id === createdResponse.id)) {
+          return currentTicket
+        }
+
+        return { ...currentTicket, responses: [...currentTicket.responses, createdResponse] }
+      })
+      setReply('')
+    } catch (requestError) {
+      setReplyError(
+        requestError instanceof Error && requestError.message === 'TICKET_CLOSED'
+          ? 'This ticket no longer accepts replies. Refresh the page to see its latest status.'
+          : 'We could not send your reply. Please try again.',
+      )
+    } finally {
+      setIsReplying(false)
+    }
+  }
 
   if (error) return <ErrorPanel message={error} title="Ticket unavailable" />
   if (ticket === undefined) return <PageSkeleton type="detail" />
@@ -447,21 +519,62 @@ export function SupportTicketDetailsPage({ ticketId }: { ticketId: string }) {
               No staff responses yet. Updates from our support team will appear here.
             </p>
           ) : (
-            <ol className="mt-4 space-y-4" aria-label="Staff responses">
+            <ol className="mt-4 space-y-4" aria-label="Support conversation">
               {ticket.responses.map((response) => (
-                <li className="ml-auto max-w-[92%] rounded-[14px] border border-blue-200 bg-blue-50 p-4 sm:p-5" key={response.id}>
+                <li
+                  className={response.sender_role === 'admin'
+                    ? 'rounded-[14px] border border-blue-200 bg-blue-50 p-4 sm:p-5'
+                    : 'rounded-[14px] border border-slate-900/8 bg-slate-50 p-4 sm:p-5'}
+                  key={response.id}
+                >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-blue-950">
-                      {response.author?.full_name ?? 'Support team'}
+                    <p className={response.sender_role === 'admin' ? 'text-sm font-semibold text-blue-950' : 'text-sm font-semibold text-slate-950'}>
+                      {response.sender_role === 'admin' ? response.author?.full_name ?? 'Support team' : 'You'}
                     </p>
-                    <time className="text-xs text-blue-700/70" dateTime={response.created_at}>
+                    <time className={response.sender_role === 'admin' ? 'text-xs text-blue-700/70' : 'text-xs text-slate-500'} dateTime={response.created_at}>
                       {dateFormatter.format(new Date(response.created_at))}
                     </time>
                   </div>
-                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-blue-950/80">{response.body}</p>
+                  <p className={response.sender_role === 'admin' ? 'mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-blue-950/80' : 'mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600'}>{response.body}</p>
                 </li>
               ))}
             </ol>
+          )}
+
+          {ticket.status === 'open' || ticket.status === 'in_progress' ? (
+            <form className="mt-6 border-t border-slate-900/8 pt-6" onSubmit={handleReplySubmit}>
+              <label className="text-sm font-semibold text-slate-950" htmlFor="support-reply">Reply to support</label>
+              <textarea
+                aria-describedby={replyError ? 'support-reply-error' : undefined}
+                aria-invalid={Boolean(replyError)}
+                className="mt-2 min-h-32 w-full resize-y rounded-[12px] border border-slate-300 bg-white/90 px-4 py-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isReplying}
+                id="support-reply"
+                maxLength={5000}
+                onChange={(event) => {
+                  setReply(event.target.value)
+                  if (replyError) setReplyError(null)
+                }}
+                placeholder="Write your reply..."
+                value={reply}
+              />
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  {replyError ? <p className="text-sm font-medium text-red-700" id="support-reply-error" role="alert">{replyError}</p> : null}
+                </div>
+                <button
+                  className="min-h-11 rounded-[12px] bg-[linear-gradient(135deg,#0f172a_0%,#172554_65%,#4f46e5_100%)] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(30,41,59,0.18)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isReplying}
+                  type="submit"
+                >
+                  {isReplying ? 'Sending...' : 'Send reply'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <p className="mt-6 rounded-[12px] border border-slate-900/8 bg-slate-50 p-4 text-sm text-slate-600">
+              This ticket is {ticket.status} and no longer accepts new replies. Create a new ticket if you need more help.
+            </p>
           )}
         </section>
       </article>
