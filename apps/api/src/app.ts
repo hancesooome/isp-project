@@ -1033,6 +1033,260 @@ async function sendApplicationLifecycleEmail(
   }
 }
 
+type InstallationEmailEvent =
+  | 'scheduled'
+  | 'rescheduled'
+  | 'technician_assigned'
+  | 'completed'
+  | 'service_activated'
+
+async function sendInstallationLifecycleEmail(
+  installationOrderId: string,
+  eventType: InstallationEmailEvent,
+  sourceEventKey: string,
+): Promise<void> {
+  const { data: installation, error: installationError } = await supabase
+    .from('installation_orders')
+    .select(`
+      id,
+      customer_id,
+      plan_id,
+      subscription_id,
+      status,
+      service_address,
+      scheduled_start_at,
+      scheduled_end_at,
+      completed_at
+    `)
+    .eq('id', installationOrderId)
+    .maybeSingle<{
+      id: string
+      customer_id: string
+      plan_id: string
+      subscription_id: string
+      status: string
+      service_address: string
+      scheduled_start_at: string | null
+      scheduled_end_at: string | null
+      completed_at: string | null
+    }>()
+
+  if (installationError || !installation) {
+    console.error('Failed to load installation email details', {
+      installationOrderId,
+      eventType,
+      code: installationError?.code ?? 'INSTALLATION_NOT_FOUND',
+    })
+    return
+  }
+
+  const requiredStatus = eventType === 'completed' || eventType === 'service_activated'
+    ? 'completed'
+    : eventType === 'technician_assigned'
+      ? 'assigned'
+      : 'scheduled'
+
+  if (installation.status !== requiredStatus) {
+    console.error('Installation email event does not match current status', {
+      installationOrderId,
+      eventType,
+    })
+    return
+  }
+
+  const [userResult, profileResult, planResult, subscriptionResult] = await Promise.all([
+    supabase.auth.admin.getUserById(installation.customer_id),
+    supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', installation.customer_id)
+      .maybeSingle<{ full_name: string }>(),
+    supabase
+      .from('plans')
+      .select('name')
+      .eq('id', installation.plan_id)
+      .maybeSingle<{ name: string }>(),
+    supabase
+      .from('subscriptions')
+      .select('status, activated_at')
+      .eq('id', installation.subscription_id)
+      .maybeSingle<{ status: string; activated_at: string | null }>(),
+  ])
+  const email = userResult.data.user?.email
+
+  if (
+    userResult.error
+    || profileResult.error
+    || planResult.error
+    || subscriptionResult.error
+    || !email
+    || !profileResult.data
+    || !planResult.data
+    || !subscriptionResult.data
+    || (eventType === 'service_activated'
+      && (subscriptionResult.data.status !== 'active'
+        || !subscriptionResult.data.activated_at))
+  ) {
+    console.error('Installation email data is incomplete', {
+      installationOrderId,
+      eventType,
+    })
+    return
+  }
+
+  const { data: delivery, error: claimError } = await supabase
+    .from('installation_email_deliveries')
+    .insert({
+      installation_order_id: installation.id,
+      event_type: eventType,
+      source_event_key: sourceEventKey,
+    })
+    .select('id')
+    .maybeSingle<{ id: string }>()
+
+  if (claimError?.code === '23505') return
+
+  if (claimError || !delivery) {
+    console.error('Failed to claim installation email delivery', {
+      installationOrderId,
+      eventType,
+      code: claimError?.code ?? 'CLAIM_NOT_CREATED',
+    })
+    return
+  }
+
+  const reference = installation.id.slice(0, 8).toUpperCase()
+  const details = [
+    { label: 'Installation', value: `#${reference}` },
+    { label: 'Plan', value: planResult.data.name },
+    { label: 'Service address', value: installation.service_address },
+  ]
+  const appointmentDate = installation.scheduled_start_at
+    ? new Intl.DateTimeFormat('en-PH', {
+        dateStyle: 'long',
+        timeZone: 'Asia/Manila',
+      }).format(new Date(installation.scheduled_start_at))
+    : null
+  const appointmentWindow = installation.scheduled_start_at && installation.scheduled_end_at
+    ? `${new Intl.DateTimeFormat('en-PH', {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'Asia/Manila',
+      }).format(new Date(installation.scheduled_start_at))}–${new Intl.DateTimeFormat('en-PH', {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'Asia/Manila',
+      }).format(new Date(installation.scheduled_end_at))} Philippine time`
+    : null
+
+  if (appointmentDate) details.push({ label: 'Appointment date', value: appointmentDate })
+  if (appointmentWindow) details.push({ label: 'Time window', value: appointmentWindow })
+
+  const templates = {
+    scheduled: {
+      subject: `Installation #${reference} scheduled`,
+      preheader: 'Your internet installation appointment is scheduled.',
+      headline: 'Installation scheduled',
+      paragraphs: ['Your installation appointment is confirmed. Please ensure an adult is present and the installation area is accessible during the appointment window.'],
+    },
+    rescheduled: {
+      subject: `Installation #${reference} rescheduled`,
+      preheader: 'Your internet installation appointment was rescheduled.',
+      headline: 'Installation rescheduled',
+      paragraphs: ['Your installation appointment has a new date or time. Please ensure an adult is present and the installation area is accessible.'],
+    },
+    technician_assigned: {
+      subject: `Technician assigned for installation #${reference}`,
+      preheader: 'A technician has been assigned to your installation.',
+      headline: 'Technician assigned',
+      paragraphs: ['A qualified technician has been assigned to your scheduled installation. For privacy and security, technician contact details are not included in this email.'],
+    },
+    completed: {
+      subject: `Installation #${reference} completed`,
+      preheader: 'Your internet installation work is complete.',
+      headline: 'Installation completed',
+      paragraphs: ['The installation work has been recorded as complete. Your internet service is not active until service activation is separately confirmed.'],
+    },
+    service_activated: {
+      subject: 'Your ISP internet service is active',
+      preheader: 'Your internet service has been activated.',
+      headline: 'Service activated',
+      paragraphs: ['Your installation is complete and your internet subscription is now active. You can manage your plan and billing from your customer portal.'],
+    },
+  } satisfies Record<InstallationEmailEvent, {
+    subject: string
+    preheader: string
+    headline: string
+    paragraphs: string[]
+  }>
+  const template = templates[eventType]
+
+  if (eventType === 'completed' && installation.completed_at) {
+    details.push({
+      label: 'Completed',
+      value: new Intl.DateTimeFormat('en-PH', {
+        dateStyle: 'long',
+        timeStyle: 'short',
+        timeZone: 'Asia/Manila',
+      }).format(new Date(installation.completed_at)),
+    })
+  }
+
+  if (eventType === 'service_activated' && subscriptionResult.data.activated_at) {
+    details.push({
+      label: 'Activated',
+      value: new Intl.DateTimeFormat('en-PH', {
+        dateStyle: 'long',
+        timeStyle: 'short',
+        timeZone: 'Asia/Manila',
+      }).format(new Date(subscriptionResult.data.activated_at)),
+    })
+  }
+
+  const result = await sendEmail({
+    to: email,
+    subject: template.subject,
+    ...buildTransactionalEmail({
+      preheader: template.preheader,
+      headline: template.headline,
+      greeting: `Hello ${profileResult.data.full_name},`,
+      paragraphs: template.paragraphs,
+      details,
+      action: {
+        label: 'View installation status',
+        url: new URL('/account/installation', env.appUrl).toString(),
+      },
+    }),
+  })
+
+  if (!result.success) {
+    await supabase
+      .from('installation_email_deliveries')
+      .delete()
+      .eq('id', delivery.id)
+      .eq('status', 'pending')
+    return
+  }
+
+  const { error: deliveryError } = await supabase
+    .from('installation_email_deliveries')
+    .update({
+      status: 'sent',
+      provider_message_id: result.id,
+      sent_at: new Date().toISOString(),
+    })
+    .eq('id', delivery.id)
+    .eq('status', 'pending')
+
+  if (deliveryError) {
+    console.error('Failed to record installation email delivery', {
+      installationOrderId,
+      eventType,
+      code: deliveryError.code,
+    })
+  }
+}
+
 async function sendPaymentReceiptEmail(
   userId: string,
   invoiceId: string,
@@ -4174,6 +4428,12 @@ app.post('/installations/:id/complete', async (request, response) => {
       source: 'api',
       metadata: { completed_at: installation.completed_at },
     })
+
+    await sendInstallationLifecycleEmail(
+      installation.id,
+      'completed',
+      `completed:${installation.updated_at}`,
+    )
   }
 
   response.status(200).json({ installation })
@@ -4765,6 +5025,12 @@ app.patch('/admin/installations/:id/schedule', async (request, response) => {
         reschedule_count: installation.reschedule_count,
       },
     })
+
+    await sendInstallationLifecycleEmail(
+      installation.id,
+      installation.was_rescheduled ? 'rescheduled' : 'scheduled',
+      `schedule:${installation.updated_at}`,
+    )
   }
 
   response.status(200).json({ installation })
@@ -4836,6 +5102,12 @@ app.patch('/admin/installations/:id/technician', async (request, response) => {
       source: 'api',
       metadata: { technician_id: installation.technician_id },
     })
+
+    await sendInstallationLifecycleEmail(
+      installation.id,
+      'technician_assigned',
+      `assignment:${installation.updated_at}`,
+    )
   }
 
   response.status(200).json({ installation })
@@ -4901,6 +5173,12 @@ app.post('/admin/installations/:id/activate', async (request, response) => {
         billing_anchor_date: activation.billing_anchor_date,
       },
     })
+
+    await sendInstallationLifecycleEmail(
+      activation.installation_order_id,
+      'service_activated',
+      `activation:${activation.activated_at}`,
+    )
   }
 
   response.status(200).json({ activation })
