@@ -851,40 +851,186 @@ function formatInstallationAddress(
     .join(', ')
 }
 
-async function sendApplicationStatusEmail(
-  userId: string,
-  status: 'approved' | 'rejected',
-  rejectionReason: string | null,
-): Promise<void> {
-  const { data, error } = await supabase.auth.admin.getUserById(userId)
-  const email = data.user?.email
+type ApplicationEmailEvent =
+  | 'submitted'
+  | 'approved'
+  | 'rejected'
+  | 'scheduling_available'
 
-  if (error || !email) {
-    console.error('Failed to load application customer email', {
-      code: error?.code ?? 'EMAIL_NOT_FOUND',
-      userId,
+async function sendApplicationLifecycleEmail(
+  applicationId: string,
+  eventType: ApplicationEmailEvent,
+): Promise<void> {
+  const { data: application, error: applicationError } = await supabase
+    .from('applications')
+    .select('id, user_id, plan_id, status, rejection_reason')
+    .eq('id', applicationId)
+    .maybeSingle<{
+      id: string
+      user_id: string
+      plan_id: string
+      status: 'pending' | 'approved' | 'rejected'
+      rejection_reason: string | null
+    }>()
+
+  const requiredStatus = eventType === 'submitted'
+    ? 'pending'
+    : eventType === 'rejected'
+      ? 'rejected'
+      : 'approved'
+
+  if (applicationError || !application || application.status !== requiredStatus) {
+    console.error('Application email event does not match current status', {
+      applicationId,
+      eventType,
+      code: applicationError?.code ?? 'STATUS_MISMATCH',
     })
     return
   }
 
-  const isApproved = status === 'approved'
-  const emailContent = buildTransactionalEmail({
-    preheader: isApproved ? 'Your service application was approved.' : 'Your service application has an update.',
-    headline: isApproved ? 'Your application was approved' : 'Update on your application',
-    paragraphs: [isApproved
-      ? 'Your ISP service application has been approved. We will guide you through the installation process.'
-      : 'Your ISP service application was not approved. Review the information below and contact support if you need help.'],
-    details: !isApproved && rejectionReason ? [{ label: 'Reason', value: rejectionReason }] : undefined,
-    action: { label: 'View application status', url: new URL('/account/application', env.appUrl).toString() },
+  const [userResult, profileResult, planResult] = await Promise.all([
+    supabase.auth.admin.getUserById(application.user_id),
+    supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', application.user_id)
+      .maybeSingle<{ full_name: string }>(),
+    supabase
+      .from('plans')
+      .select('name')
+      .eq('id', application.plan_id)
+      .maybeSingle<{ name: string }>(),
+  ])
+  const email = userResult.data.user?.email
+
+  if (
+    userResult.error
+    || profileResult.error
+    || planResult.error
+    || !email
+    || !profileResult.data
+    || !planResult.data
+  ) {
+    console.error('Failed to load application email details', {
+      applicationId,
+      eventType,
+      userCode: userResult.error?.code,
+      profileCode: profileResult.error?.code,
+      planCode: planResult.error?.code,
+    })
+    return
+  }
+
+  const { data: delivery, error: claimError } = await supabase
+    .from('application_email_deliveries')
+    .insert({ application_id: application.id, event_type: eventType })
+    .select('id')
+    .maybeSingle<{ id: string }>()
+
+  if (claimError?.code === '23505') return
+
+  if (claimError || !delivery) {
+    console.error('Failed to claim application email delivery', {
+      applicationId,
+      eventType,
+      code: claimError?.code ?? 'CLAIM_NOT_CREATED',
+    })
+    return
+  }
+
+  const reference = application.id.slice(0, 8).toUpperCase()
+  const commonDetails = [
+    { label: 'Application', value: `#${reference}` },
+    { label: 'Requested plan', value: planResult.data.name },
+  ]
+  const portalUrl = new URL('/account/application', env.appUrl).toString()
+  const templates = {
+    submitted: {
+      subject: `Application #${reference} received`,
+      preheader: 'We received your internet service application.',
+      headline: 'Application submitted',
+      paragraphs: ['We received your internet service application and will review the service details you provided.'],
+      details: [...commonDetails, { label: 'Status', value: 'Under review' }],
+      actionLabel: 'Track application',
+    },
+    approved: {
+      subject: `Application #${reference} approved`,
+      preheader: 'Your internet service application was approved.',
+      headline: 'Application approved',
+      paragraphs: ['Your application was approved. We are preparing the next installation step.'],
+      details: [...commonDetails, { label: 'Status', value: 'Approved' }],
+      actionLabel: 'View application status',
+    },
+    rejected: {
+      subject: `Update on application #${reference}`,
+      preheader: 'Your internet service application review is complete.',
+      headline: 'Application review complete',
+      paragraphs: ['We could not approve your application at this time. Review the information below or contact support if you need help.'],
+      details: [
+        ...commonDetails,
+        { label: 'Status', value: 'Not approved' },
+        ...(application.rejection_reason
+          ? [{ label: 'Reason', value: application.rejection_reason }]
+          : []),
+      ],
+      actionLabel: 'Review application',
+    },
+    scheduling_available: {
+      subject: `Next step for application #${reference}`,
+      preheader: 'Your application is ready for installation scheduling.',
+      headline: 'Installation scheduling is next',
+      paragraphs: ['Your application is ready for installation scheduling. We will contact you when an appointment is available.'],
+      details: [...commonDetails, { label: 'Next step', value: 'Installation scheduling' }],
+      actionLabel: 'View installation status',
+    },
+  } satisfies Record<ApplicationEmailEvent, {
+    subject: string
+    preheader: string
+    headline: string
+    paragraphs: string[]
+    details: Array<{ label: string; value: string }>
+    actionLabel: string
+  }>
+  const template = templates[eventType]
+  const result = await sendEmail({
+    to: email,
+    subject: template.subject,
+    ...buildTransactionalEmail({
+      preheader: template.preheader,
+      headline: template.headline,
+      greeting: `Hello ${profileResult.data.full_name},`,
+      paragraphs: template.paragraphs,
+      details: template.details,
+      action: { label: template.actionLabel, url: portalUrl },
+    }),
   })
 
-  await sendEmail({
-    to: email,
-    subject: isApproved
-      ? 'Your service application was approved'
-      : 'Update on your service application',
-    ...emailContent,
-  })
+  if (!result.success) {
+    await supabase
+      .from('application_email_deliveries')
+      .delete()
+      .eq('id', delivery.id)
+      .eq('status', 'pending')
+    return
+  }
+
+  const { error: deliveryError } = await supabase
+    .from('application_email_deliveries')
+    .update({
+      status: 'sent',
+      provider_message_id: result.id,
+      sent_at: new Date().toISOString(),
+    })
+    .eq('id', delivery.id)
+    .eq('status', 'pending')
+
+  if (deliveryError) {
+    console.error('Failed to record application email delivery', {
+      applicationId,
+      eventType,
+      code: deliveryError.code,
+    })
+  }
 }
 
 async function sendPaymentReceiptEmail(
@@ -2225,6 +2371,8 @@ app.post('/applications', async (request, response) => {
     navigationPath: `/admin/applications/${application.id}`,
     sourceEventKey: `application-submitted:${application.id}`,
   })
+
+  await sendApplicationLifecycleEmail(application.id, 'submitted')
 
   response.status(201).json({ application })
 })
@@ -6678,11 +6826,8 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
       return
     }
 
-    await sendApplicationStatusEmail(
-      applicationOwner.user_id,
-      'approved',
-      null,
-    )
+    await sendApplicationLifecycleEmail(application.id, 'approved')
+    await sendApplicationLifecycleEmail(application.id, 'scheduling_available')
 
     await recordAuditEvent({
       actorType: 'admin',
@@ -6761,11 +6906,7 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
     return
   }
 
-  await sendApplicationStatusEmail(
-    applicationOwner.user_id,
-    'rejected',
-    application.rejection_reason,
-  )
+  await sendApplicationLifecycleEmail(application.id, 'rejected')
 
   await recordAuditEvent({
     actorType: 'admin',
