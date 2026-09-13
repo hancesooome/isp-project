@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/auth-context'
+import { CustomerNotificationBell } from '../notifications/CustomerNotifications'
 
 type CustomerCapability = 'overview' | 'apply' | 'application' | 'installation' |
   'internet' | 'billing' | 'invoices' | 'statements' | 'payments' |
@@ -89,7 +90,10 @@ export function CustomerLayout() {
         aria-label="Customer portal navigation"
         className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-900/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(238,241,247,0.94))] px-3 py-4 text-slate-950 shadow-[8px_0_30px_rgba(2,6,23,0.12)] md:flex"
       >
-        <PortalBrand />
+        <div className="flex items-center justify-between gap-2">
+          <PortalBrand />
+          <CustomerNotificationBell refreshKey={pathname} />
+        </div>
         <p className="px-3 pt-8 pb-3 text-[11px] font-semibold tracking-[0.14em] text-slate-500 uppercase">
           Customer portal
         </p>
@@ -105,6 +109,7 @@ export function CustomerLayout() {
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-900/8 bg-[rgba(255,255,255,0.82)] px-4 backdrop-blur-xl md:hidden">
           <PortalBrand compact />
           <div className="flex items-center gap-2">
+            <CustomerNotificationBell refreshKey={pathname} />
             {entitlements?.capabilities.includes('support') ? <Link className="inline-flex min-h-11 items-center rounded-[10px] px-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/help">Help</Link> : null}
           <details className="group relative">
             <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-[10px] border border-slate-900/10 bg-white/70 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">

@@ -15,6 +15,7 @@ import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
 import { sendRestorationNotifications } from './jobs/restoration-notifications.js'
 import { applyScheduledTerminations } from './jobs/scheduled-terminations.js'
 import { recordAuditEvent } from './lib/audit.js'
+import { createNotification } from './lib/notifications.js'
 import { getAdminMfaStatus, isAdminMfaVerified } from './lib/admin-mfa.js'
 import {
   customerHasCapability,
@@ -1921,6 +1922,32 @@ app.patch('/notifications/:id/read', async (request, response) => {
   }
 
   response.status(200).json({ notification })
+})
+
+app.patch('/notifications/read-all', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'customer')
+
+  if (auth.status !== 200 || !auth.userId) {
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to update notifications' : 'Authentication required',
+    })
+    return
+  }
+
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('recipient_id', auth.userId)
+    .eq('audience', 'customer')
+    .is('read_at', null)
+
+  if (error) {
+    console.error('Failed to mark customer notifications read', { code: error.code })
+    response.status(500).json({ error: 'Unable to update notifications' })
+    return
+  }
+
+  response.status(200).json({ success: true })
 })
 
 app.get('/customer-profile', async (request, response) => {
@@ -6327,9 +6354,9 @@ app.post('/admin/support-tickets/:id/responses', async (request, response) => {
 
   const { data: ticket, error: ticketError } = await supabase
     .from('support_tickets')
-    .select('id')
+    .select('id, user_id')
     .eq('id', idResult.data)
-    .maybeSingle<{ id: string }>()
+    .maybeSingle<{ id: string; user_id: string }>()
 
   if (ticketError) {
     console.error('Failed to verify support ticket response target', {
@@ -6386,6 +6413,20 @@ app.post('/admin/support-tickets/:id/responses', async (request, response) => {
       is_internal: ticketResponse.is_internal,
     },
   })
+
+  if (!ticketResponse.is_internal) {
+    await createNotification({
+      recipientId: ticket.user_id,
+      audience: 'customer',
+      type: 'support.reply',
+      title: 'Support replied to your ticket',
+      message: 'A new response is available in your support conversation.',
+      relatedEntityType: 'support_ticket',
+      relatedEntityId: ticket.id,
+      navigationPath: `/account/support/${ticket.id}`,
+      sourceEventKey: `support-response:${ticketResponse.id}`,
+    })
+  }
 
   response.status(201).json({ response: ticketResponse })
 })
@@ -6600,6 +6641,18 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
       metadata: { decision: 'approved' },
     })
 
+    await createNotification({
+      recipientId: applicationOwner.user_id,
+      audience: 'customer',
+      type: 'application.approved',
+      title: 'Application approved',
+      message: 'Your service application was approved. Installation preparation can now begin.',
+      relatedEntityType: 'application',
+      relatedEntityId: application.id,
+      navigationPath: '/account/application',
+      sourceEventKey: `application-approved:${application.id}`,
+    })
+
     response.status(200).json({ application })
     return
   }
@@ -6669,6 +6722,18 @@ app.patch('/admin/applications/:id/review', async (request, response) => {
     targetId: application.id,
     source: 'api',
     metadata: { decision: 'rejected' },
+  })
+
+  await createNotification({
+    recipientId: applicationOwner.user_id,
+    audience: 'customer',
+    type: 'application.rejected',
+    title: 'Application update',
+    message: 'Your service application review is complete. View its status for details.',
+    relatedEntityType: 'application',
+    relatedEntityId: application.id,
+    navigationPath: '/account/application',
+    sourceEventKey: `application-rejected:${application.id}`,
   })
 
   response.status(200).json({ application })
