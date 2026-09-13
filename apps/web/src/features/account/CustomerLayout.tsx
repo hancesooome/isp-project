@@ -23,6 +23,16 @@ const navItems = [
   { label: 'Help Center', shortLabel: 'Help', to: '/account/help', end: false, icon: 'help', capability: 'support' },
 ] as const
 
+const mobileNavPriority: readonly string[] = [
+  'overview',
+  'apply',
+  'application',
+  'installation',
+  'invoices',
+  'history',
+  'support',
+]
+
 export function CustomerLayout() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -31,6 +41,7 @@ export function CustomerLayout() {
   const [signOutError, setSignOutError] = useState<string | null>(null)
   const [entitlements, setEntitlements] = useState<CustomerEntitlements | null>(null)
   const [entitlementError, setEntitlementError] = useState(false)
+  const [isEditingForm, setIsEditingForm] = useState(false)
   const email = user?.email ?? null
 
   useEffect(() => {
@@ -60,7 +71,10 @@ export function CustomerLayout() {
     () => entitlements ? navItems.filter((item) => entitlements.capabilities.includes(item.capability)) : [],
     [entitlements],
   )
-  const mobileNavItems = visibleNavItems.filter((item) => item.icon !== 'help')
+  const mobileNavItems = visibleNavItems
+    .filter((item) => mobileNavPriority.includes(item.icon))
+    .sort((first, second) => mobileNavPriority.indexOf(first.icon) - mobileNavPriority.indexOf(second.icon))
+    .slice(0, 5)
   const requiredCapability = getRouteCapability(pathname)
   const canViewRoute = entitlements !== null &&
     (requiredCapability === null || entitlements.capabilities.includes(requiredCapability))
@@ -135,37 +149,48 @@ export function CustomerLayout() {
           </div>
         </header>
 
-        <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(71,118,255,0.07),transparent_28%),#f7f8fb] px-4 pt-8 pb-28 sm:px-6 md:px-8 md:py-10 lg:px-12">
+        <main
+          className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(71,118,255,0.07),transparent_28%),#f7f8fb] px-4 pt-8 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:px-6 md:px-8 md:py-10 lg:px-12"
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsEditingForm(false)
+            else if (!isEditableControl(event.relatedTarget)) setIsEditingForm(false)
+          }}
+          onFocusCapture={(event) => setIsEditingForm(isEditableControl(event.target))}
+        >
           <div className="customer-portal-content mx-auto max-w-6xl">
             {entitlementError ? <p className="mb-6 rounded-[10px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status">Some account options could not be loaded. Refresh the page to try again.</p> : null}
             {entitlements === null ? <PortalLoading /> : canViewRoute ? <Outlet /> : <UnavailablePage />}
           </div>
         </main>
 
-        <nav
-          aria-label="Customer portal mobile navigation"
-          className="fixed inset-x-3 bottom-3 z-20 grid auto-cols-[4.75rem] grid-flow-col overflow-x-auto rounded-[16px] border border-slate-900/10 bg-[rgba(255,255,255,0.92)] p-1.5 shadow-2xl backdrop-blur-xl md:hidden"
-        >
-          {mobileNavItems.map((item) => (
-            <NavLink
-              className={({ isActive }) =>
-                `flex min-h-14 flex-col items-center justify-center gap-1 rounded-[10px] px-1 text-[10px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
-                  isActive ? 'bg-slate-100 text-blue-600' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-950'
-                }`
-              }
-              end={item.end}
-              key={item.to}
-              to={item.to}
-            >
-              {({ isActive }) => (
-                <>
-                  <NavIcon active={isActive} name={item.icon} />
-                  <span>{item.shortLabel}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
-        </nav>
+        {!isEditingForm && mobileNavItems.length > 0 ? (
+          <nav
+            aria-label="Customer portal mobile navigation"
+            className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 grid auto-cols-fr grid-flow-col rounded-[18px] border border-white/65 bg-[rgba(255,255,255,0.78)] p-1.5 shadow-[0_8px_28px_rgba(16,24,40,0.12)] backdrop-blur-[18px] transition duration-200 motion-reduce:transition-none md:hidden"
+          >
+            {mobileNavItems.map((item) => (
+              <NavLink
+                className={({ isActive }) =>
+                  `flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[11px] px-1 text-[10px] leading-none transition duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset ${
+                    isActive
+                      ? 'bg-white/80 font-semibold text-blue-600 shadow-[0_2px_8px_rgba(16,24,40,0.06)]'
+                      : 'font-medium text-slate-500 hover:bg-white/55 hover:text-slate-950 active:bg-white/75'
+                  }`
+                }
+                end={item.end}
+                key={item.to}
+                to={item.to}
+              >
+                {({ isActive }) => (
+                  <>
+                    <NavIcon active={isActive} name={item.icon} />
+                    <span className="max-w-full truncate px-0.5">{item.shortLabel}</span>
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+        ) : null}
       </div>
     </div>
   )
@@ -290,6 +315,13 @@ function AccountPanel({ email, isSigningOut, onSignOut }: AccountPanelProps) {
 
 function getInitial(email: string | null) {
   return email?.trim().charAt(0).toUpperCase() || 'C'
+}
+
+function isEditableControl(target: EventTarget | null) {
+  return target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
 }
 
 function SignOutIcon() { return <LogOut aria-hidden="true" size={17} /> }
