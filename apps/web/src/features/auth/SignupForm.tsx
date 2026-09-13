@@ -9,6 +9,8 @@ import {
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { signUpCustomer } from './signup'
 import { SocialAuthButtons } from './SocialAuthButtons'
+import { PasswordField } from './PasswordField'
+import { PASSWORD_HELP_TEXT } from './password-policy'
 
 type FieldErrors = Partial<Record<keyof SignupFormValues, string>>
 
@@ -160,23 +162,19 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
           type="email"
           value={values.email}
         />
-        <Field
-          autoComplete="new-password"
+        <PasswordField
           error={fieldErrors.password}
           id="password"
           label="Password"
-          helpText="Use at least 8 characters."
+          helpText={PASSWORD_HELP_TEXT}
           onChange={(value) => updateField('password', value)}
-          type="password"
           value={values.password}
         />
-        <Field
-          autoComplete="new-password"
+        <PasswordField
           error={fieldErrors.confirmPassword}
           id="confirmPassword"
           label="Confirm password"
           onChange={(value) => updateField('confirmPassword', value)}
-          type="password"
           value={values.confirmPassword}
         />
 
@@ -219,7 +217,7 @@ interface FieldProps {
   helpText?: string
   label: string
   onChange: (value: string) => void
-  type?: 'email' | 'password' | 'text'
+  type?: 'email' | 'text'
   value: string
 }
 
