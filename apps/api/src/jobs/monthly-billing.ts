@@ -1,4 +1,5 @@
 import { env } from '../config/env.js'
+import { sendInvoiceCreatedEmail } from '../lib/billing-emails.js'
 import { sendEmail } from '../lib/email.js'
 import { buildTransactionalEmail } from '../lib/transactional-email.js'
 import { supabase } from '../lib/supabase.js'
@@ -152,8 +153,10 @@ export async function runMonthlyBillingJob(now = new Date()): Promise<MonthlyBil
         console.error('Failed to generate monthly invoice', { code: error.code, subscriptionId: subscription.id })
         throw new Error('MONTHLY_BILLING_INVOICE_FAILED')
       }
-      if (invoice) generatedInvoices += 1
-      else skippedInvoices += 1
+      if (invoice) {
+        generatedInvoices += 1
+        await sendInvoiceCreatedEmail(invoice.id)
+      } else skippedInvoices += 1
     }
 
     const statement = await generateAndStoreStatementOfAccountPdf(subscription.user_id, statementYear, statementMonth)

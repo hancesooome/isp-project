@@ -15,6 +15,7 @@ import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
 import { sendRestorationNotifications } from './jobs/restoration-notifications.js'
 import { applyScheduledTerminations } from './jobs/scheduled-terminations.js'
 import { recordAuditEvent } from './lib/audit.js'
+import { sendInvoiceCreatedEmail } from './lib/billing-emails.js'
 import { createAdminNotifications, createNotification } from './lib/notifications.js'
 import { getAdminMfaStatus, isAdminMfaVerified } from './lib/admin-mfa.js'
 import {
@@ -1290,6 +1291,7 @@ async function sendInstallationLifecycleEmail(
 async function sendPaymentReceiptEmail(
   userId: string,
   invoiceId: string,
+  paymentReference: string,
   amountCents: number,
   paidAt: string,
 ): Promise<boolean> {
@@ -1321,7 +1323,9 @@ async function sendPaymentReceiptEmail(
       paragraphs: ['Thank you. Your payment has been securely confirmed and recorded.'],
       details: [
         { label: 'Invoice', value: `#${invoiceReference}` },
+        { label: 'Payment reference', value: paymentReference },
         { label: 'Amount paid', value: amount },
+        { label: 'Currency', value: 'PHP' },
         { label: 'Payment date', value: paymentDate },
       ],
       action: { label: 'View invoice', url: new URL(`/account/invoices/${invoiceId}`, env.appUrl).toString() },
@@ -1329,6 +1333,57 @@ async function sendPaymentReceiptEmail(
   })
 
   return result.success
+}
+
+async function sendClaimedPaymentReceipt(
+  provider: 'stripe' | 'paymongo',
+  providerReference: string,
+  userId: string,
+  invoiceId: string,
+  amountCents: number,
+  paidAt: string,
+): Promise<void> {
+  const { data: shouldSendReceipt, error: receiptClaimError } =
+    await supabase.rpc('claim_payment_receipt', {
+      p_provider: provider,
+      p_provider_reference: providerReference,
+    })
+
+  if (receiptClaimError) {
+    logger.error('Failed to claim payment receipt email', {
+      code: receiptClaimError.code,
+      invoiceId,
+      provider,
+    })
+    return
+  }
+
+  if (!shouldSendReceipt) return
+
+  const sent = await sendPaymentReceiptEmail(
+    userId,
+    invoiceId,
+    providerReference,
+    amountCents,
+    paidAt,
+  )
+
+  if (sent) return
+
+  const { error: resetError } = await supabase
+    .from('payments')
+    .update({ receipt_email_claimed_at: null })
+    .eq('provider', provider)
+    .eq('provider_reference', providerReference)
+    .eq('status', 'succeeded')
+
+  if (resetError) {
+    logger.error('Failed to release payment receipt email claim', {
+      code: resetError.code,
+      invoiceId,
+      provider,
+    })
+  }
 }
 
 function isValidDatabaseDate(value: string): boolean {
@@ -1592,69 +1647,32 @@ app.post(
       return
     }
 
-    if (!processed) {
-      if (!isFailedPayment) {
-        await sendRestorationNotifications()
-      }
-      response.status(200).json({ received: true })
-      return
-    }
-
-    await recordAuditEvent({
-      actorType: 'system',
-      action: isFailedPayment
-        ? 'payment.webhook_failed'
-        : 'payment.webhook_succeeded',
-      targetType: 'invoice',
-      targetId: invoice.id,
-      source: 'stripe_webhook',
-      metadata: {
-        provider: 'stripe',
-        stripe_event_id: event.id,
-        amount_cents: invoice.amount_cents,
-      },
-    })
-
-    if (!isFailedPayment) {
-      const { data: shouldSendReceipt, error: receiptClaimError } =
-        await supabase.rpc('claim_stripe_payment_receipt', {
-          p_provider_reference: paymentIntentReference,
-        })
-
-      if (receiptClaimError) {
-        logger.error('Failed to claim payment receipt email', {
-          code: receiptClaimError.code,
-          eventId: event.id,
-          requestId: response.locals.requestId,
-        })
-      } else if (shouldSendReceipt) {
-        const sent = await sendPaymentReceiptEmail(
-          invoice.user_id,
-          invoice.id,
-          invoice.amount_cents,
-          paidAt,
-        )
-
-        if (!sent) {
-          const { error: resetError } = await supabase
-            .from('payments')
-            .update({ receipt_email_claimed_at: null })
-            .eq('provider', 'stripe')
-            .eq('provider_reference', paymentIntentReference)
-            .eq('status', 'succeeded')
-
-          if (resetError) {
-            logger.error('Failed to release payment receipt email claim', {
-              code: resetError.code,
-              eventId: event.id,
-              requestId: response.locals.requestId,
-            })
-          }
-        }
-      }
+    if (processed) {
+      await recordAuditEvent({
+        actorType: 'system',
+        action: isFailedPayment
+          ? 'payment.webhook_failed'
+          : 'payment.webhook_succeeded',
+        targetType: 'invoice',
+        targetId: invoice.id,
+        source: 'stripe_webhook',
+        metadata: {
+          provider: 'stripe',
+          stripe_event_id: event.id,
+          amount_cents: invoice.amount_cents,
+        },
+      })
     }
 
     if (!isFailedPayment) {
+      await sendClaimedPaymentReceipt(
+        'stripe',
+        paymentIntentReference,
+        invoice.user_id,
+        invoice.id,
+        invoice.amount_cents,
+        paidAt,
+      )
       await sendRestorationNotifications()
     }
 
@@ -1777,10 +1795,10 @@ app.post(
     if (processed) {
       const { data: payment, error: paymentLookupError } = await supabase
         .from('payments')
-        .select('invoice_id')
+        .select('invoice_id, user_id')
         .eq('provider', 'paymongo')
         .eq('provider_reference', paymentAttributes.payment_intent_id)
-        .maybeSingle<{ invoice_id: string }>()
+        .maybeSingle<{ invoice_id: string; user_id: string }>()
 
       if (paymentLookupError || !payment) {
         logger.error('Failed to load reconciled PayMongo payment', {
@@ -1804,6 +1822,38 @@ app.post(
             amount_cents: paymentAttributes.amount,
           },
         })
+
+        if (isPaid && paidAt) {
+          await sendClaimedPaymentReceipt(
+            'paymongo',
+            paymentAttributes.payment_intent_id,
+            payment.user_id,
+            payment.invoice_id,
+            paymentAttributes.amount,
+            paidAt,
+          )
+        }
+      }
+    }
+
+    if (!processed && isPaid && paidAt) {
+      const { data: payment, error: paymentLookupError } = await supabase
+        .from('payments')
+        .select('invoice_id, user_id')
+        .eq('provider', 'paymongo')
+        .eq('provider_reference', paymentAttributes.payment_intent_id)
+        .eq('status', 'succeeded')
+        .maybeSingle<{ invoice_id: string; user_id: string }>()
+
+      if (!paymentLookupError && payment) {
+        await sendClaimedPaymentReceipt(
+          'paymongo',
+          paymentAttributes.payment_intent_id,
+          payment.user_id,
+          payment.invoice_id,
+          paymentAttributes.amount,
+          paidAt,
+        )
       }
     }
 
@@ -5891,6 +5941,8 @@ app.post('/admin/invoices', async (request, response) => {
       subscription_id: subscription.id,
     },
   })
+
+  await sendInvoiceCreatedEmail(invoice.id)
 
   response.status(201).json({ invoice })
 })

@@ -96,14 +96,20 @@ export async function runUpcomingDueReminderJob(
       env.appUrl,
     ).toString()
     const amount = formatMoney(invoice.amount_cents)
+    const reference = invoice.id.slice(0, 8).toUpperCase()
     const result = await sendEmail({
       to: email,
-      subject: `Payment reminder: ${amount} due ${invoice.due_date}`,
+      subject: `Payment reminder for invoice #${reference}`,
       ...buildTransactionalEmail({
-        preheader: `Your invoice for ${amount} is due on ${invoice.due_date}.`,
+        preheader: `Invoice #${reference} for ${amount} is due on ${invoice.due_date}.`,
         headline: 'Upcoming payment due',
         paragraphs: ['This is a reminder that your internet service invoice is approaching its due date.'],
-        details: [{ label: 'Amount due', value: amount }, { label: 'Due date', value: invoice.due_date }],
+        details: [
+          { label: 'Invoice', value: `#${reference}` },
+          { label: 'Amount due', value: amount },
+          { label: 'Currency', value: 'PHP' },
+          { label: 'Due date', value: invoice.due_date },
+        ],
         action: { label: 'View or pay invoice', url: invoiceUrl },
       }),
     })

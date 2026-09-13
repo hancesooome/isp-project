@@ -259,6 +259,7 @@ async function sendNonPaymentSuspensionEmail(
       details: [
         { label: 'Invoice', value: `#${reference}` },
         { label: 'Amount', value: amount },
+        { label: 'Currency', value: 'PHP' },
         { label: 'Due date', value: invoice.due_date },
       ],
       notice: 'This is an operational platform status and does not confirm that your physical internet connection was disabled.',
@@ -370,9 +371,10 @@ async function sendDelinquencyNotifications() {
         details: [
           { label: 'Invoice', value: `#${reference}` },
           { label: 'Amount', value: amount },
+          { label: 'Currency', value: 'PHP' },
           { label: 'Due date', value: invoice.due_date },
         ],
-        notice: 'Your service has not been suspended.',
+        notice: 'Your service has not been suspended. Pay the overdue balance to avoid service suspension.',
         action: { label: 'View or pay invoice', url: invoiceUrl },
       }),
     })
@@ -469,6 +471,7 @@ async function sendOverdueNotifications() {
         details: [
           { label: 'Invoice', value: `#${reference}` },
           { label: 'Amount', value: amount },
+          { label: 'Currency', value: 'PHP' },
           { label: 'Due date', value: invoice.due_date },
         ],
         action: { label: 'View or pay invoice', url: invoiceUrl },
