@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ChartNoAxesColumn, CircleHelp, ClipboardList, CreditCard, HardHat, House, Layers, LogOut, MapPinned, MessageCircle, RefreshCw, Repeat2, UserRound, Users, Wrench, XCircle } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ChartNoAxesColumn, CircleHelp, ClipboardList, CreditCard, HardHat, House, Layers, LogOut, MapPinned, Menu, MessageCircle, RefreshCw, Repeat2, UserRound, Users, Wrench, X, XCircle } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../../lib/supabase'
@@ -29,7 +29,52 @@ export function AdminLayout() {
   const { user } = useAuth()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState<string | null>(null)
+  const [mobileNavigationPath, setMobileNavigationPath] = useState<string | null>(null)
+  const menuButton = useRef<HTMLButtonElement>(null)
+  const closeButton = useRef<HTMLButtonElement>(null)
+  const mobileDrawer = useRef<HTMLElement>(null)
   const email = user?.email ?? null
+  const mobileNavigationOpen = mobileNavigationPath === pathname
+
+  useEffect(() => {
+    if (!mobileNavigationOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeButton.current?.focus()
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        closeMobileNavigation(true)
+        return
+      }
+      if (event.key !== 'Tab' || !mobileDrawer.current) return
+
+      const focusable = Array.from(
+        mobileDrawer.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+      )
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last?.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [mobileNavigationOpen])
+
+  function closeMobileNavigation(returnFocus = false) {
+    setMobileNavigationPath(null)
+    if (returnFocus) window.setTimeout(() => menuButton.current?.focus(), 0)
+  }
 
   async function handleSignOut() {
     if (isSigningOut) return
@@ -76,6 +121,17 @@ export function AdminLayout() {
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-white/8 bg-[rgba(10,13,18,0.88)] px-4 backdrop-blur-xl md:hidden">
           <AdminBrand compact />
           <div className="flex items-center gap-2">
+          <button
+            ref={menuButton}
+            aria-controls="admin-mobile-navigation"
+            aria-expanded={mobileNavigationOpen}
+            aria-label={mobileNavigationOpen ? 'Close admin navigation' : 'Open admin navigation'}
+            className="grid size-11 shrink-0 place-items-center rounded-full border border-white/10 bg-[rgba(22,28,38,0.78)] text-slate-300 shadow-[0_4px_14px_rgba(0,0,0,0.16)] transition duration-200 hover:border-white/15 hover:bg-white/10 hover:text-white active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d12] motion-reduce:transition-none"
+            onClick={() => mobileNavigationOpen ? closeMobileNavigation(true) : setMobileNavigationPath(pathname)}
+            type="button"
+          >
+            {mobileNavigationOpen ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
+          </button>
           <AdminNotificationBell refreshKey={pathname} />
           <details className="relative">
             <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-full border border-white/10 bg-[rgba(22,28,38,0.78)] text-slate-300 shadow-[0_4px_14px_rgba(0,0,0,0.16)] transition hover:border-white/15 hover:bg-white/10 hover:text-white active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d12]" title="Administrator account menu">
@@ -106,32 +162,35 @@ export function AdminLayout() {
           </div>
         </header>
 
-        <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(71,118,255,0.06),transparent_25%),#0a0d12] px-4 pt-6 pb-24 sm:px-6 md:px-8 md:py-8 lg:px-10">
+        <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(71,118,255,0.06),transparent_25%),#0a0d12] px-4 py-6 sm:px-6 md:px-8 md:py-8 lg:px-10">
           <div className="mx-auto max-w-7xl">
             <Outlet />
           </div>
         </main>
 
-        <nav
-          aria-label="Admin portal mobile navigation"
-          className="fixed inset-x-3 bottom-3 z-20 grid auto-cols-[4.75rem] grid-flow-col overflow-x-auto rounded-[14px] border border-white/10 bg-[rgba(17,22,31,0.94)] p-1 shadow-2xl backdrop-blur-xl md:hidden"
-        >
-          {adminNavItems.map((item) => (
-            <NavLink
-              aria-label={item.label}
-              className={({ isActive }) =>
-                `flex min-h-14 flex-col items-center justify-center gap-1 rounded-[9px] px-2 text-[10px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
-                  isActive ? 'bg-white/9 text-blue-300' : 'text-slate-400 hover:bg-white/6 hover:text-white'
-                }`
-              }
-              end={item.end}
-              key={item.to}
-              to={item.to}
-            >
-              {({ isActive }) => <><AdminIcon active={isActive} name={item.icon} /><span>{'mobileLabel' in item ? item.mobileLabel : item.label}</span></>}
-            </NavLink>
-          ))}
-        </nav>
+        {mobileNavigationOpen ? (
+          <div className="fixed inset-0 z-50 md:hidden">
+            <button aria-label="Close admin navigation" className="absolute inset-0 cursor-default bg-black/55 backdrop-blur-[2px]" onClick={() => closeMobileNavigation(true)} type="button" />
+            <aside ref={mobileDrawer} aria-label="Admin portal navigation" aria-modal="true" className="absolute inset-y-0 left-0 flex w-[min(20rem,calc(100vw-1rem))] flex-col border-r border-white/10 bg-[rgba(17,22,31,0.97)] p-4 shadow-[16px_0_44px_rgba(0,0,0,0.35)] backdrop-blur-xl" id="admin-mobile-navigation" role="dialog">
+              <div className="flex items-center justify-between gap-3 border-b border-white/8 pb-4">
+                <AdminBrand />
+                <button ref={closeButton} aria-label="Close admin navigation" className="grid size-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/6 text-slate-300 transition duration-200 hover:bg-white/10 hover:text-white active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 motion-reduce:transition-none" onClick={() => closeMobileNavigation(true)} type="button"><X aria-hidden="true" size={20} /></button>
+              </div>
+              <p className="px-3 pt-5 pb-2 text-[10px] font-semibold tracking-[0.14em] text-slate-500 uppercase">Operations</p>
+              <nav aria-label="Admin mobile navigation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                <ul className="space-y-1 pb-[max(1rem,env(safe-area-inset-bottom))]" role="list">
+                  {adminNavItems.map((item) => (
+                    <li key={item.to}>
+                      <NavLink className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-[9px] border px-3 text-sm font-medium transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 motion-reduce:transition-none ${isActive ? 'border-white/10 bg-white/9 text-white' : 'border-transparent text-slate-400 hover:bg-white/6 hover:text-white'}`} end={item.end} onClick={() => closeMobileNavigation()} to={item.to}>
+                        {({ isActive }) => <><AdminIcon active={isActive} name={item.icon} /><span>{item.label}</span></>}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            </aside>
+          </div>
+        ) : null}
       </div>
     </div>
   )
