@@ -122,9 +122,8 @@ export function CustomerLayout() {
       <div className="min-h-screen md:pl-64">
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-900/8 bg-[rgba(255,255,255,0.82)] px-4 backdrop-blur-xl md:hidden">
           <PortalBrand compact />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <CustomerNotificationBell refreshKey={pathname} />
-            {entitlements?.capabilities.includes('support') ? <Link className="inline-flex min-h-11 items-center rounded-[10px] px-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/help">Help</Link> : null}
           <details className="group relative">
             <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-full border border-slate-900/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(238,241,247,0.76))] text-slate-700 shadow-[0_4px_14px_rgba(16,24,40,0.06)] transition hover:border-slate-900/15 hover:bg-white hover:text-slate-950 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" title="Account menu">
               <span className="sr-only">Open account menu</span>

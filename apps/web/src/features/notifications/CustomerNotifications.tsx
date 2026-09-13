@@ -129,8 +129,8 @@ export function CustomerNotificationBell({ refreshKey }: { refreshKey: string })
         <span className="sr-only">Open notifications{feed?.unread_count ? `, ${feed.unread_count} unread` : ''}</span>
         {feed?.unread_count ? <span className="absolute -top-0.5 -right-0.5 grid min-h-4 min-w-4 place-items-center rounded-full border border-white bg-blue-600 px-1 text-[9px] font-bold text-white">{feed.unread_count > 99 ? '99+' : feed.unread_count}</span> : null}
       </summary>
-      <div className="fixed inset-x-4 top-[4.5rem] z-50 max-h-[calc(100dvh-5.5rem)] overflow-hidden rounded-[16px] border border-slate-900/10 bg-white/95 shadow-2xl backdrop-blur-xl md:absolute md:inset-x-auto md:top-auto md:left-0 md:mt-2 md:w-[min(22rem,calc(100vw-2rem))]">
-        <div className="flex items-center justify-between border-b border-slate-900/8 px-4 py-3">
+      <div className="fixed inset-x-4 top-20 z-50 max-h-[calc(100dvh-6rem)] overflow-hidden rounded-[16px] border border-slate-900/10 bg-white/95 shadow-2xl backdrop-blur-xl md:absolute md:inset-x-auto md:top-auto md:left-0 md:mt-2 md:w-[min(22rem,calc(100vw-2rem))]">
+        <div className="flex items-center justify-between border-b border-slate-900/8 px-5 py-4">
           <div><p className="font-semibold text-slate-950">Notifications</p><p className="text-xs text-slate-500">Account and service updates</p></div>
           <Link className="text-xs font-semibold text-blue-700 hover:text-blue-600" to="/account/notifications">View all</Link>
         </div>
