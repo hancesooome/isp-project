@@ -12,6 +12,8 @@ interface NotificationInput {
   sourceEventKey?: string
 }
 
+type AdminNotificationInput = Omit<NotificationInput, 'recipientId' | 'audience'>
+
 export async function createNotification(
   notification: NotificationInput,
 ): Promise<boolean> {
@@ -50,4 +52,32 @@ export async function createNotification(
     })
     return false
   }
+}
+
+export async function createAdminNotifications(
+  notification: AdminNotificationInput,
+): Promise<boolean> {
+  const { data: administrators, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin')
+    .returns<Array<{ id: string }>>()
+
+  if (error) {
+    console.error('Failed to load admin notification recipients', {
+      code: error.code,
+      type: notification.type,
+    })
+    return false
+  }
+
+  const results = await Promise.all(administrators.map((administrator) =>
+    createNotification({
+      ...notification,
+      recipientId: administrator.id,
+      audience: 'admin',
+    }),
+  ))
+
+  return results.every(Boolean)
 }

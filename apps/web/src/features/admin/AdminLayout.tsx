@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { ChartNoAxesColumn, CircleHelp, ClipboardList, CreditCard, HardHat, House, Layers, LogOut, MapPinned, MessageCircle, RefreshCw, Repeat2, Users, Wrench, XCircle } from 'lucide-react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/auth-context'
+import { AdminNotificationBell } from '../notifications/AdminNotifications'
 
 const adminNavItems = [
   { label: 'Overview', to: '/admin', end: true, icon: 'overview' },
@@ -24,6 +25,7 @@ const adminNavItems = [
 
 export function AdminLayout() {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { user } = useAuth()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState<string | null>(null)
@@ -54,7 +56,10 @@ export function AdminLayout() {
         aria-label="Admin portal navigation"
         className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-white/8 bg-[linear-gradient(155deg,#11161f,#0a0d12)] px-3 py-4 shadow-[8px_0_30px_rgba(0,0,0,0.2)] md:flex"
       >
-        <AdminBrand />
+        <div className="flex items-center justify-between gap-2">
+          <AdminBrand />
+          <AdminNotificationBell refreshKey={pathname} />
+        </div>
         <div className="mt-7 flex items-center justify-between px-3 pb-2">
           <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-500 uppercase">Operations</p>
           <span className="rounded-md border border-white/8 bg-white/5 px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.1em] text-slate-400 uppercase">Admin</span>
@@ -70,6 +75,8 @@ export function AdminLayout() {
       <div className="min-h-screen md:pl-60">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-white/8 bg-[rgba(10,13,18,0.88)] px-4 backdrop-blur-xl md:hidden">
           <AdminBrand compact />
+          <div className="flex items-center gap-2">
+          <AdminNotificationBell refreshKey={pathname} />
           <details className="relative">
             <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-[9px] border border-white/10 bg-white/6 text-xs font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
               <span className="sr-only">Open administrator account menu</span>
@@ -96,6 +103,7 @@ export function AdminLayout() {
               </button>
             </div>
           </details>
+          </div>
         </header>
 
         <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(71,118,255,0.06),transparent_25%),#0a0d12] px-4 pt-6 pb-24 sm:px-6 md:px-8 md:py-8 lg:px-10">

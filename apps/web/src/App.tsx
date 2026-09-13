@@ -75,6 +75,7 @@ import {
   AdminSupportTicketsPage,
 } from './features/support/AdminSupportTicketsPage'
 import { CustomerNotificationsPage } from './features/notifications/CustomerNotifications'
+import { AdminNotificationsPage } from './features/notifications/AdminNotifications'
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -163,6 +164,7 @@ export function App() {
         <Route path="faqs" element={<AdminFaqPage />} />
         <Route path="support" element={<AdminSupportTicketsPage />} />
         <Route path="support/:id" element={<AdminSupportTicketDetailsRoute />} />
+        <Route path="notifications" element={<AdminNotificationsPage />} />
       </Route>
       <Route element={<ProtectedRoute><TechnicianRoute><TechnicianWorkQueuePage /></TechnicianRoute></ProtectedRoute>} path="/technician" />
       <Route element={<CentredPage><NotFoundPage /></CentredPage>} path="*" />

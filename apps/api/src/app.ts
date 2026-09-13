@@ -15,7 +15,7 @@ import { runUpcomingDueReminderJob } from './jobs/upcoming-due-reminders.js'
 import { sendRestorationNotifications } from './jobs/restoration-notifications.js'
 import { applyScheduledTerminations } from './jobs/scheduled-terminations.js'
 import { recordAuditEvent } from './lib/audit.js'
-import { createNotification } from './lib/notifications.js'
+import { createAdminNotifications, createNotification } from './lib/notifications.js'
 import { getAdminMfaStatus, isAdminMfaVerified } from './lib/admin-mfa.js'
 import {
   customerHasCapability,
@@ -1925,9 +1925,9 @@ app.patch('/notifications/:id/read', async (request, response) => {
 })
 
 app.patch('/notifications/read-all', async (request, response) => {
-  const auth = await authorizeRole(request.header('authorization'), 'customer')
+  const auth = await authorizeRole(request.header('authorization'), ['customer', 'admin'])
 
-  if (auth.status !== 200 || !auth.userId) {
+  if (auth.status !== 200 || !auth.userId || !auth.role) {
     response.status(auth.status).json({
       error: auth.status === 500 ? 'Unable to update notifications' : 'Authentication required',
     })
@@ -1938,7 +1938,7 @@ app.patch('/notifications/read-all', async (request, response) => {
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
     .eq('recipient_id', auth.userId)
-    .eq('audience', 'customer')
+    .eq('audience', auth.role)
     .is('read_at', null)
 
   if (error) {
@@ -2219,6 +2219,16 @@ app.post('/applications', async (request, response) => {
     return
   }
 
+  await createAdminNotifications({
+    type: 'application.submitted',
+    title: 'New service application',
+    message: 'A customer submitted a service application for review.',
+    relatedEntityType: 'application',
+    relatedEntityId: application.id,
+    navigationPath: `/admin/applications/${application.id}`,
+    sourceEventKey: `application-submitted:${application.id}`,
+  })
+
   response.status(201).json({ application })
 })
 
@@ -2341,6 +2351,16 @@ app.post('/support-tickets', async (request, response) => {
     response.status(500).json({ error: 'Unable to create support ticket' })
     return
   }
+
+  await createAdminNotifications({
+    type: 'support.ticket_created',
+    title: 'New support ticket',
+    message: 'A customer submitted a support request that needs review.',
+    relatedEntityType: 'support_ticket',
+    relatedEntityId: ticket.id,
+    navigationPath: `/admin/support/${ticket.id}`,
+    sourceEventKey: `support-ticket-created:${ticket.id}`,
+  })
 
   response.status(201).json({ ticket })
 })
@@ -2525,6 +2545,16 @@ app.post('/support-tickets/:id/responses', async (request, response) => {
     response.status(status).json({ error: status === 409 ? 'This support ticket is closed to new replies' : 'Unable to add support reply' })
     return
   }
+
+  await createAdminNotifications({
+    type: 'support.customer_reply',
+    title: 'Customer replied to support',
+    message: 'A support conversation has a new customer response.',
+    relatedEntityType: 'support_ticket',
+    relatedEntityId: ticket.id,
+    navigationPath: `/admin/support/${ticket.id}`,
+    sourceEventKey: `customer-support-response:${ticketResponse.id}`,
+  })
 
   response.status(201).json({ response: ticketResponse })
 })
@@ -2718,6 +2748,16 @@ app.post('/subscription/cancellation-request', async (request, response) => {
     response.status(500).json({ error: 'Unable to submit cancellation request' })
     return
   }
+
+  await createAdminNotifications({
+    type: 'cancellation.requested',
+    title: 'Cancellation request received',
+    message: 'A customer cancellation request needs administrator review.',
+    relatedEntityType: 'cancellation_request',
+    relatedEntityId: cancellationRequest.id,
+    navigationPath: '/admin/cancellations',
+    sourceEventKey: `cancellation-requested:${cancellationRequest.id}`,
+  })
 
   response.status(201).json({ cancellation_request: cancellationRequest })
 })
@@ -3906,6 +3946,22 @@ app.patch('/installations/:id/status', async (request, response) => {
     source: 'api',
     metadata: { status: installation.status, reason: transition.reason ?? null },
   })
+
+  if (installation.status === 'failed' || installation.status === 'reschedule_required') {
+    await createAdminNotifications({
+      type: installation.status === 'failed'
+        ? 'installation.failed'
+        : 'installation.reschedule_required',
+      title: installation.status === 'failed'
+        ? 'Installation attempt failed'
+        : 'Installation needs rescheduling',
+      message: 'An assigned installation requires administrator attention.',
+      relatedEntityType: 'installation_order',
+      relatedEntityId: installation.id,
+      navigationPath: '/admin/installations',
+      sourceEventKey: `installation-status:${installation.id}:${installation.status}:${installation.updated_at}`,
+    })
+  }
 
   response.status(200).json({ installation })
 })
