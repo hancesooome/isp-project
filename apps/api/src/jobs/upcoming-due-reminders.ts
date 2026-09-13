@@ -1,5 +1,6 @@
 import { env } from '../config/env.js'
 import { sendEmail } from '../lib/email.js'
+import { buildTransactionalEmail } from '../lib/transactional-email.js'
 import { formatMoney } from '../lib/money.js'
 import { supabase } from '../lib/supabase.js'
 
@@ -98,8 +99,13 @@ export async function runUpcomingDueReminderJob(
     const result = await sendEmail({
       to: email,
       subject: `Payment reminder: ${amount} due ${invoice.due_date}`,
-      text: `Your invoice for ${amount} is due on ${invoice.due_date}. View your invoice: ${invoiceUrl}`,
-      html: `<p>Your invoice for <strong>${amount}</strong> is due on ${invoice.due_date}.</p><p><a href="${invoiceUrl}">View your invoice</a></p>`,
+      ...buildTransactionalEmail({
+        preheader: `Your invoice for ${amount} is due on ${invoice.due_date}.`,
+        headline: 'Upcoming payment due',
+        paragraphs: ['This is a reminder that your internet service invoice is approaching its due date.'],
+        details: [{ label: 'Amount due', value: amount }, { label: 'Due date', value: invoice.due_date }],
+        action: { label: 'View or pay invoice', url: invoiceUrl },
+      }),
     })
 
     if (result.success) {

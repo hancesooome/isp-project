@@ -1,5 +1,6 @@
 import { env } from '../config/env.js'
 import { sendEmail } from '../lib/email.js'
+import { buildTransactionalEmail } from '../lib/transactional-email.js'
 import { supabase } from '../lib/supabase.js'
 
 interface RestorationNotification {
@@ -88,14 +89,16 @@ export async function sendRestorationNotifications() {
     const reasonText = notification.reason === 'manual'
       ? `An administrator restored your account service to active status. Reason: ${notification.manual_reason ?? 'Operational review'}.`
       : `Your account service has been restored to active status after verified payment of invoice #${invoiceReference ?? 'unknown'} resolved all due debt.`
-    const reasonHtml = notification.reason === 'manual'
-      ? `<p>An administrator restored your account service to <strong>active</strong> status.</p><p><strong>Reason:</strong> ${escapeHtml(notification.manual_reason ?? 'Operational review')}</p>`
-      : `<p>Your account service has been restored to <strong>active</strong> status after verified payment of invoice <strong>#${invoiceReference ?? 'unknown'}</strong> resolved all due debt.</p>`
     const result = await sendEmail({
       to: email,
       subject: 'Your ISP account service is active again',
-      text: `${reasonText} This confirms the platform account status only and does not confirm a physical network change. View your account: ${accountUrl}`,
-      html: `${reasonHtml}<p>This confirms the platform account status only and does not confirm a physical network change.</p><p><a href="${accountUrl}">View your account</a></p>`,
+      ...buildTransactionalEmail({
+        preheader: 'Your ISP account service status is active again.',
+        headline: 'Your service status is active',
+        paragraphs: [reasonText],
+        notice: 'This confirms the platform account status only and does not confirm a physical network change.',
+        action: { label: 'View your account', url: accountUrl },
+      }),
     })
 
     if (result.success) {
@@ -112,15 +115,6 @@ export async function sendRestorationNotifications() {
     sentRestorationNotifications,
     skippedRestorationNotifications,
   }
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;')
 }
 
 async function releaseClaim(historyId: string, claimedAt: string) {

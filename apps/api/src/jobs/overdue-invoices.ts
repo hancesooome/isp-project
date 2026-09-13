@@ -2,6 +2,7 @@ import { env } from '../config/env.js'
 import { sendEmail } from '../lib/email.js'
 import { formatMoney } from '../lib/money.js'
 import { supabase } from '../lib/supabase.js'
+import { buildTransactionalEmail } from '../lib/transactional-email.js'
 import { sendRestorationNotifications } from './restoration-notifications.js'
 
 interface OverdueInvoiceResult {
@@ -200,8 +201,24 @@ export async function sendSuspensionNotifications() {
       ? await sendEmail({
           to: email,
           subject: 'Your ISP account service status was suspended',
-          text: `An administrator placed your account service in suspended status. Reason: ${notification.manual_reason ?? 'Operational review'}. This is an operational platform status and does not confirm that your physical internet connection was disabled.`,
-          html: `<p>An administrator placed your account service in <strong>suspended</strong> status.</p><p><strong>Reason:</strong> ${escapeHtml(notification.manual_reason ?? 'Operational review')}</p><p>This is an operational platform status and does not confirm that your physical internet connection was disabled.</p>`,
+          ...buildTransactionalEmail({
+            preheader: 'Your ISP account service status was updated.',
+            headline: 'Service status suspended',
+            paragraphs: [
+              'An administrator placed your account service in suspended status.',
+            ],
+            details: [
+              {
+                label: 'Reason',
+                value: notification.manual_reason ?? 'Operational review',
+              },
+            ],
+            notice: 'This is an operational platform status and does not confirm that your physical internet connection was disabled.',
+            action: {
+              label: 'View your account',
+              url: new URL('/account', env.appUrl).toString(),
+            },
+          }),
         })
       : await sendNonPaymentSuspensionEmail(email, invoiceResult.data!)
 
@@ -235,18 +252,19 @@ async function sendNonPaymentSuspensionEmail(
   return sendEmail({
     to: email,
     subject: 'Your ISP account service is suspended for non-payment',
-    text: `Your account service has been placed in suspended status because invoice #${reference} for ${amount}, due on ${invoice.due_date}, remains unpaid. This is an operational platform status and does not confirm that your physical internet connection was disabled. View or pay your invoice: ${invoiceUrl}`,
-    html: `<p>Your account service has been placed in <strong>suspended</strong> status because invoice <strong>#${reference}</strong> for <strong>${amount}</strong>, due on ${invoice.due_date}, remains unpaid.</p><p>This is an operational platform status and does not confirm that your physical internet connection was disabled.</p><p><a href="${invoiceUrl}">View or pay your invoice</a></p>`,
+    ...buildTransactionalEmail({
+      preheader: 'Your account service is suspended for non-payment.',
+      headline: 'Service suspended for non-payment',
+      paragraphs: ['Your invoice remains unpaid after its due date.'],
+      details: [
+        { label: 'Invoice', value: `#${reference}` },
+        { label: 'Amount', value: amount },
+        { label: 'Due date', value: invoice.due_date },
+      ],
+      notice: 'This is an operational platform status and does not confirm that your physical internet connection was disabled.',
+      action: { label: 'View or pay invoice', url: invoiceUrl },
+    }),
   })
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;')
 }
 
 async function sendDelinquencyNotifications() {
@@ -343,8 +361,20 @@ async function sendDelinquencyNotifications() {
     const result = await sendEmail({
       to: email,
       subject: 'Your ISP account is past due',
-      text: `Your account is now past due because invoice #${reference} for ${amount}, due on ${invoice.due_date}, remains unpaid after the 3-day grace period. Your service has not been suspended. View or pay your invoice: ${invoiceUrl}`,
-      html: `<p>Your account is now <strong>past due</strong> because invoice <strong>#${reference}</strong> for <strong>${amount}</strong>, due on ${invoice.due_date}, remains unpaid after the 3-day grace period.</p><p>Your service has not been suspended.</p><p><a href="${invoiceUrl}">View or pay your invoice</a></p>`,
+      ...buildTransactionalEmail({
+        preheader: 'Your ISP account is past due.',
+        headline: 'Your account is past due',
+        paragraphs: [
+          'Your invoice remains unpaid after the 3-day grace period.',
+        ],
+        details: [
+          { label: 'Invoice', value: `#${reference}` },
+          { label: 'Amount', value: amount },
+          { label: 'Due date', value: invoice.due_date },
+        ],
+        notice: 'Your service has not been suspended.',
+        action: { label: 'View or pay invoice', url: invoiceUrl },
+      }),
     })
 
     if (result.success) {
@@ -432,8 +462,17 @@ async function sendOverdueNotifications() {
     const result = await sendEmail({
       to: email,
       subject: `Invoice #${reference} is overdue`,
-      text: `Invoice #${reference} for ${amount} was due on ${invoice.due_date} and is now overdue. View or pay your invoice: ${invoiceUrl}`,
-      html: `<p>Invoice <strong>#${reference}</strong> for <strong>${amount}</strong> was due on ${invoice.due_date} and is now overdue.</p><p><a href="${invoiceUrl}">View or pay your invoice</a></p>`,
+      ...buildTransactionalEmail({
+        preheader: `Invoice #${reference} is overdue.`,
+        headline: 'Invoice overdue',
+        paragraphs: ['This invoice is now overdue and requires payment.'],
+        details: [
+          { label: 'Invoice', value: `#${reference}` },
+          { label: 'Amount', value: amount },
+          { label: 'Due date', value: invoice.due_date },
+        ],
+        action: { label: 'View or pay invoice', url: invoiceUrl },
+      }),
     })
 
     if (result.success) {

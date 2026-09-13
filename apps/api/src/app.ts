@@ -23,6 +23,7 @@ import {
   type CustomerCapability,
 } from './lib/customer-entitlements.js'
 import { sendEmail } from './lib/email.js'
+import { buildTransactionalEmail } from './lib/transactional-email.js'
 import { logger } from './lib/logger.js'
 import { formatMoney, PAYMENT_CURRENCY } from './lib/money.js'
 import {
@@ -850,15 +851,6 @@ function formatInstallationAddress(
     .join(', ')
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;')
-}
-
 async function sendApplicationStatusEmail(
   userId: string,
   status: 'approved' | 'rejected',
@@ -876,26 +868,22 @@ async function sendApplicationStatusEmail(
   }
 
   const isApproved = status === 'approved'
-  const reasonText =
-    !isApproved && rejectionReason
-      ? `\n\nReason: ${rejectionReason}`
-      : ''
-  const reasonHtml =
-    !isApproved && rejectionReason
-      ? `<p><strong>Reason:</strong> ${escapeHtml(rejectionReason)}</p>`
-      : ''
+  const emailContent = buildTransactionalEmail({
+    preheader: isApproved ? 'Your service application was approved.' : 'Your service application has an update.',
+    headline: isApproved ? 'Your application was approved' : 'Update on your application',
+    paragraphs: [isApproved
+      ? 'Your ISP service application has been approved. We will guide you through the installation process.'
+      : 'Your ISP service application was not approved. Review the information below and contact support if you need help.'],
+    details: !isApproved && rejectionReason ? [{ label: 'Reason', value: rejectionReason }] : undefined,
+    action: { label: 'View application status', url: new URL('/account/application', env.appUrl).toString() },
+  })
 
   await sendEmail({
     to: email,
     subject: isApproved
       ? 'Your service application was approved'
       : 'Update on your service application',
-    text: isApproved
-      ? 'Your ISP service application has been approved.'
-      : `Your ISP service application was not approved.${reasonText}`,
-    html: isApproved
-      ? '<p>Your ISP service application has been approved.</p>'
-      : `<p>Your ISP service application was not approved.</p>${reasonHtml}`,
+    ...emailContent,
   })
 }
 
@@ -927,8 +915,17 @@ async function sendPaymentReceiptEmail(
   const result = await sendEmail({
     to: email,
     subject: `Payment receipt for invoice #${invoiceReference}`,
-    text: `We received your payment.\n\nInvoice: #${invoiceReference}\nAmount paid: ${amount}\nPayment date: ${paymentDate}`,
-    html: `<p>We received your payment.</p><p><strong>Invoice:</strong> #${invoiceReference}<br><strong>Amount paid:</strong> ${amount}<br><strong>Payment date:</strong> ${paymentDate}</p>`,
+    ...buildTransactionalEmail({
+      preheader: `Payment received for invoice #${invoiceReference}.`,
+      headline: 'Payment received',
+      paragraphs: ['Thank you. Your payment has been securely confirmed and recorded.'],
+      details: [
+        { label: 'Invoice', value: `#${invoiceReference}` },
+        { label: 'Amount paid', value: amount },
+        { label: 'Payment date', value: paymentDate },
+      ],
+      action: { label: 'View invoice', url: new URL(`/account/invoices/${invoiceId}`, env.appUrl).toString() },
+    }),
   })
 
   return result.success

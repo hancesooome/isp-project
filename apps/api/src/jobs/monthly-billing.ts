@@ -1,5 +1,6 @@
 import { env } from '../config/env.js'
 import { sendEmail } from '../lib/email.js'
+import { buildTransactionalEmail } from '../lib/transactional-email.js'
 import { supabase } from '../lib/supabase.js'
 import { generateAndStoreStatementOfAccountPdf } from '../services/statement-of-account-storage.js'
 import { applyScheduledPlanChanges } from './apply-plan-changes.js'
@@ -86,8 +87,12 @@ async function sendStatementReadyEmail(userId: string, billingMonth: string): Pr
   const result = await sendEmail({
     to: email,
     subject: `Your ${billingMonth} Statement of Account is ready`,
-    text: `Your monthly Statement of Account is ready. Sign in to view or download it: ${statementsUrl}`,
-    html: `<p>Your monthly Statement of Account is ready.</p><p><a href="${statementsUrl}">View your statements</a></p>`,
+    ...buildTransactionalEmail({
+      preheader: `Your ${billingMonth} Statement of Account is ready.`,
+      headline: 'Your statement is ready',
+      paragraphs: [`Your ${billingMonth} Statement of Account is available to view or download.`],
+      action: { label: 'View statements', url: statementsUrl },
+    }),
   })
   return result.success
 }

@@ -1,6 +1,7 @@
 import { env } from '../config/env.js'
 import { recordAuditEvent } from '../lib/audit.js'
 import { sendEmail } from '../lib/email.js'
+import { buildTransactionalEmail } from '../lib/transactional-email.js'
 import { supabase } from '../lib/supabase.js'
 
 interface TerminationResult {
@@ -89,8 +90,14 @@ async function sendTerminationNotifications(): Promise<number> {
     const result = await sendEmail({
       to: email,
       subject: 'Your ISP service cancellation is complete',
-      text: `Your service was terminated in the account platform effective ${request.effective_termination_date}. Existing invoices, payments, and statements remain available in your account. This does not independently confirm a physical network equipment change. View your account: ${accountUrl}`,
-      html: `<p>Your service was terminated in the account platform effective <strong>${request.effective_termination_date}</strong>.</p><p>Existing invoices, payments, and statements remain available in your account.</p><p>This does not independently confirm a physical network equipment change.</p><p><a href="${accountUrl}">View your account</a></p>`,
+      ...buildTransactionalEmail({
+        preheader: 'Your service cancellation has been completed.',
+        headline: 'Service cancellation complete',
+        paragraphs: ['Your service was terminated in the account platform. Existing invoices, payments, and statements remain available in your account.'],
+        details: [{ label: 'Effective date', value: request.effective_termination_date }],
+        notice: 'This account update does not independently confirm a physical network equipment change.',
+        action: { label: 'View your account', url: accountUrl },
+      }),
     })
 
     if (result.success) sent += 1
