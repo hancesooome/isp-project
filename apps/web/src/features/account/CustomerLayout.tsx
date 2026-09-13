@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CircleHelp, ClipboardList, FileText, History, House, LogOut, MessageCircle, ReceiptText, Wifi, Wrench } from 'lucide-react'
+import { CircleHelp, ClipboardList, FileText, History, House, LogOut, MessageCircle, ReceiptText, UserRound, Wifi, Wrench } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../../lib/supabase'
@@ -112,9 +112,9 @@ export function CustomerLayout() {
             <CustomerNotificationBell refreshKey={pathname} />
             {entitlements?.capabilities.includes('support') ? <Link className="inline-flex min-h-11 items-center rounded-[10px] px-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/help">Help</Link> : null}
           <details className="group relative">
-            <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-[10px] border border-slate-900/10 bg-white/70 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+            <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-full border border-slate-900/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(238,241,247,0.76))] text-slate-700 shadow-[0_4px_14px_rgba(16,24,40,0.06)] transition hover:border-slate-900/15 hover:bg-white hover:text-slate-950 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" title="Account menu">
               <span className="sr-only">Open account menu</span>
-              <span aria-hidden="true">{getInitial(email)}</span>
+              <UserRound aria-hidden="true" size={18} strokeWidth={1.8} />
             </summary>
             <div className="absolute right-0 mt-2 w-72 rounded-[14px] border border-slate-900/10 bg-white p-3 shadow-2xl">
               <p className="px-2 text-xs font-medium text-slate-500">Signed in as</p>

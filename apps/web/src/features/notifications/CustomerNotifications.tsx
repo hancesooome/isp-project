@@ -124,10 +124,10 @@ export function CustomerNotificationBell({ refreshKey }: { refreshKey: string })
 
   return (
     <details className="group relative">
-      <summary className="relative grid size-11 cursor-pointer list-none place-items-center rounded-[10px] border border-slate-900/10 bg-white/70 text-slate-700 shadow-sm transition hover:bg-white hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
-        <Bell aria-hidden="true" size={19} strokeWidth={1.8} />
+      <summary className="relative grid size-11 cursor-pointer list-none place-items-center rounded-full border border-slate-900/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(238,241,247,0.76))] text-slate-700 shadow-[0_4px_14px_rgba(16,24,40,0.06)] transition hover:border-slate-900/15 hover:bg-white hover:text-blue-700 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" title="Notifications">
+        <Bell aria-hidden="true" size={18} strokeWidth={1.8} />
         <span className="sr-only">Open notifications{feed?.unread_count ? `, ${feed.unread_count} unread` : ''}</span>
-        {feed?.unread_count ? <span className="absolute -top-1 -right-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white">{feed.unread_count > 99 ? '99+' : feed.unread_count}</span> : null}
+        {feed?.unread_count ? <span className="absolute -top-0.5 -right-0.5 grid min-h-4 min-w-4 place-items-center rounded-full border border-white bg-blue-600 px-1 text-[9px] font-bold text-white">{feed.unread_count > 99 ? '99+' : feed.unread_count}</span> : null}
       </summary>
       <div className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[16px] border border-slate-900/10 bg-white/95 shadow-2xl backdrop-blur-xl md:right-auto md:left-0">
         <div className="flex items-center justify-between border-b border-slate-900/8 px-4 py-3">

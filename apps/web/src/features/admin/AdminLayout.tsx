@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChartNoAxesColumn, CircleHelp, ClipboardList, CreditCard, HardHat, House, Layers, LogOut, MapPinned, MessageCircle, RefreshCw, Repeat2, Users, Wrench, XCircle } from 'lucide-react'
+import { ChartNoAxesColumn, CircleHelp, ClipboardList, CreditCard, HardHat, House, Layers, LogOut, MapPinned, MessageCircle, RefreshCw, Repeat2, UserRound, Users, Wrench, XCircle } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../../lib/supabase'
@@ -78,9 +78,9 @@ export function AdminLayout() {
           <div className="flex items-center gap-2">
           <AdminNotificationBell refreshKey={pathname} />
           <details className="relative">
-            <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-[9px] border border-white/10 bg-white/6 text-xs font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
+            <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-full border border-white/10 bg-[rgba(22,28,38,0.78)] text-slate-300 shadow-[0_4px_14px_rgba(0,0,0,0.16)] transition hover:border-white/15 hover:bg-white/10 hover:text-white active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d12]" title="Administrator account menu">
               <span className="sr-only">Open administrator account menu</span>
-              <span aria-hidden="true">{getInitial(email)}</span>
+              <UserRound aria-hidden="true" size={18} strokeWidth={1.8} />
             </summary>
             <div className="absolute right-0 mt-2 w-72 rounded-[12px] border border-white/10 bg-[#161c26] p-3 shadow-2xl">
               <div className="flex items-center justify-between gap-3 px-2">
