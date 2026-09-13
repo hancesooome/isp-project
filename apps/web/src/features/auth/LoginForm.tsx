@@ -1,5 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { Link } from 'react-router-dom'
+
+import { BrandLogo } from '../../components/ui/BrandLogo'
 import { ArrowLeft } from 'lucide-react'
 import type { ZodError } from 'zod'
 import { getLoginErrorMessage } from './login-error-message'
@@ -95,9 +97,7 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
       >
         <ArrowLeft aria-hidden="true" size={16} /> Back to home
       </Link>
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
-        ISP Platform
-      </p>
+      <BrandLogo className="h-11 w-auto max-w-40" />
       <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Welcome back</h1>
       <p className="mt-2 text-slate-600">Sign in to manage your account.</p>
 

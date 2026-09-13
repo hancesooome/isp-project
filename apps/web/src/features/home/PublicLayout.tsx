@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+
+import { BrandLogo } from '../../components/ui/BrandLogo'
 import { useAuth } from '../auth/auth-context'
 
 const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
@@ -142,5 +144,5 @@ function AccountLinks({ onNavigate }: { onNavigate?: () => void } = {}) {
 }
 
 function Brand() {
-  return <Link className={`inline-flex items-center gap-2.5 rounded-md font-semibold tracking-[-0.02em] text-slate-950 ${focusClass}`} to="/"><span aria-hidden="true" className="relative grid size-8 place-items-center rounded-[9px] bg-slate-950 text-white"><span className="absolute h-3.5 w-1 rotate-[-24deg] rounded-full bg-gradient-to-b from-cyan-300 via-blue-500 to-violet-500" /><span className="ml-2 h-2 w-1 rotate-[-24deg] rounded-full bg-white/90" /></span><span>ISP Platform</span></Link>
+  return <Link className={`inline-flex rounded-md ${focusClass}`} to="/"><BrandLogo className="h-11 w-auto max-w-40" /></Link>
 }

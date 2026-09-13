@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { ChartNoAxesColumn, CircleHelp, ClipboardList, CreditCard, HardHat, House, Layers, LogOut, MapPinned, Menu, MessageCircle, RefreshCw, Repeat2, UserRound, Users, Wrench, X, XCircle } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
+import { BrandLogo } from '../../components/ui/BrandLogo'
+
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/auth-context'
 import { AdminNotificationBell } from '../notifications/AdminNotifications'
@@ -198,15 +200,9 @@ export function AdminLayout() {
 
 function AdminBrand({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={`flex items-center gap-2.5 ${compact ? '' : 'px-2 py-1'}`}>
-      <span aria-hidden="true" className="relative grid size-8 place-items-center rounded-[9px] border border-white/10 bg-[#161c26] shadow-sm">
-        <span className="absolute h-3.5 w-1 rotate-[-24deg] rounded-full bg-gradient-to-b from-cyan-300 via-blue-500 to-violet-500" />
-        <span className="ml-2 h-2 w-1 rotate-[-24deg] rounded-full bg-white/90" />
-      </span>
-      <div className="leading-tight">
-        <p className="text-sm font-semibold tracking-[-0.01em] text-white">ISP Platform</p>
-        {compact ? <p className="text-[9px] font-medium tracking-[0.12em] text-slate-500 uppercase">Admin</p> : null}
-      </div>
+    <div className={compact ? '' : 'px-2 py-1'}>
+      <BrandLogo className={compact ? 'h-9 w-auto max-w-32' : 'h-11 w-auto max-w-40'} inverse />
+      {compact ? <p className="mt-0.5 text-[9px] font-medium tracking-[0.12em] text-slate-500 uppercase">Admin</p> : null}
     </div>
   )
 }

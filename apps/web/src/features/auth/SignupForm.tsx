@@ -1,5 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { Link } from 'react-router-dom'
+
+import { BrandLogo } from '../../components/ui/BrandLogo'
 import { ArrowLeft } from 'lucide-react'
 import type { ZodError } from 'zod'
 import {
@@ -138,9 +140,7 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
       >
         <ArrowLeft aria-hidden="true" size={16} /> Back to home
       </Link>
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
-        ISP Platform
-      </p>
+      <BrandLogo className="h-11 w-auto max-w-40" />
       <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Create your account</h1>
       <p className="mt-2 leading-7 text-slate-600">
         Register to manage your internet service account.

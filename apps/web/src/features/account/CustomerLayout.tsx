@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CircleHelp, ClipboardList, FileText, History, House, LogOut, MessageCircle, ReceiptText, UserRound, Wifi, Wrench } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
+import { BrandLogo } from '../../components/ui/BrandLogo'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/auth-context'
 import { CustomerNotificationBell } from '../notifications/CustomerNotifications'
@@ -197,12 +198,8 @@ export function CustomerLayout() {
 
 function PortalBrand({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={`flex items-center gap-2.5 ${compact ? '' : 'px-2 py-1'}`}>
-      <span aria-hidden="true" className="relative grid size-9 place-items-center rounded-[10px] bg-slate-950 text-white shadow-sm">
-        <span className="absolute h-4 w-1 rotate-[-24deg] rounded-full bg-gradient-to-b from-cyan-300 via-blue-500 to-violet-500" />
-        <span className="ml-2 h-2.5 w-1 rotate-[-24deg] rounded-full bg-white/90" />
-      </span>
-      <span className="font-semibold tracking-[-0.02em] text-slate-950">ISP Platform</span>
+    <div className={compact ? '' : 'px-2 py-1'}>
+      <BrandLogo className={compact ? 'h-10 w-auto max-w-36' : 'h-12 w-auto max-w-44'} />
     </div>
   )
 }
