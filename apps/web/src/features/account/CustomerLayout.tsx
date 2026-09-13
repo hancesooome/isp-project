@@ -173,8 +173,8 @@ export function CustomerLayout() {
                 className={({ isActive }) =>
                   `flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[11px] px-1 text-[10px] leading-none transition duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset ${
                     isActive
-                      ? 'bg-white/80 font-semibold text-blue-600 shadow-[0_2px_8px_rgba(16,24,40,0.06)]'
-                      : 'font-medium text-slate-500 hover:bg-white/55 hover:text-slate-950 active:bg-white/75'
+                      ? 'font-semibold text-blue-600'
+                      : 'font-medium text-slate-500 hover:text-slate-950'
                   }`
                 }
                 end={item.end}
