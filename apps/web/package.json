@@ -10,6 +10,7 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
+    "@marsidev/react-turnstile": "^1.6.1",
     "@supabase/supabase-js": "^2.112.4",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.43.0",

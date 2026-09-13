@@ -11,6 +11,7 @@ import { signUpCustomer } from './signup'
 import { SocialAuthButtons } from './SocialAuthButtons'
 import { PasswordField } from './PasswordField'
 import { PASSWORD_HELP_TEXT } from './password-policy'
+import { BotChallenge } from './BotChallenge'
 
 type FieldErrors = Partial<Record<keyof SignupFormValues, string>>
 
@@ -45,6 +46,9 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
   const [submissionError, setSubmissionError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaError, setCaptchaError] = useState<string | null>(null)
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
 
   function updateField(field: keyof SignupFormValues, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -66,12 +70,18 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
       return
     }
 
+    if (!captchaToken) {
+      setCaptchaError('Complete the security verification before continuing.')
+      return
+    }
+
     setFieldErrors({})
     setSubmissionError(null)
     setIsSubmitting(true)
 
     try {
       const result = await signUpCustomer({
+        captchaToken,
         email: parsed.data.email,
         fullName: parsed.data.fullName,
         password: parsed.data.password,
@@ -87,6 +97,8 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
       setSubmissionError(
         'We could not create your account. Please check your details and try again.',
       )
+      setCaptchaToken(null)
+      setCaptchaResetKey((current) => current + 1)
     } finally {
       setIsSubmitting(false)
     }
@@ -178,6 +190,14 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
           value={values.confirmPassword}
         />
 
+        <BotChallenge
+          action="signup"
+          error={captchaError}
+          onError={(message) => setCaptchaError(message || null)}
+          onToken={setCaptchaToken}
+          resetKey={captchaResetKey}
+        />
+
         {submissionError ? (
           <p className="rounded-[10px] border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
             {submissionError}
@@ -186,7 +206,7 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
 
         <button
           className="public-primary-button flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !captchaToken}
           type="submit"
         >
           {isSubmitting ? (

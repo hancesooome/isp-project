@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { supabase } from '../../lib/supabase'
+import { BotChallenge } from './BotChallenge'
 
 const recoverySchema = z.object({
   email: z.string().trim().email('Enter a valid email address'),
@@ -15,6 +16,9 @@ export function ForgotPasswordPage() {
   const [emailError, setEmailError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaError, setCaptchaError] = useState<string | null>(null)
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
 
   async function submitRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -26,13 +30,25 @@ export function ForgotPasswordPage() {
       return
     }
 
+    if (!captchaToken) {
+      setCaptchaError('Complete the security verification before continuing.')
+      return
+    }
+
     setEmailError(null)
     setIsSubmitting(true)
     try {
       const redirectTo = new URL('/auth/reset-password', window.location.origin).toString()
       const { error } = await supabase.auth.resetPasswordForEmail(result.data.email, {
+        captchaToken,
         redirectTo,
       })
+      if (error?.code === 'captcha_failed') {
+        setCaptchaError('Security verification was not accepted. Please try again.')
+        setCaptchaToken(null)
+        setCaptchaResetKey((current) => current + 1)
+        return
+      }
       if (error) throw error
       setSubmitted(true)
     } catch {
@@ -68,7 +84,10 @@ export function ForgotPasswordPage() {
         <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="recovery-email">Email address</label>
         <input aria-describedby={emailError ? 'recovery-email-error' : undefined} aria-invalid={emailError ? true : undefined} autoComplete="email" autoFocus className="min-h-12 w-full rounded-[10px] border border-slate-900/14 bg-white px-3.5 py-2.5 text-slate-950 shadow-inner shadow-slate-950/3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15" id="recovery-email" name="email" onChange={(event) => { setEmail(event.target.value); setEmailError(null) }} type="email" value={email} />
         {emailError ? <p className="mt-1.5 text-sm text-red-700" id="recovery-email-error" role="alert">{emailError}</p> : null}
-        <button className="public-primary-button mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSubmitting} type="submit">{isSubmitting ? <><LoadingSpinner size="sm" /> Sending...</> : 'Send reset instructions'}</button>
+        <div className="mt-5">
+          <BotChallenge action="forgot_password" error={captchaError} onError={(message) => setCaptchaError(message || null)} onToken={setCaptchaToken} resetKey={captchaResetKey} />
+        </div>
+        <button className="public-primary-button mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSubmitting || !captchaToken} type="submit">{isSubmitting ? <><LoadingSpinner size="sm" /> Sending...</> : 'Send reset instructions'}</button>
       </form>
     </Panel>
   )

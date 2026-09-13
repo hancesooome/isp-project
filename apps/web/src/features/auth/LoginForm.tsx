@@ -7,6 +7,7 @@ import { loginSchema, type LoginFormValues } from './login-schema'
 import { loginWithPassword } from './login'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { SocialAuthButtons } from './SocialAuthButtons'
+import { BotChallenge } from './BotChallenge'
 
 type FieldErrors = Partial<Record<keyof LoginFormValues, string>>
 
@@ -39,6 +40,9 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submissionError, setSubmissionError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaError, setCaptchaError] = useState<string | null>(null)
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
 
   function updateField(field: keyof LoginFormValues, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -60,17 +64,24 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
       return
     }
 
+    if (!captchaToken) {
+      setCaptchaError('Complete the security verification before continuing.')
+      return
+    }
+
     setFieldErrors({})
     setSubmissionError(null)
     setIsSubmitting(true)
 
     try {
-      await loginWithPassword(parsed.data.email, parsed.data.password)
+      await loginWithPassword(parsed.data.email, parsed.data.password, captchaToken)
       setValues(initialValues)
       onSignedIn(redirectTo)
     } catch (error) {
       setValues((current) => ({ ...current, password: '' }))
       setSubmissionError(getLoginErrorMessage(error))
+      setCaptchaToken(null)
+      setCaptchaResetKey((current) => current + 1)
     } finally {
       setIsSubmitting(false)
     }
@@ -149,6 +160,14 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
           Forgot password?
         </Link>
 
+        <BotChallenge
+          action="login"
+          error={captchaError}
+          onError={(message) => setCaptchaError(message || null)}
+          onToken={setCaptchaToken}
+          resetKey={captchaResetKey}
+        />
+
         {submissionError ? (
           <p className="rounded-[10px] border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
             {submissionError}
@@ -157,7 +176,7 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
 
         <button
           className="public-primary-button flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !captchaToken}
           type="submit"
         >
           {isSubmitting ? (

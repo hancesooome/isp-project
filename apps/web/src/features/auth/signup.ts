@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase'
 
 export interface SignupCustomerInput {
+  captchaToken: string
   email: string
   fullName: string
   password: string
@@ -12,6 +13,7 @@ export interface SignupCustomerResult {
 }
 
 export async function signUpCustomer({
+  captchaToken,
   email,
   fullName,
   password,
@@ -21,6 +23,7 @@ export async function signUpCustomer({
     email,
     password,
     options: {
+      captchaToken,
       data: {
         full_name: fullName,
       },
