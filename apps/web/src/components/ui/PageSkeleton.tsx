@@ -20,13 +20,13 @@ export function PageSkeleton({
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: count }).map((_, index) => (
             <div
-              className="h-48 animate-pulse rounded-2xl border border-slate-800 bg-slate-900/60 p-6 motion-reduce:animate-none"
+              className="skeleton-surface skeleton-shimmer h-48 rounded-[18px] p-6"
               key={index}
             >
-              <div className="h-4 w-1/3 rounded bg-slate-800" />
-              <div className="mt-4 h-6 w-2/3 rounded bg-slate-800" />
-              <div className="mt-6 h-4 w-full rounded bg-slate-800" />
-              <div className="mt-2 h-4 w-4/5 rounded bg-slate-800" />
+              <div className="skeleton-fill h-3.5 w-1/3 rounded-full" />
+              <div className="skeleton-fill mt-4 h-6 w-2/3 rounded-full" />
+              <div className="skeleton-fill mt-7 h-3.5 w-full rounded-full" />
+              <div className="skeleton-fill mt-2.5 h-3.5 w-4/5 rounded-full" />
             </div>
           ))}
         </div>
@@ -36,28 +36,28 @@ export function PageSkeleton({
         <div className="space-y-4">
           {Array.from({ length: count }).map((_, index) => (
             <div
-              className="flex h-24 animate-pulse items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/60 p-6 motion-reduce:animate-none"
+              className="skeleton-surface skeleton-shimmer flex h-24 items-center justify-between rounded-[14px] p-6"
               key={index}
             >
               <div className="space-y-2">
-                <div className="h-4 w-36 rounded bg-slate-800" />
-                <div className="h-3 w-24 rounded bg-slate-800" />
+                <div className="skeleton-fill h-3.5 w-36 rounded-full" />
+                <div className="skeleton-fill h-3 w-24 rounded-full" />
               </div>
-              <div className="h-8 w-24 rounded-full bg-slate-800" />
+              <div className="skeleton-fill h-8 w-24 rounded-full" />
             </div>
           ))}
         </div>
       )}
 
       {type === 'detail' && (
-        <div className="animate-pulse space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-8 motion-reduce:animate-none">
-          <div className="h-6 w-1/4 rounded bg-slate-800" />
-          <div className="h-10 w-1/2 rounded bg-slate-800" />
+        <div className="skeleton-surface skeleton-shimmer space-y-6 rounded-[18px] p-8">
+          <div className="skeleton-fill h-5 w-1/4 rounded-full" />
+          <div className="skeleton-fill h-9 w-1/2 rounded-full" />
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="h-16 rounded bg-slate-800" />
-            <div className="h-16 rounded bg-slate-800" />
-            <div className="h-16 rounded bg-slate-800" />
-            <div className="h-16 rounded bg-slate-800" />
+            <div className="skeleton-fill h-16 rounded-[14px]" />
+            <div className="skeleton-fill h-16 rounded-[14px]" />
+            <div className="skeleton-fill h-16 rounded-[14px]" />
+            <div className="skeleton-fill h-16 rounded-[14px]" />
           </div>
         </div>
       )}
