@@ -4,6 +4,7 @@ const allowedAuthenticatedPaths = new Set([
   DEFAULT_AUTHENTICATED_PATH,
   '/portal',
   '/account/application',
+  '/account/apply',
   '/account/change-plan',
   '/account/plan-changes',
   '/account/installation',
@@ -63,7 +64,7 @@ export function getSafeRedirect(value: string | null): string {
   const planId = destination.searchParams.get('plan')
 
   if (
-    destination.pathname === '/apply' &&
+    (destination.pathname === '/apply' || destination.pathname === '/account/apply') &&
     destination.searchParams.size === 1 &&
     planId &&
     uuidPattern.test(planId)

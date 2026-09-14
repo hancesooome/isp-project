@@ -198,7 +198,7 @@ export function ServiceAvailabilityPage() {
                 const wasSelected = plan.id === selectedPlanId
                 return <article className={`rounded-[10px] border bg-white p-4 ${wasSelected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-emerald-200'}`} key={plan.id}>
                   <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold text-slate-950">{plan.name}</h2><p className="mt-1 text-sm text-slate-600">{plan.description ?? 'Reliable internet service for your home.'}</p></div><p className="font-semibold text-slate-950">{priceFormatter.format(plan.price_cents / 100)}<span className="text-xs font-normal text-slate-500">/{plan.billing_interval === 'monthly' ? 'month' : 'year'}</span></p></div>
-                  <Link className="mt-3 inline-flex min-h-11 items-center rounded-[9px] bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800" onClick={() => saveAvailabilityContext({ ...values, latitude: values.latitude!, longitude: values.longitude!, eligiblePlanIds: result.plans.map(({ id }) => id) })} to={`/apply?plan=${encodeURIComponent(plan.id)}`}>{wasSelected ? 'Continue with this plan' : 'Choose this plan'}</Link>
+                  <Link className="mt-3 inline-flex min-h-11 items-center rounded-[9px] bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800" onClick={() => saveAvailabilityContext({ ...values, latitude: values.latitude!, longitude: values.longitude!, eligiblePlanIds: result.plans.map(({ id }) => id) })} to={`/account/apply?plan=${encodeURIComponent(plan.id)}`}>{wasSelected ? 'Continue with this plan' : 'Choose this plan'}</Link>
                 </article>
               })}
             </div>

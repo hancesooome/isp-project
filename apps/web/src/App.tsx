@@ -122,6 +122,7 @@ export function App() {
         path="/account"
       >
         <Route index element={<CustomerDashboard />} />
+        <Route path="apply" element={<ServiceApplicationForm customerView />} />
         <Route path="change-plan" element={<ChangePlanPage />} />
         <Route path="plan-changes" element={<PlanChangeHistoryPage />} />
         <Route path="cancel-service" element={<CancellationRequestPage />} />

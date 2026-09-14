@@ -320,13 +320,14 @@ export function CustomerDashboard() {
           <aside className="rounded-[18px] border border-slate-900/8 bg-white p-6 shadow-[0_18px_50px_rgba(18,25,38,0.06)] sm:p-7" aria-labelledby="account-actions-heading">
             <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase" id="account-actions-heading">Account actions</p>
             <nav className="mt-4 divide-y divide-slate-900/8" aria-label="Account actions">
-              <ActionLink label="Application status" to="/account/application" />
-              <ActionLink label="Change plan" to="/account/change-plan" />
-              <ActionLink label="Plan-change history" to="/account/plan-changes" />
-              <ActionLink label="Service history" to="/account/service-history" />
-              <ActionLink label="Cancel service" to="/account/cancel-service" />
-              <ActionLink label="View invoices" to="/account/invoices" />
-              <ActionLink label="Download statements" to="/account/statements" />
+              {subscription.status === 'pending_activation' ? <ActionLink label="Application status" to="/account/application" /> : null}
+              {subscription.status !== 'suspended' && subscription.status !== 'canceled' ? <ActionLink label="Installation status" to="/account/installation" /> : null}
+              {subscription.status === 'active' ? <ActionLink label="Change plan" to="/account/change-plan" /> : null}
+              {subscription.status !== 'pending_activation' ? <ActionLink label="Plan-change history" to="/account/plan-changes" /> : null}
+              {subscription.status !== 'pending_activation' ? <ActionLink label="Service history" to="/account/service-history" /> : null}
+              {subscription.status === 'active' || subscription.status === 'past_due' || subscription.status === 'suspended' ? <ActionLink label="Cancel service" to="/account/cancel-service" /> : null}
+              {subscription.status !== 'pending_activation' ? <ActionLink label="View invoices" to="/account/invoices" /> : null}
+              {subscription.status !== 'pending_activation' ? <ActionLink label="Download statements" to="/account/statements" /> : null}
             </nav>
           </aside>
 
@@ -340,7 +341,7 @@ export function CustomerDashboard() {
                 </div>
                 <StatusBadge status={application.status} />
               </div>
-              <Link className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/application">View application <ArrowRight aria-hidden="true" size={16} /></Link>
+              {subscription.status === 'pending_activation' ? <Link className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/installation">View installation <ArrowRight aria-hidden="true" size={16} /></Link> : null}
             </article>
           ) : null}
         </div>
@@ -388,6 +389,7 @@ function ApplicationSummary({
   if (!application) {
     return (
       <EmptyState
+        action={<Link className="inline-flex min-h-11 items-center rounded-[10px] bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800" to="/account/apply">Apply for internet</Link>}
         className="mt-8"
         description="Choose a plan and submit an application to get started with internet service."
         title="No internet service yet"
@@ -411,6 +413,13 @@ function ApplicationSummary({
         <StatusBadge status={application.status} />
       </div>
       <p className="mt-3 text-slate-600">{messages[application.status]}</p>
+      <Link
+        className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        to={application.status === 'approved' ? '/account/installation' : '/account/application'}
+      >
+        {application.status === 'approved' ? 'View installation' : 'View application'}
+        <ArrowRight aria-hidden="true" size={16} />
+      </Link>
     </article>
   )
 }

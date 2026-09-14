@@ -60,7 +60,7 @@ function isPlanOption(value: unknown): value is PlanOption {
   return typeof plan.id === 'string' && typeof plan.name === 'string'
 }
 
-export function ServiceApplicationForm() {
+export function ServiceApplicationForm({ customerView = false }: { customerView?: boolean }) {
   const [searchParams] = useSearchParams()
   const { session } = useAuth()
   const applicationHeadingRef = useRef<HTMLHeadingElement>(null)
@@ -257,9 +257,9 @@ export function ServiceApplicationForm() {
     <section className="w-full max-w-2xl rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
       <Link
         className="mb-7 inline-flex min-h-11 items-center text-sm font-medium text-slate-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        to="/"
+        to={customerView ? '/account' : '/'}
       >
-        <ArrowLeft aria-hidden="true" size={16} /> Back to home
+        <ArrowLeft aria-hidden="true" size={16} /> {customerView ? 'Back to overview' : 'Back to home'}
       </Link>
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
         Service application

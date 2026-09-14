@@ -14,7 +14,7 @@ interface CustomerEntitlements { accessLevel: string; capabilities: CustomerCapa
 
 const navItems = [
   { label: 'Overview', shortLabel: 'Overview', to: '/account', end: true, icon: 'overview', capability: 'overview' },
-  { label: 'Get connected', shortLabel: 'Apply', to: '/availability', end: false, icon: 'apply', capability: 'apply' },
+  { label: 'Get connected', shortLabel: 'Apply', to: '/account/apply', end: false, icon: 'apply', capability: 'apply' },
   { label: 'Application Status', shortLabel: 'Application', to: '/account/application', end: false, icon: 'application', capability: 'application' },
   { label: 'Installation', shortLabel: 'Install', to: '/account/installation', end: false, icon: 'installation', capability: 'installation' },
   { label: 'Invoices', shortLabel: 'Invoices', to: '/account/invoices', end: false, icon: 'invoices', capability: 'invoices' },
@@ -256,6 +256,7 @@ function isCustomerCapability(value: unknown): value is CustomerCapability {
 function getRouteCapability(pathname: string): CustomerCapability | null {
   const segment = pathname.slice('/account/'.length).split('/')[0]
   const capabilities: Record<string, CustomerCapability> = {
+    'apply': 'apply',
     'application': 'application',
     'installation': 'installation',
     'invoices': 'invoices',
