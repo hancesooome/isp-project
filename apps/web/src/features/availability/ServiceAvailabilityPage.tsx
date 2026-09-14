@@ -152,20 +152,21 @@ export function ServiceAvailabilityPage() {
             <AddressInput error={fieldErrors.postalCode} id="postalCode" inputMode="numeric" label="Postal code" onChange={updateField} value={values.postalCode} />
             <AddressInput error={fieldErrors.landmark} id="landmark" label="Landmark (optional)" onChange={updateField} value={values.landmark} />
           </div>
-          <button className="public-primary-button flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoading} type="submit">
-            {isLoading ? <><LoadingSpinner size="sm" /><span>Checking availability...</span></> : <span>Check availability</span>}
-          </button>
         </div>
         <div className="border-t border-slate-900/8 pt-8 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10">
           <InstallationLocationMap
             error={fieldErrors.latitude}
-            mobileActionFirst
             onChange={(coordinates) => {
               setValues((current) => ({ ...current, ...coordinates }))
               setFieldErrors((current) => ({ ...current, latitude: undefined }))
               setRequestError(null)
               setResult(null)
             }}
+            primaryAction={(
+              <button className="public-primary-button flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoading} type="submit">
+                {isLoading ? <><LoadingSpinner size="sm" /><span>Checking availability...</span></> : <span>Check availability</span>}
+              </button>
+            )}
             value={values.latitude !== null && values.longitude !== null ? { latitude: values.latitude, longitude: values.longitude } : null}
           />
         </div>

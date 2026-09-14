@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { Icon, type LeafletMouseEvent, type Marker as LeafletMarker } from 'leaflet'
 import { LocateFixed } from 'lucide-react'
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
@@ -14,7 +14,7 @@ export interface InstallationCoordinates {
 
 interface InstallationLocationMapProps {
   error?: string
-  mobileActionFirst?: boolean
+  primaryAction?: ReactNode
   onChange: (coordinates: InstallationCoordinates) => void
   value: InstallationCoordinates | null
 }
@@ -33,7 +33,7 @@ const installationMarkerIcon = new Icon({
 
 export function InstallationLocationMap({
   error,
-  mobileActionFirst = false,
+  primaryAction,
   onChange,
   value,
 }: InstallationLocationMapProps) {
@@ -63,9 +63,21 @@ export function InstallationLocationMap({
     )
   }
 
+  const locationAction = (
+    <button
+      className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-[10px] border border-slate-900/14 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-wait disabled:opacity-60"
+      disabled={isLocating}
+      onClick={useCurrentLocation}
+      type="button"
+    >
+      <LocateFixed aria-hidden="true" size={17} />
+      {isLocating ? 'Finding location…' : 'Use my location'}
+    </button>
+  )
+
   return (
     <div>
-      <div className={`flex flex-col gap-3 ${mobileActionFirst ? 'lg:flex-row lg:items-end lg:justify-between' : 'sm:flex-row sm:items-end sm:justify-between'}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-medium text-slate-700">
             Requested installation point
@@ -74,15 +86,7 @@ export function InstallationLocationMap({
             Tap the map to place the pin, then drag it for a more exact location.
           </p>
         </div>
-        <button
-          className={`${mobileActionFirst ? 'order-first lg:order-none' : ''} inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-[10px] border border-slate-900/14 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-wait disabled:opacity-60`}
-          disabled={isLocating}
-          onClick={useCurrentLocation}
-          type="button"
-        >
-          <LocateFixed aria-hidden="true" size={17} />
-          {isLocating ? 'Finding location…' : 'Use my location'}
-        </button>
+        {primaryAction ? null : locationAction}
       </div>
 
       <div
@@ -137,6 +141,12 @@ export function InstallationLocationMap({
         <p className="mt-1.5 text-sm text-red-700" role="alert">
           {locationError}
         </p>
+      ) : null}
+      {primaryAction ? (
+        <div className="mt-5 grid gap-3 border-t border-slate-900/8 pt-5">
+          {locationAction}
+          {primaryAction}
+        </div>
       ) : null}
     </div>
   )
