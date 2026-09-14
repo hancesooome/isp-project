@@ -349,7 +349,7 @@ function Field({ id, label, help, min, onChange, type, value }: FieldProps) {
     <div>
       <label className="mb-2 block text-sm font-medium text-slate-200" htmlFor={id}>{label}</label>
       <input
-        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-sky-400"
+        className="min-h-11 w-full rounded-[10px] border border-white/10 bg-[#0a0d12] px-3 py-2.5 text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
         id={id}
         min={min}
         onChange={(event) => onChange(event.target.value)}

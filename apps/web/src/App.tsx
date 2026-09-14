@@ -167,7 +167,7 @@ export function App() {
         <Route path="notifications" element={<AdminNotificationsPage />} />
       </Route>
       <Route element={<ProtectedRoute><TechnicianRoute><TechnicianWorkQueuePage /></TechnicianRoute></ProtectedRoute>} path="/technician" />
-      <Route element={<CentredPage><NotFoundPage /></CentredPage>} path="*" />
+      <Route element={<LightCentredPage><NotFoundPage /></LightCentredPage>} path="*" />
     </Routes>
   )
 }
@@ -182,9 +182,10 @@ function CentredPage({ children }: { children: React.ReactNode }) {
 
 function LightCentredPage({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f7f8fb] px-5 py-12 [color-scheme:light]">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(135deg,#ffffff_0%,#f7f8fb_48%,#e9edf4_100%)] px-5 py-12 [color-scheme:light]">
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
-      {children}
+      <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,rgba(255,255,255,0.42)_42%,transparent_72%)]" />
+      <div className="relative z-10 flex w-full justify-center">{children}</div>
     </div>
   )
 }
@@ -273,20 +274,20 @@ function AdminSupportTicketDetailsRoute() {
 
 function NotFoundPage() {
   return (
-    <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
-      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
+    <section className="w-full max-w-md rounded-[18px] border border-white/70 bg-white/75 p-8 text-center text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.08)] backdrop-blur-xl">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
         404
       </p>
-      <h1 className="mt-3 text-3xl font-bold text-white">Page not found</h1>
-      <p className="mt-3 text-slate-400">
+      <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em]">Page not found</h1>
+      <p className="mt-3 leading-7 text-slate-600">
         The page you requested does not exist or may have moved.
       </p>
       <div className="mt-6 flex justify-center gap-5">
-        <Link className="font-medium text-sky-400 hover:text-sky-300" to="/">
+        <Link className="font-semibold text-blue-700 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/">
           Go home
         </Link>
         <Link
-          className="font-medium text-sky-400 hover:text-sky-300"
+          className="font-semibold text-blue-700 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           to={DEFAULT_AUTHENTICATED_PATH}
         >
           View account

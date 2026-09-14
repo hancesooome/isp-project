@@ -150,7 +150,7 @@ export function CustomerLayout() {
         </header>
 
         <main
-          className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(71,118,255,0.07),transparent_28%),#f7f8fb] px-4 pt-8 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:px-6 md:px-8 md:py-10 lg:px-12"
+          className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(71,118,255,0.07),transparent_28%),linear-gradient(145deg,#ffffff_0%,#f7f8fb_48%,#edf0f5_100%)] px-4 pt-8 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:px-6 md:px-8 md:py-10 lg:px-12"
           onBlurCapture={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsEditingForm(false)
             else if (!isEditableControl(event.relatedTarget)) setIsEditingForm(false)

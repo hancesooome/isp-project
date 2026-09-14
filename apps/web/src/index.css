@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
 :root {
+  --conek-background: #f7f8fb;
+  --conek-surface: rgba(255, 255, 255, 0.72);
+  --conek-text: #111318;
+  --conek-text-secondary: #667085;
+  --conek-border: rgba(17, 24, 39, 0.08);
+  --conek-accent: #4776ff;
+  --conek-dark-background: #0a0d12;
+  --conek-dark-surface: #11161f;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -13,7 +21,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #020617; /* slate-950 */
+  background-color: var(--conek-dark-background);
   color: #f1f5f9; /* slate-100 */
 }
 
@@ -206,6 +214,14 @@ body {
 }
 .customer-portal-content .bg-slate-950 {
   background-color: #ffffff;
+}
+.customer-portal-content .text-sky-400 { color: #245eea; }
+.customer-portal-content .hover\:text-sky-300:hover { color: #315fca; }
+.customer-portal-content .border-sky-800 { border-color: rgba(71, 118, 255, 0.2); }
+.customer-portal-content .bg-sky-950\/50 { background-color: rgba(239, 244, 255, 0.82); }
+.customer-portal-content .text-sky-200 { color: #344f91; }
+.customer-portal-content .shadow-xl {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03), 0 8px 24px rgba(16, 24, 40, 0.05);
 }
 
 @media (max-width: 639px) {

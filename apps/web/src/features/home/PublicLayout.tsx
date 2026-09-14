@@ -22,7 +22,7 @@ export function PublicLayout() {
       <main id="public-content" tabIndex={-1} className={pathname === '/' ? 'flex-1' : 'mx-auto w-full max-w-7xl flex-1 px-5 py-12 sm:px-8 sm:py-16'}>
         <Outlet />
       </main>
-      <footer className="border-t border-slate-900/10 px-5 py-10 sm:px-8">
+      <footer className="border-t border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.9),rgba(238,241,247,0.74))] px-5 py-10 shadow-[0_-8px_24px_rgba(16,24,40,0.03)] sm:px-8">
         <div className="mx-auto max-w-7xl">
           <div>
             <Brand />
