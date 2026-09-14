@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useOutletContext } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 
 import { useAuth } from '../auth/auth-context'
@@ -9,6 +9,7 @@ import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { moneyFormatter as priceFormatter } from '../../lib/money'
 import { philippineMobileSchema } from '../applications/application-schema'
+import { getCustomerPrimaryActionLabel, getCustomerPrimaryDestination, type CustomerPortalOutletContext } from '../account/customer-routing'
 
 interface CustomerSubscription {
   id: string
@@ -103,6 +104,9 @@ function isCustomerProfile(value: unknown): value is CustomerProfile {
 
 export function CustomerDashboard() {
   const { session, user } = useAuth()
+  const { customerAccessLevel } = useOutletContext<CustomerPortalOutletContext>()
+  const primaryDestination = getCustomerPrimaryDestination(customerAccessLevel)
+  const primaryActionLabel = getCustomerPrimaryActionLabel(customerAccessLevel)
   const firstName = getFirstName(user?.user_metadata.full_name)
   const [subscription, setSubscription] = useState<
     CustomerSubscription | null
@@ -315,6 +319,7 @@ export function CustomerDashboard() {
                   : 'Awaiting activation'}
               />
             </div>
+            {primaryDestination !== '/account' ? <Link className="relative z-10 mt-6 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to={primaryDestination}>{primaryActionLabel} <ArrowRight aria-hidden="true" size={16} /></Link> : null}
           </article>
 
           <aside className="rounded-[18px] border border-slate-900/8 bg-white p-6 shadow-[0_18px_50px_rgba(18,25,38,0.06)] sm:p-7" aria-labelledby="account-actions-heading">
@@ -346,7 +351,7 @@ export function CustomerDashboard() {
           ) : null}
         </div>
       ) : (
-        <ApplicationSummary application={application} />
+        <ApplicationSummary application={application} primaryActionLabel={primaryActionLabel} primaryDestination={primaryDestination} />
       )}
     </section>
   )
@@ -383,13 +388,17 @@ function ActionLink({ label, to }: { label: string; to: string }) {
 
 function ApplicationSummary({
   application,
+  primaryActionLabel,
+  primaryDestination,
 }: {
   application: CustomerApplication | null
+  primaryActionLabel: string
+  primaryDestination: string
 }) {
   if (!application) {
     return (
       <EmptyState
-        action={<Link className="inline-flex min-h-11 items-center rounded-[10px] bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800" to="/account/apply">Apply for internet</Link>}
+        action={<Link className="inline-flex min-h-11 items-center rounded-[10px] bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800" to={primaryDestination}>{primaryActionLabel}</Link>}
         className="mt-8"
         description="Choose a plan and submit an application to get started with internet service."
         title="No internet service yet"
@@ -415,9 +424,9 @@ function ApplicationSummary({
       <p className="mt-3 text-slate-600">{messages[application.status]}</p>
       <Link
         className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        to={application.status === 'approved' ? '/account/installation' : '/account/application'}
+        to={primaryDestination}
       >
-        {application.status === 'approved' ? 'View installation' : 'View application'}
+        {primaryActionLabel}
         <ArrowRight aria-hidden="true" size={16} />
       </Link>
     </article>

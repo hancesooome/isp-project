@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CircleHelp, ClipboardList, FileText, History, House, LogOut, MessageCircle, ReceiptText, UserRound, Wifi, Wrench } from 'lucide-react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { BrandLogo } from '../../components/ui/BrandLogo'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/auth-context'
 import { CustomerNotificationBell } from '../notifications/CustomerNotifications'
+import { getCustomerPrimaryDestination, type CustomerAccessLevel } from './customer-routing'
 
 type CustomerCapability = 'overview' | 'apply' | 'application' | 'installation' |
   'internet' | 'billing' | 'invoices' | 'statements' | 'payments' |
   'planChanges' | 'cancellation' | 'serviceHistory' | 'support' | 'account'
-interface CustomerEntitlements { accessLevel: string; capabilities: CustomerCapability[] }
+interface CustomerEntitlements { accessLevel: CustomerAccessLevel; capabilities: CustomerCapability[] }
 
 const navItems = [
   { label: 'Overview', shortLabel: 'Overview', to: '/account', end: true, icon: 'overview', capability: 'overview' },
@@ -159,7 +160,9 @@ export function CustomerLayout() {
         >
           <div className="customer-portal-content mx-auto max-w-6xl">
             {entitlementError ? <p className="mb-6 rounded-[10px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status">Some account options could not be loaded. Refresh the page to try again.</p> : null}
-            {entitlements === null ? <PortalLoading /> : canViewRoute ? <Outlet /> : <UnavailablePage />}
+            {entitlements === null ? <PortalLoading /> : pathname === '/account/apply' && !entitlements.capabilities.includes('apply')
+              ? <Navigate replace to={getCustomerPrimaryDestination(entitlements.accessLevel)} />
+              : canViewRoute ? <Outlet context={{ customerAccessLevel: entitlements.accessLevel }} /> : <UnavailablePage />}
           </div>
         </main>
 
@@ -241,13 +244,14 @@ function readEntitlements(value: unknown): CustomerEntitlements {
   if (!value || typeof value !== 'object' || !('entitlements' in value)) throw new Error('INVALID_ENTITLEMENTS_RESPONSE')
   const entitlements = value.entitlements
   if (!entitlements || typeof entitlements !== 'object' || !('accessLevel' in entitlements) ||
-    typeof entitlements.accessLevel !== 'string' || !('capabilities' in entitlements) ||
+    typeof entitlements.accessLevel !== 'string' || !validAccessLevels.includes(entitlements.accessLevel) || !('capabilities' in entitlements) ||
     !Array.isArray(entitlements.capabilities) || !entitlements.capabilities.every(isCustomerCapability)) {
     throw new Error('INVALID_ENTITLEMENTS_RESPONSE')
   }
-  return { accessLevel: entitlements.accessLevel, capabilities: entitlements.capabilities }
+  return { accessLevel: entitlements.accessLevel as CustomerAccessLevel, capabilities: entitlements.capabilities }
 }
 
+const validAccessLevels: readonly string[] = ['account_only', 'applicant', 'previous_applicant', 'awaiting_installation', 'active_subscriber', 'past_due_subscriber', 'suspended_subscriber', 'former_subscriber']
 const validCapabilities: readonly string[] = ['overview', 'apply', 'application', 'installation', 'internet', 'billing', 'invoices', 'statements', 'payments', 'planChanges', 'cancellation', 'serviceHistory', 'support', 'account']
 function isCustomerCapability(value: unknown): value is CustomerCapability {
   return typeof value === 'string' && validCapabilities.includes(value)

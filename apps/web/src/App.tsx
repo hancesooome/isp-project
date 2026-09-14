@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import {
   Link,
+  Navigate,
   Route,
   Routes,
   useNavigate,
@@ -108,7 +109,7 @@ export function App() {
       <Route
         element={
           <ProtectedRoute>
-            <LightCentredPage><ServiceApplicationForm /></LightCentredPage>
+            <LegacyApplicationRedirect />
           </ProtectedRoute>
         }
         path="/apply"
@@ -171,6 +172,16 @@ export function App() {
       <Route element={<LightCentredPage><NotFoundPage /></LightCentredPage>} path="*" />
     </Routes>
   )
+}
+
+function LegacyApplicationRedirect() {
+  const [searchParams] = useSearchParams()
+  const planId = searchParams.get('plan')
+  const destination = planId && uuidPattern.test(planId)
+    ? `/account/apply?plan=${encodeURIComponent(planId)}`
+    : '/account/apply'
+
+  return <Navigate replace to={destination} />
 }
 
 function CentredPage({ children }: { children: React.ReactNode }) {
