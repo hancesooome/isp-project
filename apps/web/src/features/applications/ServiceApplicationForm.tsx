@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import type { ZodError } from 'zod'
@@ -63,6 +63,7 @@ function isPlanOption(value: unknown): value is PlanOption {
 export function ServiceApplicationForm() {
   const [searchParams] = useSearchParams()
   const { session } = useAuth()
+  const applicationHeadingRef = useRef<HTMLHeadingElement>(null)
   const [availabilityContext] = useState(loadAvailabilityContext)
   const [values, setValues] = useState(() => ({
     ...initialValues,
@@ -94,6 +95,18 @@ export function ServiceApplicationForm() {
   )
 
   useEffect(() => {
+    const heading = applicationHeadingRef.current
+    if (!heading) return
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    heading.focus({ preventScroll: true })
+    heading.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'start',
+    })
+  }, [])
+
+  useEffect(() => {
     const controller = new AbortController()
 
     async function loadPlans() {
@@ -118,9 +131,14 @@ export function ServiceApplicationForm() {
           throw new Error('INVALID_PLANS_RESPONSE')
         }
 
-        setPlans(availabilityContext
+        const availablePlans = availabilityContext
           ? result.plans.filter((plan) => availabilityContext.eligiblePlanIds.includes(plan.id))
-          : result.plans)
+          : result.plans
+
+        setPlans(availablePlans)
+        setValues((current) => current.planId && !availablePlans.some((plan) => plan.id === current.planId)
+          ? { ...current, planId: '' }
+          : current)
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           return
@@ -246,7 +264,11 @@ export function ServiceApplicationForm() {
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
         Service application
       </p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">
+      <h1
+        className="mt-3 scroll-mt-24 text-3xl font-semibold tracking-[-0.035em] text-slate-950 outline-none"
+        ref={applicationHeadingRef}
+        tabIndex={-1}
+      >
         Apply for internet service
       </h1>
       <p className="mt-3 leading-7 text-slate-600">
