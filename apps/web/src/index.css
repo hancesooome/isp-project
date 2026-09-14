@@ -203,6 +203,7 @@ body {
 /* Existing customer pages predate the light portal shell. Keep their markup and
    behavior intact while presenting those surfaces consistently inside the shell. */
 .customer-portal-content .text-white { color: #111318; }
+.customer-portal-content :is(button, a).text-white { color: #ffffff; }
 .customer-portal-content .text-slate-400 { color: #667085; }
 .customer-portal-content .text-slate-300 { color: #667085; }
 .customer-portal-content .border-slate-800 { border-color: rgba(17, 24, 39, 0.08); }

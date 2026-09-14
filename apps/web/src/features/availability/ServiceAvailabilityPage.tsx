@@ -159,6 +159,7 @@ export function ServiceAvailabilityPage() {
         <div className="border-t border-slate-900/8 pt-8 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10">
           <InstallationLocationMap
             error={fieldErrors.latitude}
+            mobileActionFirst
             onChange={(coordinates) => {
               setValues((current) => ({ ...current, ...coordinates }))
               setFieldErrors((current) => ({ ...current, latitude: undefined }))
