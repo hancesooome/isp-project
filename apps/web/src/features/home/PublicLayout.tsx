@@ -144,5 +144,5 @@ function AccountLinks({ onNavigate }: { onNavigate?: () => void } = {}) {
 }
 
 function Brand() {
-  return <Link className={`inline-flex rounded-md ${focusClass}`} to="/"><BrandLogo className="h-11 w-auto max-w-40" /></Link>
+  return <Link aria-label="Conek home" className={`inline-flex rounded-md ${focusClass}`} to="/"><BrandLogo className="h-11 w-auto max-w-40" /></Link>
 }

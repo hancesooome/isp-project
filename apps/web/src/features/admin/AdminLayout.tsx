@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChartNoAxesColumn, CircleHelp, ClipboardList, CreditCard, HardHat, House, Layers, LogOut, MapPinned, Menu, MessageCircle, RefreshCw, Repeat2, UserRound, Users, Wrench, X, XCircle } from 'lucide-react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { BrandLogo } from '../../components/ui/BrandLogo'
 
@@ -201,7 +201,9 @@ export function AdminLayout() {
 function AdminBrand({ compact = false }: { compact?: boolean }) {
   return (
     <div className={compact ? '' : 'px-2 py-1'}>
-      <BrandLogo className={compact ? 'h-9 w-auto max-w-32' : 'h-11 w-auto max-w-40'} inverse />
+      <Link aria-label="Conek home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" to="/admin">
+        <BrandLogo className={compact ? 'h-9 w-auto max-w-32' : 'h-11 w-auto max-w-40'} inverse />
+      </Link>
       {compact ? <p className="mt-0.5 text-[9px] font-medium tracking-[0.12em] text-slate-500 uppercase">Admin</p> : null}
     </div>
   )

@@ -199,7 +199,9 @@ export function CustomerLayout() {
 function PortalBrand({ compact = false }: { compact?: boolean }) {
   return (
     <div className={compact ? '' : 'px-2 py-1'}>
-      <BrandLogo className={compact ? 'h-10 w-auto max-w-36' : 'h-12 w-auto max-w-44'} />
+      <Link aria-label="Conek home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account">
+        <BrandLogo className={compact ? 'h-10 w-auto max-w-36' : 'h-12 w-auto max-w-44'} />
+      </Link>
     </div>
   )
 }
