@@ -89,7 +89,7 @@ async function sendTerminationNotifications(): Promise<number> {
     const accountUrl = new URL('/account', env.appUrl).toString()
     const result = await sendEmail({
       to: email,
-      subject: 'Your ISP service cancellation is complete',
+      subject: 'Your Conek service cancellation is complete',
       ...buildTransactionalEmail({
         preheader: 'Your service cancellation has been completed.',
         headline: 'Service cancellation complete',

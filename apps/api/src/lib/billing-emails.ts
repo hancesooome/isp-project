@@ -58,7 +58,7 @@ export async function sendInvoiceCreatedEmail(invoiceId: string): Promise<boolea
     ...buildTransactionalEmail({
       preheader: `Your invoice for ${formatMoney(invoice.amount_cents)} is ready.`,
       headline: 'Your invoice is ready',
-      paragraphs: ['A new invoice has been added to your ISP Platform account.'],
+      paragraphs: ['A new invoice has been added to your Conek account.'],
       details: [
         { label: 'Invoice', value: `#${reference}` },
         { label: 'Amount due', value: formatMoney(invoice.amount_cents) },

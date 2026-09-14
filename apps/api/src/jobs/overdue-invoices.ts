@@ -200,9 +200,9 @@ export async function sendSuspensionNotifications() {
     const result = notification.reason === 'manual'
       ? await sendEmail({
           to: email,
-          subject: 'Your ISP account service status was suspended',
+          subject: 'Your Conek service was suspended',
           ...buildTransactionalEmail({
-            preheader: 'Your ISP account service status was updated.',
+            preheader: 'Your Conek service status was updated.',
             headline: 'Service status suspended',
             paragraphs: [
               'An administrator placed your account service in suspended status.',
@@ -251,7 +251,7 @@ async function sendNonPaymentSuspensionEmail(
 
   return sendEmail({
     to: email,
-    subject: 'Your ISP account service is suspended for non-payment',
+    subject: 'Your Conek service is suspended for non-payment',
     ...buildTransactionalEmail({
       preheader: 'Your account service is suspended for non-payment.',
       headline: 'Service suspended for non-payment',
@@ -361,9 +361,9 @@ async function sendDelinquencyNotifications() {
     ).toString()
     const result = await sendEmail({
       to: email,
-      subject: 'Your ISP account is past due',
+      subject: 'Your Conek account is past due',
       ...buildTransactionalEmail({
-        preheader: 'Your ISP account is past due.',
+        preheader: 'Your Conek account is past due.',
         headline: 'Your account is past due',
         paragraphs: [
           'Your invoice remains unpaid after the 3-day grace period.',

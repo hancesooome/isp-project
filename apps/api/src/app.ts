@@ -1209,7 +1209,7 @@ async function sendInstallationLifecycleEmail(
       paragraphs: ['The installation work has been recorded as complete. Your internet service is not active until service activation is separately confirmed.'],
     },
     service_activated: {
-      subject: 'Your ISP internet service is active',
+      subject: 'Your Conek internet service is active',
       preheader: 'Your internet service has been activated.',
       headline: 'Service activated',
       paragraphs: ['Your installation is complete and your internet subscription is now active. You can manage your plan and billing from your customer portal.'],

@@ -91,9 +91,9 @@ export async function sendRestorationNotifications() {
       : `Your account service has been restored to active status after verified payment of invoice #${invoiceReference ?? 'unknown'} resolved all due debt.`
     const result = await sendEmail({
       to: email,
-      subject: 'Your ISP account service is active again',
+      subject: 'Your Conek service is active again',
       ...buildTransactionalEmail({
-        preheader: 'Your ISP account service status is active again.',
+        preheader: 'Your Conek service status is active again.',
         headline: 'Your service status is active',
         paragraphs: [reasonText],
         notice: 'This confirms the platform account status only and does not confirm a physical network change.',
