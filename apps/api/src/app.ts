@@ -4507,6 +4507,30 @@ app.get('/admin/access', async (request, response) => {
   response.status(200).json({ authorized: true })
 })
 
+app.get('/admin/attention', async (request, response) => {
+  const auth = await authorizeRole(request.header('authorization'), 'admin')
+
+  if (auth.status !== 200) {
+    const message = auth.status === 403 ? 'Admin access required' : 'Authentication required'
+    response.status(auth.status).json({
+      error: auth.status === 500 ? 'Unable to load admin attention' : message,
+    })
+    return
+  }
+
+  const { data, error } = await supabase
+    .rpc('get_admin_attention_counts')
+    .returns<{ attention_key: string; attention_count: number }[]>()
+
+  if (error) {
+    console.error('Failed to load admin attention', { code: error.code })
+    response.status(500).json({ error: 'Unable to load admin attention' })
+    return
+  }
+
+  response.status(200).json({ attention: data })
+})
+
 app.get('/admin/mfa-status', async (request, response) => {
   const authorization = request.header('authorization')
   const auth = await authorizeRole(authorization, 'admin', false)

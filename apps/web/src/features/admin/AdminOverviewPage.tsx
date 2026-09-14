@@ -18,10 +18,34 @@ interface AdminSubscription {
   status: 'active' | 'past_due' | 'suspended'
 }
 
+type AttentionKey = 'application_reviews' | 'approved_without_installation' |
+  'installation_scheduling' | 'unassigned_installations' |
+  'installation_intervention' | 'support_awaiting_reply' |
+  'overdue_invoices' | 'cancellation_reviews'
+
+interface AttentionCount {
+  attention_key: AttentionKey
+  attention_count: number
+}
+
 interface OverviewData {
   applications: AdminApplication[]
   subscriptions: AdminSubscription[]
+  attention: AttentionCount[]
 }
+
+const attentionDefinitions: Record<AttentionKey, { label: string; to: string }> = {
+  application_reviews: { label: 'Applications awaiting review', to: '/admin/applications' },
+  approved_without_installation: { label: 'Approved without installation', to: '/admin/applications' },
+  installation_scheduling: { label: 'Installation scheduling', to: '/admin/installations' },
+  unassigned_installations: { label: 'Unassigned technician jobs', to: '/admin/installations' },
+  installation_intervention: { label: 'Installation intervention', to: '/admin/installations' },
+  support_awaiting_reply: { label: 'Support awaiting reply', to: '/admin/support' },
+  overdue_invoices: { label: 'Overdue billing actions', to: '/admin/billing' },
+  cancellation_reviews: { label: 'Cancellation requests', to: '/admin/cancellations' },
+}
+
+const attentionKeys = Object.keys(attentionDefinitions) as AttentionKey[]
 
 const dateFormatter = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',
@@ -48,6 +72,16 @@ function isSubscription(value: unknown): value is AdminSubscription {
     (subscription.status === 'active' || subscription.status === 'past_due' || subscription.status === 'suspended')
 }
 
+function isAttentionCount(value: unknown): value is AttentionCount {
+  if (typeof value !== 'object' || value === null) return false
+  const item = value as Record<string, unknown>
+  return typeof item.attention_key === 'string' &&
+    attentionKeys.includes(item.attention_key as AttentionKey) &&
+    typeof item.attention_count === 'number' &&
+    Number.isInteger(item.attention_count) &&
+    item.attention_count >= 0
+}
+
 export function AdminOverviewPage() {
   const { session } = useAuth()
   const [data, setData] = useState<OverviewData | null>(null)
@@ -60,17 +94,19 @@ export function AdminOverviewPage() {
     async function loadOverview() {
       try {
         const headers = { Authorization: `Bearer ${session?.access_token ?? ''}` }
-        const [applicationsResponse, subscriptionsResponse] = await Promise.all([
+        const [applicationsResponse, subscriptionsResponse, attentionResponse] = await Promise.all([
           fetch('/api/admin/applications', { headers, signal: controller.signal }),
           fetch('/api/admin/subscriptions', { headers, signal: controller.signal }),
+          fetch('/api/admin/attention', { headers, signal: controller.signal }),
         ])
 
-        if (!applicationsResponse.ok || !subscriptionsResponse.ok) {
+        if (!applicationsResponse.ok || !subscriptionsResponse.ok || !attentionResponse.ok) {
           throw new Error('ADMIN_OVERVIEW_REQUEST_FAILED')
         }
 
         const applicationsResult: unknown = await applicationsResponse.json()
         const subscriptionsResult: unknown = await subscriptionsResponse.json()
+        const attentionResult: unknown = await attentionResponse.json()
 
         if (
           typeof applicationsResult !== 'object' || applicationsResult === null ||
@@ -78,7 +114,10 @@ export function AdminOverviewPage() {
           !applicationsResult.applications.every(isApplication) ||
           typeof subscriptionsResult !== 'object' || subscriptionsResult === null ||
           !('subscriptions' in subscriptionsResult) || !Array.isArray(subscriptionsResult.subscriptions) ||
-          !subscriptionsResult.subscriptions.every(isSubscription)
+          !subscriptionsResult.subscriptions.every(isSubscription) ||
+          typeof attentionResult !== 'object' || attentionResult === null ||
+          !('attention' in attentionResult) || !Array.isArray(attentionResult.attention) ||
+          !attentionResult.attention.every(isAttentionCount)
         ) {
           throw new Error('INVALID_ADMIN_OVERVIEW_RESPONSE')
         }
@@ -86,6 +125,7 @@ export function AdminOverviewPage() {
         setData({
           applications: applicationsResult.applications,
           subscriptions: subscriptionsResult.subscriptions,
+          attention: attentionResult.attention,
         })
       } catch (requestError) {
         if (requestError instanceof Error && requestError.name === 'AbortError') return
@@ -104,6 +144,8 @@ export function AdminOverviewPage() {
     { label: 'Past-due subscriptions', value: data.subscriptions.filter((item) => item.status === 'past_due').length, note: 'Billing attention required' },
     { label: 'Suspended subscriptions', value: data.subscriptions.filter((item) => item.status === 'suspended').length, note: 'Operational suspension status' },
   ] : []
+  const unresolvedAttention = data?.attention.filter((item) => item.attention_count > 0) ?? []
+  const attentionTotal = unresolvedAttention.reduce((total, item) => total + item.attention_count, 0)
 
   return (
     <section className="w-full">
@@ -131,6 +173,26 @@ export function AdminOverviewPage() {
               </article>
             ))}
           </div>
+
+          <section className="mt-4 overflow-hidden rounded-[12px] border border-white/8 bg-[#11161f]" aria-labelledby="attention-required-heading">
+            <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
+              <div>
+                <h2 className="text-sm font-semibold text-white" id="attention-required-heading">Attention required</h2>
+                <p className="mt-1 text-xs text-slate-500">Authoritative unresolved operational work</p>
+              </div>
+              <span className="min-w-8 rounded-full bg-amber-400/12 px-2.5 py-1 text-center text-xs font-semibold text-amber-300" aria-label={`${attentionTotal} unresolved items`}>{attentionTotal}</span>
+            </div>
+            {unresolvedAttention.length === 0 ? (
+              <p className="px-5 py-5 text-sm text-slate-400">No unresolved operational work requires attention.</p>
+            ) : (
+              <nav className="divide-y divide-white/8" aria-label="Unresolved admin work">
+                {unresolvedAttention.map((item) => {
+                  const definition = attentionDefinitions[item.attention_key]
+                  return <Link className="flex min-h-12 items-center justify-between gap-4 px-5 py-3 text-sm transition hover:bg-white/4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400" key={item.attention_key} to={definition.to}><span className="font-medium text-slate-200">{definition.label}</span><span className="flex items-center gap-3"><strong className="font-semibold text-white">{item.attention_count}</strong><ArrowRight aria-hidden="true" className="text-blue-300" size={15} /></span></Link>
+                })}
+              </nav>
+            )}
+          </section>
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_0.8fr]">
             <section className="overflow-hidden rounded-[12px] border border-white/8 bg-[#11161f]" aria-labelledby="recent-applications-heading">
