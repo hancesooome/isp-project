@@ -132,7 +132,7 @@ export async function renderStatementOfAccountPdf(
 
   addPage()
   document.setTitle('Statement of Account')
-  document.setAuthor('ISP Platform')
+  document.setAuthor('Conek')
   document.setCreationDate(new Date(statement.generated_at))
 
   line('ISP PLATFORM', { size: 11, font: bold, color: accent, gap: 8 })

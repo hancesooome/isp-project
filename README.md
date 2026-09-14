@@ -1,6 +1,6 @@
-# ISP Platform
+# Conek
 
-Foundation for an ISP customer management platform, organized as separate web
+An internet service management and billing platform, organized as separate web
 and API applications in an npm workspace.
 
 ## Prerequisites

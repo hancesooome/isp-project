@@ -53,7 +53,7 @@ export function AdminMfaEnrollmentPage() {
 
       const enrollment = await supabase.auth.mfa.enroll({
         factorType: 'totp',
-        friendlyName: 'ISP Platform administrator',
+        friendlyName: 'Conek administrator',
       })
       if (enrollment.error) throw enrollment.error
       setFactorId(enrollment.data.id)

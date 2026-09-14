@@ -30,7 +30,7 @@ export function PublicLayout() {
           </div>
         </div>
         <div className="mx-auto mt-8 flex max-w-7xl flex-wrap items-center justify-between gap-4 border-t border-slate-900/10 pt-6 text-sm text-slate-500">
-          <p>&copy; {new Date().getFullYear()} ISP Platform</p>
+          <p>&copy; {new Date().getFullYear()} Conek</p>
           <div className="flex items-center gap-4">
             <Link className={`rounded-md hover:text-slate-950 ${focusClass}`} to="/help">Help center</Link>
             <Link className={`rounded-md hover:text-slate-950 ${focusClass}`} to="/privacy">Privacy policy</Link>

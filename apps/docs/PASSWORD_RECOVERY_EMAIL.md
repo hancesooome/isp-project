@@ -12,7 +12,7 @@ hosted project:
 
 1. Open Supabase Dashboard → Authentication → Email Templates.
 2. Select **Reset Password**.
-3. Set the subject to `Reset your ISP Platform password`.
+3. Set the subject to `Reset your Conek password`.
 4. Copy the complete contents of `supabase/templates/recovery.html` into the
    message body and save it.
 5. Under Authentication → URL Configuration, confirm the production
