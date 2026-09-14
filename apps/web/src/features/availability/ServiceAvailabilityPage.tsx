@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
@@ -57,11 +57,23 @@ function isAvailablePlan(value: unknown): value is AvailablePlan {
 export function ServiceAvailabilityPage() {
   const [searchParams] = useSearchParams()
   const selectedPlanId = searchParams.get('plan')
+  const availablePlansRef = useRef<HTMLDivElement>(null)
   const [values, setValues] = useState(initialValues)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [requestError, setRequestError] = useState<string | null>(null)
   const [result, setResult] = useState<AvailabilityResult>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (!result?.available || !availablePlansRef.current) return
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    availablePlansRef.current.focus({ preventScroll: true })
+    availablePlansRef.current.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'start',
+    })
+  }, [result])
 
   function updateField(field: 'streetAddress' | 'postalCode' | 'landmark', value: string) {
     setValues((current) => ({
@@ -173,7 +185,12 @@ export function ServiceAvailabilityPage() {
       </form>
 
       {result?.available ? (
-        <div className="mt-6 rounded-[12px] border border-emerald-200 bg-emerald-50 p-5" role="status">
+        <div
+          className="mt-6 scroll-mt-24 rounded-[12px] border border-emerald-200 bg-emerald-50 p-5 outline-none"
+          ref={availablePlansRef}
+          role="status"
+          tabIndex={-1}
+        >
           <p className="font-semibold text-emerald-800">Service is available at the selected map location.</p>
           {result.plans.length === 0 ? <p className="mt-2 text-sm text-emerald-800">No plans are assigned to this area yet.</p> : (
             <div className="mt-4 grid gap-3">
