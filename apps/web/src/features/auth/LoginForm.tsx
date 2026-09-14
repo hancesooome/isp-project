@@ -97,10 +97,12 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
       >
         <ArrowLeft aria-hidden="true" size={16} /> Back to home
       </Link>
-      <Link aria-label="Conek home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/">
-        <BrandLogo className="h-11 w-auto max-w-40" />
-      </Link>
-      <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Welcome back</h1>
+      <div className="mt-5">
+        <Link aria-label="Conek home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/">
+          <BrandLogo className="h-11 w-auto max-w-40" />
+        </Link>
+      </div>
+      <h1 className="mt-6 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Welcome back</h1>
       <p className="mt-2 text-slate-600">Sign in to manage your account.</p>
 
       <div className="mt-7">

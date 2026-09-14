@@ -140,10 +140,12 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
       >
         <ArrowLeft aria-hidden="true" size={16} /> Back to home
       </Link>
-      <Link aria-label="Conek home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/">
-        <BrandLogo className="h-11 w-auto max-w-40" />
-      </Link>
-      <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Create your account</h1>
+      <div className="mt-5">
+        <Link aria-label="Conek home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/">
+          <BrandLogo className="h-11 w-auto max-w-40" />
+        </Link>
+      </div>
+      <h1 className="mt-6 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Create your account</h1>
       <p className="mt-2 leading-7 text-slate-600">
         Register to manage your internet service account.
       </p>
