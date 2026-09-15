@@ -16,7 +16,7 @@ export function buildTransactionalEmail(content: TransactionalEmailContent): {
 } {
   const actionUrl = content.action ? requireAbsoluteHttpUrl(content.action.url) : null
   const supportUrl = new URL('/account/support', env.appUrl).toString()
-  const logoUrl = new URL('/assets/conek-white-C20S-eS4.png', env.appUrl).toString()
+  const logoUrl = new URL('/conek-email-logo.png', env.appUrl).toString()
   const greeting = content.greeting ?? 'Hello,'
   const detailsText = content.details?.map(({ label, value }) => `${label}: ${value}`).join('\n')
   const text = [
