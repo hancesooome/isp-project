@@ -82,12 +82,14 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
     setIsSubmitting(true)
 
     try {
+      const verificationCallback = new URL('/auth/callback', window.location.origin)
+      verificationCallback.searchParams.set('redirect', redirectTo)
       const result = await signUpCustomer({
         captchaToken,
         email: parsed.data.email,
         fullName: parsed.data.fullName,
         password: parsed.data.password,
-        redirectTo: window.location.origin,
+        redirectTo: verificationCallback.toString(),
       })
 
       setSuccessMessage(
