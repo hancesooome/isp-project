@@ -143,7 +143,7 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
         <ArrowLeft aria-hidden="true" size={16} /> Back to home
       </Link>
       <div className="mt-5">
-        <Link aria-label="Conek home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/">
+        <Link aria-label="CONEK ISP home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/">
           <BrandLogo className="h-11 w-auto max-w-40" />
         </Link>
       </div>

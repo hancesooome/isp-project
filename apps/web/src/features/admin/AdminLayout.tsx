@@ -201,7 +201,7 @@ export function AdminLayout() {
 function AdminBrand({ compact = false }: { compact?: boolean }) {
   return (
     <div className={compact ? '' : 'px-2 py-1'}>
-      <Link aria-label="Conek home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" to="/admin">
+      <Link aria-label="CONEK ISP home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400" to="/admin">
         <BrandLogo className={compact ? 'h-9 w-auto max-w-32' : 'h-11 w-auto max-w-40'} inverse />
       </Link>
       {compact ? <p className="mt-0.5 text-[9px] font-medium tracking-[0.12em] text-slate-500 uppercase">Admin</p> : null}

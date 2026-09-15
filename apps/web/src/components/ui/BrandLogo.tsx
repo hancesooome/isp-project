@@ -11,7 +11,7 @@ interface BrandLogoProps {
 export function BrandLogo({ className = '', iconOnly = false, inverse = false }: BrandLogoProps) {
   return (
     <img
-      alt={iconOnly ? 'Conek' : 'Conek ISP Management System'}
+      alt={iconOnly ? 'CONEK ISP' : 'CONEK ISP Management System'}
       className={`block object-contain ${className}`}
       src={iconOnly ? conekIcon : inverse ? conekWhite : conekBlack}
     />

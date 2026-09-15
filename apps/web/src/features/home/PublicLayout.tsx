@@ -30,11 +30,14 @@ export function PublicLayout() {
           </div>
         </div>
         <div className="mx-auto mt-8 flex max-w-7xl flex-wrap items-center justify-between gap-4 border-t border-slate-900/10 pt-6 text-sm text-slate-500">
-          <p>&copy; {new Date().getFullYear()} Conek</p>
+          <p>&copy; {new Date().getFullYear()} CONEK ISP</p>
           <div className="flex items-center gap-4">
             <Link className={`rounded-md hover:text-slate-950 ${focusClass}`} to="/help">Help center</Link>
             <Link className={`rounded-md hover:text-slate-950 ${focusClass}`} to="/privacy">Privacy policy</Link>
           </div>
+        </div>
+        <div className="mx-auto mt-4 max-w-7xl text-center text-sm text-slate-400">
+          <p>Built by <a href="https://hancesoo.me" target="_blank" rel="noopener noreferrer" className={`font-medium text-slate-600 hover:text-slate-950 ${focusClass} rounded-md`}>Hance Dagondon</a></p>
         </div>
       </footer>
     </div>
@@ -144,5 +147,5 @@ function AccountLinks({ onNavigate }: { onNavigate?: () => void } = {}) {
 }
 
 function Brand() {
-  return <Link aria-label="Conek home" className={`inline-flex rounded-md ${focusClass}`} to="/"><BrandLogo className="h-11 w-auto max-w-40" /></Link>
+  return <Link aria-label="CONEK ISP home" className={`inline-flex rounded-md ${focusClass}`} to="/"><BrandLogo className="h-11 w-auto max-w-40" /></Link>
 }
