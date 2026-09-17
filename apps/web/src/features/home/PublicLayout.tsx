@@ -140,8 +140,8 @@ function AccountLinks({ onNavigate }: { onNavigate?: () => void } = {}) {
   if (session) return <Link to="/portal" onClick={onNavigate} className={`inline-flex min-h-11 items-center justify-center rounded-[10px] bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 ${focusClass}`}>Open dashboard</Link>
   return (
     <>
-      <Link to="/login" onClick={onNavigate} className={`inline-flex min-h-11 items-center justify-center rounded-[10px] px-4 text-sm font-semibold text-slate-700 hover:bg-white ${focusClass}`}>Sign in</Link>
-      <Link to="/signup" onClick={onNavigate} className={`inline-flex min-h-11 items-center justify-center rounded-[10px] bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 ${focusClass}`}>Create account</Link>
+      <Link to="/login?redirect=%2Faccount" onClick={onNavigate} className={`inline-flex min-h-11 items-center justify-center rounded-[10px] px-4 text-sm font-semibold text-slate-700 hover:bg-white ${focusClass}`}>Sign in</Link>
+      <Link to="/signup?redirect=%2Faccount" onClick={onNavigate} className={`inline-flex min-h-11 items-center justify-center rounded-[10px] bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 ${focusClass}`}>Create account</Link>
     </>
   )
 }
