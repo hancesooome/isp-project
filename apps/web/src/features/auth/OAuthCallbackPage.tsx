@@ -10,8 +10,8 @@ export function OAuthCallbackPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const destination = getSafeRedirect(searchParams.get('redirect'))
-  const hashParams = new URLSearchParams(location.hash.slice(1))
+  const hashParams = new URLSearchParams(location.hash.includes('?') ? location.hash.split('?')[1] : location.hash.slice(1))
+  const destination = getSafeRedirect(searchParams.get('redirect') ?? hashParams.get('redirect'))
   const providerError =
     searchParams.get('error_description') ?? hashParams.get('error_description')
 
