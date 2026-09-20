@@ -2,12 +2,15 @@ import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { Button } from '../../components/ui/Button'
+import { buttonClassName } from '../../components/ui/button-styles'
 import { moneyFormatter as priceFormatter } from '../../lib/money'
 import {
   PhilippineLocationFields,
   type PhilippineLocationValue,
 } from '../applications/PhilippineLocationFields'
 import { InstallationLocationMap } from '../applications/InstallationLocationMap'
+import { PublicPageHeader } from '../home/PublicPageHeader'
 import { saveAvailabilityContext } from './availability-context'
 
 const availabilitySchema = z.object({
@@ -147,12 +150,15 @@ export function ServiceAvailabilityPage() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-6xl rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">Service availability</p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Check your address</h1>
-      <p className="mt-3 leading-7 text-slate-600">Select your official Philippine location so spelling mistakes do not affect the check.</p>
+    <section className="mx-auto w-full max-w-6xl text-slate-950">
+      <PublicPageHeader
+        description="Select your official Philippine location so spelling mistakes do not affect the check."
+        eyebrow="Service availability"
+        title="Check your address"
+      />
 
-      <form className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-10" noValidate onSubmit={handleSubmit}>
+      <div className="mt-10 rounded-[18px] border border-slate-900/8 bg-white p-6 shadow-[0_18px_50px_rgba(18,25,38,0.08)] sm:p-9">
+      <form className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-10" noValidate onSubmit={handleSubmit}>
         <div className="space-y-5">
           <div>
             <h2 className="text-lg font-semibold text-slate-950">Your installation address</h2>
@@ -175,9 +181,9 @@ export function ServiceAvailabilityPage() {
               setResult(null)
             }}
             primaryAction={(
-              <button className="public-primary-button flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoading} type="submit">
+              <Button className="w-full" disabled={isLoading} size="lg" type="submit">
                 {isLoading ? <><LoadingSpinner size="sm" /><span>Checking availability...</span></> : <span>Check availability</span>}
-              </button>
+              </Button>
             )}
             value={values.latitude !== null && values.longitude !== null ? { latitude: values.latitude, longitude: values.longitude } : null}
           />
@@ -198,7 +204,7 @@ export function ServiceAvailabilityPage() {
                 const wasSelected = plan.id === selectedPlanId
                 return <article className={`rounded-[10px] border bg-white p-4 ${wasSelected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-emerald-200'}`} key={plan.id}>
                   <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold text-slate-950">{plan.name}</h2><p className="mt-1 text-sm text-slate-600">{plan.description ?? 'Reliable internet service for your home.'}</p></div><p className="font-semibold text-slate-950">{priceFormatter.format(plan.price_cents / 100)}<span className="text-xs font-normal text-slate-500">/{plan.billing_interval === 'monthly' ? 'month' : 'year'}</span></p></div>
-                  <Link className="mt-3 inline-flex min-h-11 items-center rounded-[9px] bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800" onClick={() => saveAvailabilityContext({ ...values, latitude: values.latitude!, longitude: values.longitude!, eligiblePlanIds: result.plans.map(({ id }) => id) })} to={`/account/apply?plan=${encodeURIComponent(plan.id)}`}>{wasSelected ? 'Continue with this plan' : 'Choose this plan'}</Link>
+                  <Link className={buttonClassName({ className: 'mt-3' })} onClick={() => saveAvailabilityContext({ ...values, latitude: values.latitude!, longitude: values.longitude!, eligiblePlanIds: result.plans.map(({ id }) => id) })} to={`/account/apply?plan=${encodeURIComponent(plan.id)}`}>{wasSelected ? 'Continue with this plan' : 'Choose this plan'}</Link>
                 </article>
               })}
             </div>
@@ -207,6 +213,7 @@ export function ServiceAvailabilityPage() {
       ) : null}
       {result && !result.available ? <p className="mt-6 rounded-[12px] border border-amber-200 bg-amber-50 p-5 text-amber-800" role="status">Service is not currently available at the selected map location.</p> : null}
       {requestError ? <div className="mt-6 rounded-[12px] border border-red-200 bg-red-50 p-5" role="alert"><p className="font-semibold text-red-900">Check failed</p><p className="mt-2 text-sm text-red-700">{requestError}</p></div> : null}
+      </div>
     </section>
   )
 }

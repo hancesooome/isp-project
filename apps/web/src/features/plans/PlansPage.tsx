@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { buttonClassName } from '../../components/ui/button-styles'
 import { moneyFormatter as priceFormatter } from '../../lib/money'
+import { PublicPageHeader } from '../home/PublicPageHeader'
 
 interface Plan {
   id: string
@@ -75,17 +77,12 @@ export function PlansPage() {
 
   return (
     <section className="w-full text-slate-950">
-      <header className="text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
-          Internet plans
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">
-          Choose the right plan for you
-        </h1>
-        <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-600">
-          Compare our currently available internet service plans.
-        </p>
-      </header>
+      <PublicPageHeader
+        align="center"
+        description="Compare our currently available internet service plans."
+        eyebrow="Internet plans"
+        title="Choose the right plan for you"
+      />
 
       <div className="mt-12">
         {error ? (
@@ -122,7 +119,7 @@ export function PlansPage() {
                 per {plan.billing_interval === 'monthly' ? 'month' : 'year'}
               </p>
               <Link
-                className="public-primary-button mt-auto inline-flex min-h-12 items-center justify-center rounded-[10px] px-5 text-sm font-semibold text-white shadow-lg shadow-blue-950/10 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                className={buttonClassName({ className: 'mt-auto', size: 'lg' })}
                 to={`/availability?plan=${encodeURIComponent(plan.id)}`}
               >
                 Choose this plan

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
+import { buttonClassName } from '../../components/ui/button-styles'
 import { moneyFormatter as priceFormatter } from '../../lib/money'
 
 interface Plan {
@@ -66,8 +67,8 @@ export function HomePage() {
               </h1>
               <p className="mt-7 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">Find available service, choose an active plan, and manage your ISP account through one clear online experience.</p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <Link className={`public-primary-button inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] px-6 text-sm font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:-translate-y-0.5 ${focusClass}`} to="/availability">Check availability <ArrowRight aria-hidden="true" size={16} /></Link>
-                <Link className={`inline-flex min-h-12 items-center justify-center rounded-[10px] border border-slate-900/12 bg-white/75 px-6 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-white ${focusClass}`} to="/plans">View plans</Link>
+                <Link className={buttonClassName({ className: 'px-6 hover:-translate-y-0.5', size: 'lg' })} to="/availability">Check availability <ArrowRight aria-hidden="true" size={16} /></Link>
+                <Link className={buttonClassName({ className: 'px-6', size: 'lg', variant: 'secondary' })} to="/plans">View plans</Link>
               </div>
               <p className="mt-4 text-sm text-slate-500">Start with the address where you want service installed.</p>
             </div>
@@ -113,7 +114,7 @@ export function HomePage() {
                   {plans.slice(0, 3).map((plan) => (
                     <article className="flex min-h-72 flex-col bg-white p-7 sm:p-8" key={plan.id}>
                       <h3 className="text-xl font-semibold text-slate-950">{plan.name}</h3><p className="mt-3 line-clamp-2 min-h-12 leading-6 text-slate-600">{plan.description ?? 'Internet service for your home.'}</p><p className="mt-7 text-3xl font-semibold tracking-[-0.03em] text-slate-950">{priceFormatter.format(plan.price_cents / 100)}</p><p className="mt-1 text-sm text-slate-500">per {plan.billing_interval === 'monthly' ? 'month' : 'year'}</p>
-                      <Link className={`mt-auto inline-flex min-h-11 items-center justify-center rounded-[10px] border border-slate-900/12 px-4 text-sm font-semibold text-slate-950 transition hover:border-slate-900 hover:bg-slate-950 hover:text-white ${focusClass}`} to={`/availability?plan=${encodeURIComponent(plan.id)}`}>Check this plan</Link>
+                      <Link className={buttonClassName({ className: 'mt-auto', variant: 'secondary' })} to={`/availability?plan=${encodeURIComponent(plan.id)}`}>Check this plan</Link>
                     </article>
                   ))}
                 </div>
@@ -125,7 +126,7 @@ export function HomePage() {
         <section className="bg-white px-5 py-20 sm:px-8 sm:py-24 lg:px-10">
           <div className="public-coverage-panel mx-auto grid max-w-7xl overflow-hidden rounded-[18px] bg-slate-950 text-white lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="p-8 sm:p-12 lg:p-14"><p className="text-xs font-semibold tracking-[0.16em] text-slate-400 uppercase">Service availability</p><h2 className="mt-4 max-w-2xl text-3xl leading-tight font-semibold tracking-[-0.035em] sm:text-4xl">See what is available at your address.</h2><p className="mt-4 max-w-xl leading-7 text-slate-300">Enter your installation address in the existing availability flow to begin.</p></div>
-            <div className="border-t border-white/10 p-8 sm:p-12 lg:border-t-0 lg:border-l lg:p-14"><Link className={`public-primary-button inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-6 text-sm font-semibold text-white transition hover:brightness-110 lg:w-auto ${focusClass}`} to="/availability">Check availability <ArrowRight aria-hidden="true" size={16} /></Link></div>
+            <div className="border-t border-white/10 p-8 sm:p-12 lg:border-t-0 lg:border-l lg:p-14"><Link className={buttonClassName({ className: 'w-full px-6 lg:w-auto', size: 'lg' })} to="/availability">Check availability <ArrowRight aria-hidden="true" size={16} /></Link></div>
           </div>
         </section>
       </div>

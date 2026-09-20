@@ -1,3 +1,5 @@
+import { PublicPageHeader } from '../home/PublicPageHeader'
+
 const sections = [
   {
     title: 'Information this platform handles',
@@ -114,12 +116,13 @@ const sections = [
 export function PrivacyPolicyPage() {
   return (
     <article className="mx-auto max-w-4xl">
-      <header className="max-w-3xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">Legal information</p>
-        <h1 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">Privacy policy</h1>
-        <p className="mt-5 text-lg leading-8 text-slate-600">How Conek handles information across coverage checks, applications, customer accounts, billing, payments, and support.</p>
+      <PublicPageHeader
+        description="How Conek handles information across coverage checks, applications, customer accounts, billing, payments, and support."
+        eyebrow="Legal information"
+        title="Privacy policy"
+      >
         <p className="mt-3 text-sm text-slate-500">Product draft updated September 6, 2026</p>
-      </header>
+      </PublicPageHeader>
 
       <aside className="mt-10 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm leading-6 text-amber-950" role="note">
         <strong className="block font-semibold">Legal review required before commercial deployment</strong>

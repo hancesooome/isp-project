@@ -3,6 +3,7 @@ import { Menu, X } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { BrandLogo } from '../../components/ui/BrandLogo'
+import { buttonClassName } from '../../components/ui/button-styles'
 import { useAuth } from '../auth/auth-context'
 
 const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
@@ -137,11 +138,11 @@ function PublicHeader() {
 function AccountLinks({ onNavigate }: { onNavigate?: () => void } = {}) {
   const { session, isLoading } = useAuth()
   if (isLoading) return <span className="px-4 text-sm text-slate-500" role="status">Loading account...</span>
-  if (session) return <Link to="/portal" onClick={onNavigate} className={`inline-flex min-h-11 items-center justify-center rounded-[10px] bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 ${focusClass}`}>Open dashboard</Link>
+  if (session) return <Link to="/portal" onClick={onNavigate} className={buttonClassName()}>Open dashboard</Link>
   return (
     <>
-      <Link to="/login?redirect=%2Faccount" onClick={onNavigate} className={`inline-flex min-h-11 items-center justify-center rounded-[10px] px-4 text-sm font-semibold text-slate-700 hover:bg-white ${focusClass}`}>Sign in</Link>
-      <Link to="/signup?redirect=%2Faccount" onClick={onNavigate} className={`inline-flex min-h-11 items-center justify-center rounded-[10px] bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 ${focusClass}`}>Create account</Link>
+      <Link to="/login?redirect=%2Faccount" onClick={onNavigate} className={buttonClassName({ variant: 'tertiary' })}>Sign in</Link>
+      <Link to="/signup?redirect=%2Faccount" onClick={onNavigate} className={buttonClassName()}>Create account</Link>
     </>
   )
 }

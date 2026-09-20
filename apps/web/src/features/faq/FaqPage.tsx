@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 
+import { Button } from '../../components/ui/Button'
+import { buttonClassName } from '../../components/ui/button-styles'
 import { useAuth } from '../auth/auth-context'
+import { PublicPageHeader } from '../home/PublicPageHeader'
 
 interface FaqArticle {
   id: string
@@ -90,15 +93,20 @@ export function FaqPage({ customerView = false }: { customerView?: boolean }) {
 
   return (
     <section className={customerView ? 'w-full' : 'mx-auto max-w-5xl'}>
-      <header className={customerView ? 'max-w-3xl' : 'mx-auto max-w-3xl text-center'}>
-        <p className="text-xs font-semibold tracking-[0.16em] text-blue-600 uppercase">Help center</p>
-        <h1 className={`${customerView ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl'} mt-3 font-semibold tracking-[-0.04em] text-slate-950`}>
-          How can we help?
-        </h1>
-        <p className="mt-4 text-base leading-7 text-slate-600 sm:text-lg">
-          Find clear answers about getting connected, managing your plan, billing, payments, and your account.
-        </p>
-      </header>
+      {customerView ? (
+        <header className="max-w-3xl">
+          <p className="text-xs font-semibold tracking-[0.14em] text-blue-600 uppercase">Help center</p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl">How can we help?</h1>
+          <p className="mt-4 text-base leading-7 text-slate-600 sm:text-lg">Find clear answers about getting connected, managing your plan, billing, payments, and your account.</p>
+        </header>
+      ) : (
+        <PublicPageHeader
+          align="center"
+          description="Find clear answers about getting connected, managing your plan, billing, payments, and your account."
+          eyebrow="Help center"
+          title="How can we help?"
+        />
+      )}
 
       <div className={`${customerView ? '' : 'mx-auto'} mt-8 max-w-3xl`}>
         <label className="block" htmlFor={customerView ? 'customer-faq-search' : 'public-faq-search'}>
@@ -131,7 +139,7 @@ export function FaqPage({ customerView = false }: { customerView?: boolean }) {
           <div className="rounded-[14px] border border-red-200 bg-red-50 p-6 text-center" role="alert">
             <h2 className="font-semibold text-red-900">Help articles unavailable</h2>
             <p className="mt-2 text-sm text-red-700">{loadError}</p>
-            <button className="mt-4 min-h-11 rounded-[10px] border border-red-300 bg-white px-4 text-sm font-semibold text-red-800 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500" onClick={() => setReloadKey((value) => value + 1)} type="button">Try again</button>
+            <Button className="mt-4" onClick={() => setReloadKey((value) => value + 1)} variant="danger">Try again</Button>
           </div>
         ) : faqs === null ? (
           <FaqSkeleton />
@@ -141,7 +149,7 @@ export function FaqPage({ customerView = false }: { customerView?: boolean }) {
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
               {hasFilters ? 'Try another search or view all topics.' : 'There are no published FAQ articles yet.'}
             </p>
-            {hasFilters ? <button className="mt-4 min-h-11 rounded-[10px] border border-slate-900/10 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" onClick={() => { setCategory(null); setSearch('') }} type="button">Clear filters</button> : null}
+            {hasFilters ? <Button className="mt-4" onClick={() => { setCategory(null); setSearch('') }} variant="secondary">Clear filters</Button> : null}
           </div>
         ) : (
           <>
@@ -173,7 +181,7 @@ export function FaqPage({ customerView = false }: { customerView?: boolean }) {
           <h2 className="font-semibold text-slate-950">Still need help?</h2>
           <p className="mt-1 text-sm text-slate-600">Send a support request and track the response from your account.</p>
         </div>
-        <Link className="inline-flex min-h-11 w-fit items-center rounded-[10px] bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" to={supportPath}>
+        <Link className={buttonClassName({ className: 'w-fit px-5' })} to={supportPath}>
           {session ? 'Contact support' : 'Sign in for support'}
         </Link>
       </footer>

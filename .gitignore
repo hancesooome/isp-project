@@ -95,3 +95,7 @@ supabase/migrations/202609130003_complete_billing_email_delivery.sql
 ISP_PHASE_17_DETAILED_TICKETS_156-162.md
 CONEK_PHASE_18_DETAILED_TICKETS_163-170.md
 supabase/migrations/202609140001_create_admin_attention_counts.sql
+UI_UX_MIGRATION_AUDIT.md
+.gitignore
+CONEK_PHASE_19_UI_UX_UNIFICATION_TICKETS_171-191.md
+UI_PRIMITIVE_AUDIT.md
