@@ -1,13 +1,14 @@
 import { type FormEvent, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { BrandLogo } from '../../components/ui/BrandLogo'
-import { ArrowLeft } from 'lucide-react'
 import type { ZodError } from 'zod'
 import { getLoginErrorMessage } from './login-error-message'
 import { loginSchema, type LoginFormValues } from './login-schema'
 import { loginWithPassword } from './login'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { Button } from '../../components/ui/Button'
+import { AuthField } from './AuthField'
+import { AuthPanel } from './AuthPanel'
 import { SocialAuthButtons } from './SocialAuthButtons'
 import { BotChallenge } from './BotChallenge'
 
@@ -90,18 +91,7 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
   }
 
   return (
-    <section className="w-full max-w-md rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
-      <Link
-        className="mb-7 inline-flex min-h-11 items-center text-sm font-medium text-slate-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        to="/"
-      >
-        <ArrowLeft aria-hidden="true" size={16} /> Back to home
-      </Link>
-      <div className="mt-5">
-        <Link aria-label="CONEK ISP home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/">
-          <BrandLogo className="h-11 w-auto max-w-40" />
-        </Link>
-      </div>
+    <AuthPanel backLabel="Back to home" backTo="/">
       <h1 className="mt-6 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Welcome back</h1>
       <p className="mt-2 text-slate-600">Sign in to manage your account.</p>
 
@@ -116,49 +106,27 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
       </div>
 
       <form className="space-y-5" noValidate onSubmit={handleSubmit}>
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="email">
-            Email address
-          </label>
-          <input
-            aria-describedby={fieldErrors.email ? 'email-error' : undefined}
-            aria-invalid={fieldErrors.email ? true : undefined}
+        <AuthField
             autoComplete="email"
-            className="min-h-12 w-full rounded-[10px] border border-slate-900/14 bg-white px-3.5 py-2.5 text-slate-950 shadow-inner shadow-slate-950/3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+            error={fieldErrors.email}
             id="email"
+            label="Email address"
             name="email"
             onChange={(event) => updateField('email', event.target.value)}
             type="email"
             value={values.email}
-          />
-          {fieldErrors.email ? (
-            <p className="mt-1.5 text-sm text-red-700" id="email-error" role="alert">
-              {fieldErrors.email}
-            </p>
-          ) : null}
-        </div>
+        />
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="password">
-            Password
-          </label>
-          <input
-            aria-describedby={fieldErrors.password ? 'password-error' : undefined}
-            aria-invalid={fieldErrors.password ? true : undefined}
+        <AuthField
             autoComplete="current-password"
-            className="min-h-12 w-full rounded-[10px] border border-slate-900/14 bg-white px-3.5 py-2.5 text-slate-950 shadow-inner shadow-slate-950/3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+            error={fieldErrors.password}
             id="password"
+            label="Password"
             name="password"
             onChange={(event) => updateField('password', event.target.value)}
             type="password"
             value={values.password}
-          />
-          {fieldErrors.password ? (
-            <p className="mt-1.5 text-sm text-red-700" id="password-error" role="alert">
-              {fieldErrors.password}
-            </p>
-          ) : null}
-        </div>
+        />
 
         <Link className="block text-sm font-medium text-blue-700 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/forgot-password">
           Forgot password?
@@ -178,9 +146,10 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
           </p>
         ) : null}
 
-        <button
-          className="public-primary-button flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        <Button
+          className="w-full"
           disabled={isSubmitting || !captchaToken}
+          size="lg"
           type="submit"
         >
           {isSubmitting ? (
@@ -191,7 +160,7 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
           ) : (
             <span>Sign in</span>
           )}
-        </button>
+        </Button>
 
         <p className="text-center text-sm text-slate-600">
           Don&apos;t have an account?{' '}
@@ -200,6 +169,6 @@ export function LoginForm({ onSignedIn, redirectTo }: LoginFormProps) {
           </Link>
         </p>
       </form>
-    </section>
+    </AuthPanel>
   )
 }

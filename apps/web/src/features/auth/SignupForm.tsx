@@ -1,14 +1,16 @@
 import { type FormEvent, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { BrandLogo } from '../../components/ui/BrandLogo'
-import { ArrowLeft } from 'lucide-react'
 import type { ZodError } from 'zod'
 import {
   signupSchema,
   type SignupFormValues,
 } from './signup-schema'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { Button } from '../../components/ui/Button'
+import { buttonClassName } from '../../components/ui/button-styles'
+import { AuthField } from './AuthField'
+import { AuthPanel } from './AuthPanel'
 import { signUpCustomer } from './signup'
 import { SocialAuthButtons } from './SocialAuthButtons'
 import { PasswordField } from './PasswordField'
@@ -23,7 +25,6 @@ const initialValues: SignupFormValues = {
   password: '',
   confirmPassword: '',
 }
-
 function getFieldErrors(error: ZodError<SignupFormValues>): FieldErrors {
   const errors: FieldErrors = {}
 
@@ -110,13 +111,7 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
 
   if (successMessage) {
     return (
-      <section className="w-full max-w-md rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
-        <Link
-          className="mb-7 inline-flex min-h-11 items-center text-sm font-medium text-slate-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          to="/"
-        >
-          <ArrowLeft aria-hidden="true" size={16} /> Back to home
-        </Link>
+      <AuthPanel backLabel="Back to home" backTo="/">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
           Account created
         </p>
@@ -125,28 +120,17 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
           {successMessage}
         </p>
         <Link
-          className="public-primary-button mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          className={buttonClassName({ className: 'mt-7 w-full', size: 'lg' })}
           to={`/login?${new URLSearchParams({ redirect: redirectTo }).toString()}`}
         >
           Continue to sign in
         </Link>
-      </section>
+      </AuthPanel>
     )
   }
 
   return (
-    <section className="w-full max-w-md rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
-      <Link
-        className="mb-7 inline-flex min-h-11 items-center text-sm font-medium text-slate-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        to="/"
-      >
-        <ArrowLeft aria-hidden="true" size={16} /> Back to home
-      </Link>
-      <div className="mt-5">
-        <Link aria-label="CONEK ISP home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/">
-          <BrandLogo className="h-11 w-auto max-w-40" />
-        </Link>
-      </div>
+    <AuthPanel backLabel="Back to home" backTo="/">
       <h1 className="mt-6 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Create your account</h1>
       <p className="mt-2 leading-7 text-slate-600">
         Register to manage your internet service account.
@@ -163,20 +147,22 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
       </div>
 
       <form className="space-y-5" noValidate onSubmit={handleSubmit}>
-        <Field
+        <AuthField
           autoComplete="name"
           error={fieldErrors.fullName}
           id="fullName"
           label="Full name"
-          onChange={(value) => updateField('fullName', value)}
+          name="fullName"
+          onChange={(event) => updateField('fullName', event.target.value)}
           value={values.fullName}
         />
-        <Field
+        <AuthField
           autoComplete="email"
           error={fieldErrors.email}
           id="email"
           label="Email address"
-          onChange={(value) => updateField('email', value)}
+          name="email"
+          onChange={(event) => updateField('email', event.target.value)}
           type="email"
           value={values.email}
         />
@@ -210,9 +196,10 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
           </p>
         ) : null}
 
-        <button
-          className="public-primary-button flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        <Button
+          className="w-full"
           disabled={isSubmitting || !captchaToken}
+          size="lg"
           type="submit"
         >
           {isSubmitting ? (
@@ -223,7 +210,7 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
           ) : (
             <span>Create account</span>
           )}
-        </button>
+        </Button>
 
         <p className="text-center text-sm text-slate-600">
           Already have an account?{' '}
@@ -232,60 +219,6 @@ export function SignupForm({ redirectTo }: SignupFormProps) {
           </Link>
         </p>
       </form>
-    </section>
-  )
-}
-
-interface FieldProps {
-  autoComplete: string
-  error?: string
-  id: keyof SignupFormValues
-  helpText?: string
-  label: string
-  onChange: (value: string) => void
-  type?: 'email' | 'text'
-  value: string
-}
-
-function Field({
-  autoComplete,
-  error,
-  id,
-  helpText,
-  label,
-  onChange,
-  type = 'text',
-  value,
-}: FieldProps) {
-  const errorId = `${id}-error`
-  const helpId = `${id}-help`
-
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor={id}>
-        {label}
-      </label>
-      <input
-        aria-describedby={error ? errorId : helpText ? helpId : undefined}
-        aria-invalid={error ? true : undefined}
-        autoComplete={autoComplete}
-        className="min-h-12 w-full rounded-[10px] border border-slate-900/14 bg-white px-3.5 py-2.5 text-slate-950 shadow-inner shadow-slate-950/3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
-        id={id}
-        name={id}
-        onChange={(event) => onChange(event.target.value)}
-        type={type}
-        value={value}
-      />
-      {helpText && !error ? (
-        <p className="mt-1.5 text-sm text-slate-500" id={helpId}>
-          {helpText}
-        </p>
-      ) : null}
-      {error ? (
-        <p className="mt-1.5 text-sm text-red-700" id={errorId} role="alert">
-          {error}
-        </p>
-      ) : null}
-    </div>
+    </AuthPanel>
   )
 }

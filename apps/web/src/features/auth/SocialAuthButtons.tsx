@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { Button } from '../../components/ui/Button'
 import {
   loginWithSocialProvider,
   type SocialProvider,
@@ -40,12 +41,13 @@ export function SocialAuthButtons({
     <div>
       <div>
         {providers.map(({ label, provider }) => (
-          <button
-            className="flex min-h-12 w-full items-center justify-center gap-2.5 rounded-[10px] border border-slate-900/14 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-900/25 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          <Button
+            className="w-full gap-2.5"
             disabled={disabled || activeProvider !== null}
             key={provider}
             onClick={() => void continueWith(provider)}
-            type="button"
+            size="lg"
+            variant="secondary"
           >
             {activeProvider === provider ? (
               <LoadingSpinner size="sm" />
@@ -53,7 +55,7 @@ export function SocialAuthButtons({
               <GoogleMark />
             )}
             <span>{activeProvider === provider ? 'Connecting…' : label}</span>
-          </button>
+          </Button>
         ))}
       </div>
       {error ? (

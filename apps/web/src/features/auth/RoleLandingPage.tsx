@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { buttonClassName } from '../../components/ui/button-styles'
+import { AuthPanel } from './AuthPanel'
 import { useAuth } from './auth-context'
 import { getDestinationForRole, getSafeRedirect } from './redirect'
 
@@ -38,10 +40,10 @@ export function RoleLandingPage() {
   }, [navigate, requestedDestination, session])
 
   if (error) {
-    return <section className="w-full max-w-md rounded-[18px] border border-slate-900/8 bg-white p-8 text-center text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)]"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Workspace unavailable</p><h1 className="mt-3 text-2xl font-semibold">We could not open your workspace</h1><p className="mt-3 text-slate-600">Please try again. Your account remains signed in.</p><Link className="mt-6 inline-flex min-h-11 items-center font-semibold text-blue-700" to="/">Return home</Link></section>
+    return <AuthPanel className="text-center"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Workspace unavailable</p><h1 className="mt-3 text-2xl font-semibold">We could not open your workspace</h1><p className="mt-3 text-slate-600">Please try again. Your account remains signed in.</p><Link className={buttonClassName({ className: 'mt-6 w-full', variant: 'secondary' })} to="/">Return home</Link></AuthPanel>
   }
 
-  return <section className="text-center text-slate-950" role="status"><LoadingSpinner className="mx-auto text-blue-600" size="lg" /><h1 className="mt-5 text-xl font-semibold">Preparing your workspace</h1><p className="mt-2 text-sm text-slate-600">You’ll be taken to the right portal automatically.</p></section>
+  return <AuthPanel className="text-center"><div role="status"><LoadingSpinner className="mx-auto text-blue-600" size="lg" /><h1 className="mt-5 text-xl font-semibold">Preparing your workspace</h1><p className="mt-2 text-sm text-slate-600">You’ll be taken to the right portal automatically.</p></div></AuthPanel>
 }
 
 function isPortalResponse(value: unknown): value is { role: AccountRole; destination: string } {

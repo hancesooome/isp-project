@@ -1,9 +1,10 @@
-import { type FormEvent, useEffect, useState, type ReactNode } from 'react'
-import { KeyRound, LogOut } from 'lucide-react'
+import { type FormEvent, useEffect, useState } from 'react'
+import { KeyRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { supabase } from '../../lib/supabase'
+import { AdminSecurityLoading, AdminSecurityPanel, AdminSecuritySignOut } from './AdminSecurityPanel'
 import { fetchAdminMfaStatus } from './admin-mfa'
 import { useAuth } from './auth-context'
 
@@ -83,15 +84,15 @@ export function AdminMfaChallengePage() {
   }
 
   if (state === 'checking') {
-    return <div className="flex items-center gap-3 text-slate-300" role="status"><LoadingSpinner className="text-blue-400" size="md" /><span>Checking admin security...</span></div>
+    return <AdminSecurityLoading label="Checking admin security..." />
   }
 
   if (state === 'error') {
-    return <SecurityPanel><h1 className="text-2xl font-semibold text-white">Security check unavailable</h1><p className="mt-3 text-slate-300">We could not verify this administrator session. Please sign out and try again.</p><SignOutButton onClick={() => void signOut()} /></SecurityPanel>
+    return <AdminSecurityPanel><h1 className="text-2xl font-semibold text-white">Security check unavailable</h1><p className="mt-3 text-slate-300">We could not verify this administrator session. Please sign out and try again.</p><AdminSecuritySignOut onClick={() => void signOut()} /></AdminSecurityPanel>
   }
 
   return (
-    <SecurityPanel>
+    <AdminSecurityPanel>
       <div className="flex items-start gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-[10px] border border-blue-400/20 bg-blue-400/10 text-blue-300"><KeyRound aria-hidden="true" size={21} /></span>
         <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-300">Administrator security</p><h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-white">Verify it’s you</h1></div>
@@ -103,15 +104,7 @@ export function AdminMfaChallengePage() {
         {message ? <p className="mt-3 rounded-[10px] border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200" role="alert">{message}</p> : null}
         <button className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-blue-600 px-5 font-semibold text-white hover:bg-blue-500 disabled:opacity-60" disabled={state === 'verifying'} type="submit">{state === 'verifying' ? <><LoadingSpinner size="sm" /> Verifying...</> : 'Verify and continue'}</button>
       </form>
-      <SignOutButton onClick={() => void signOut()} />
-    </SecurityPanel>
+      <AdminSecuritySignOut onClick={() => void signOut()} />
+    </AdminSecurityPanel>
   )
-}
-
-function SecurityPanel({ children }: { children: ReactNode }) {
-  return <section className="mx-auto w-full max-w-lg rounded-[18px] border border-white/10 bg-[#11161f] p-7 text-slate-100 shadow-2xl sm:p-9">{children}</section>
-}
-
-function SignOutButton({ onClick }: { onClick: () => void }) {
-  return <button className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 text-sm font-medium text-slate-400 hover:text-white" onClick={onClick} type="button"><LogOut aria-hidden="true" size={17} /> Sign out</button>
 }

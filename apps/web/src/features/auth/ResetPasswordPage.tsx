@@ -4,7 +4,10 @@ import { Link } from 'react-router-dom'
 import { z } from 'zod'
 
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { Button } from '../../components/ui/Button'
+import { buttonClassName } from '../../components/ui/button-styles'
 import { supabase } from '../../lib/supabase'
+import { AuthPanel } from './AuthPanel'
 import { useAuth } from './auth-context'
 import { PasswordField } from './PasswordField'
 import { newPasswordSchema, PASSWORD_HELP_TEXT } from './password-policy'
@@ -64,15 +67,15 @@ export function ResetPasswordPage() {
   }
 
   if (complete) {
-    return <Panel><CheckCircle2 aria-hidden="true" className="text-emerald-600" size={42} /><p className="mt-6 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Password updated</p><h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Your password has been reset</h1><p className="mt-4 leading-7 text-slate-600" role="status">Sign in again with your new password. Administrator accounts will still be asked for their authenticator code.</p><Link className="public-primary-button mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-[10px] px-4 py-3 font-semibold text-white" to="/login">Return to sign in</Link></Panel>
+    return <AuthPanel><CheckCircle2 aria-hidden="true" className="text-emerald-600" size={42} /><p className="mt-6 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Password updated</p><h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Your password has been reset</h1><p className="mt-4 leading-7 text-slate-600" role="status">Sign in again with your new password. Administrator accounts will still be asked for their authenticator code.</p><Link className={buttonClassName({ className: 'mt-7 w-full', size: 'lg' })} to="/login">Return to sign in</Link></AuthPanel>
   }
 
   if (!session || !isPasswordRecovery) {
-    return <Panel><p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Recovery link unavailable</p><h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">This link is invalid or expired</h1><p className="mt-4 leading-7 text-slate-600">Request a new password reset email. For security, recovery links cannot be reused.</p><Link className="public-primary-button mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-[10px] px-4 py-3 font-semibold text-white" to="/forgot-password">Request another link</Link><Link className="mt-4 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-blue-700" to="/login">Return to sign in</Link></Panel>
+    return <AuthPanel><p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Recovery link unavailable</p><h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">This link is invalid or expired</h1><p className="mt-4 leading-7 text-slate-600">Request a new password reset email. For security, recovery links cannot be reused.</p><Link className={buttonClassName({ className: 'mt-7 w-full', size: 'lg' })} to="/forgot-password">Request another link</Link><Link className={buttonClassName({ className: 'mt-3 w-full', variant: 'tertiary' })} to="/login">Return to sign in</Link></AuthPanel>
   }
 
   return (
-    <Panel>
+    <AuthPanel>
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">Account recovery</p>
       <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Choose a new password</h1>
       <p className="mt-2 leading-7 text-slate-600">Choose a long password or passphrase you do not use elsewhere.</p>
@@ -80,12 +83,8 @@ export function ResetPasswordPage() {
         <PasswordField error={fieldErrors.password} helpText={PASSWORD_HELP_TEXT} id="new-password" label="New password" onChange={(value) => { setPassword(value); setFieldErrors({}); setRequestError(null) }} value={password} />
         <PasswordField error={fieldErrors.confirmation} id="confirm-new-password" label="Confirm new password" onChange={(value) => { setConfirmation(value); setFieldErrors({}); setRequestError(null) }} value={confirmation} />
         {requestError ? <p className="rounded-[10px] border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{requestError}</p> : null}
-        <button className="public-primary-button flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white disabled:opacity-60" disabled={submitting} type="submit">{submitting ? <><LoadingSpinner size="sm" /> Updating password...</> : 'Reset password'}</button>
+        <Button className="w-full" disabled={submitting} size="lg" type="submit">{submitting ? <><LoadingSpinner size="sm" /> Updating password...</> : 'Reset password'}</Button>
       </form>
-    </Panel>
+    </AuthPanel>
   )
-}
-
-function Panel({ children }: { children: React.ReactNode }) {
-  return <section className="w-full max-w-md rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">{children}</section>
 }
