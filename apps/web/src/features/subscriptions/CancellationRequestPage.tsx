@@ -4,7 +4,9 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { Button } from '../../components/ui/Button'
 import { useAuth } from '../auth/auth-context'
+import { CustomerPageHeader } from '../account/CustomerPageHeader'
 
 type CancellationStatus = 'pending' | 'approved' | 'rejected' | 'scheduled' | 'completed' | 'withdrawn'
 
@@ -108,7 +110,7 @@ export function CancellationRequestPage() {
   if (subscription === undefined || request === undefined) return <PageSkeleton type="detail" />
   if (!subscription) {
     if (!request) return <EmptyState description="An active, past-due, or suspended subscription is required." title="No eligible service" />
-    return <section className="w-full max-w-3xl"><header><p className="text-xs font-semibold tracking-[0.14em] text-blue-700 uppercase">Service request</p><h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl">Cancel internet service</h1><p className="mt-3 text-slate-600">Review the latest cancellation request associated with your account.</p></header><RequestStatus request={request} /></section>
+    return <section className="w-full max-w-3xl"><CustomerPageHeader description="Review the latest cancellation request associated with your account." eyebrow="Service request" title="Cancel internet service" /><RequestStatus request={request} /></section>
   }
 
   const hasOpenRequest = request ? openStatuses.includes(request.status) : false
@@ -116,11 +118,7 @@ export function CancellationRequestPage() {
 
   return (
     <section className="w-full max-w-3xl">
-      <header>
-        <p className="text-xs font-semibold tracking-[0.14em] text-blue-700 uppercase">Service request</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl">Cancel internet service</h1>
-        <p className="mt-3 max-w-2xl leading-7 text-slate-600">Request a review of your service cancellation. Submitting this form does not immediately terminate service.</p>
-      </header>
+      <CustomerPageHeader description="Request a review of your service cancellation. Submitting this form does not immediately terminate service." eyebrow="Service request" title="Cancel internet service" />
 
       {request ? <RequestStatus request={request} /> : null}
 
@@ -152,7 +150,7 @@ export function CancellationRequestPage() {
           </label>
 
           {submitError ? <p className="mt-4 text-sm text-red-700" role="alert">{submitError}</p> : null}
-          <button className="mt-6 min-h-12 w-full rounded-[10px] bg-red-700 px-5 font-semibold text-white shadow-sm hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-45" disabled={isSubmitting || reason.trim().length < 3 || !acknowledged} type="submit">{isSubmitting ? 'Submitting…' : 'Submit cancellation request'}</button>
+          <Button className="mt-6 w-full" disabled={isSubmitting || reason.trim().length < 3 || !acknowledged} size="lg" type="submit" variant="danger">{isSubmitting ? 'Submitting…' : 'Submit cancellation request'}</Button>
         </form>
       ) : null}
     </section>

@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 import { z, type ZodError } from 'zod'
 
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -7,7 +8,10 @@ import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { Button } from '../../components/ui/Button'
+import { buttonClassName } from '../../components/ui/button-styles'
 import { useAuth } from '../auth/auth-context'
+import { CustomerPageHeader } from '../account/CustomerPageHeader'
 
 interface SupportTicket {
   id: string
@@ -233,17 +237,7 @@ export function SupportTicketsPage() {
 
   return (
     <section className="w-full max-w-6xl">
-      <header>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">
-          Customer support
-        </p>
-        <h1 className="mt-3 text-3xl font-bold tracking-[-0.03em] text-slate-950 sm:text-4xl">
-          How can we help?
-        </h1>
-        <p className="mt-2 max-w-2xl text-slate-600">
-          Send us the details and track your support requests from one place.
-        </p>
-      </header>
+      <CustomerPageHeader description="Send us the details and track your support requests from one place." eyebrow="Customer support" title="How can we help?" />
 
       <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
         <form
@@ -314,13 +308,13 @@ export function SupportTicketsPage() {
             </p>
           ) : null}
 
-          <button
-            className="mt-6 flex min-h-11 w-full items-center justify-center gap-2 rounded-[10px] bg-[linear-gradient(90deg,#172033,#315fca)] px-4 font-semibold text-white shadow-sm transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          <Button
+            className="mt-6 w-full"
             disabled={isSubmitting}
             type="submit"
           >
             {isSubmitting ? <><LoadingSpinner /><span>Creating ticket...</span></> : 'Submit ticket'}
-          </button>
+          </Button>
         </form>
 
         <div>
@@ -342,9 +336,9 @@ export function SupportTicketsPage() {
               title="No support tickets yet"
             />
           ) : (
-            <div className="space-y-3">
+            <div className="overflow-hidden rounded-[18px] border border-slate-900/8 bg-white shadow-[0_16px_45px_rgba(15,23,42,0.05)]">
               {tickets.map((ticket) => (
-                <article className="rounded-[16px] border border-slate-900/10 bg-white/85 p-5 shadow-[0_10px_30px_rgba(15,23,42,0.05)]" key={ticket.id}>
+                <article className="border-b border-slate-900/8 p-5 last:border-b-0" key={ticket.id}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-xs font-semibold tracking-[0.12em] text-slate-500 uppercase">
@@ -357,8 +351,8 @@ export function SupportTicketsPage() {
                   </div>
                   <p className="mt-4 line-clamp-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{ticket.description}</p>
                   <div className="mt-4 border-t border-slate-900/8 pt-4">
-                    <Link className="font-semibold text-blue-600 transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to={`/account/support/${encodeURIComponent(ticket.id)}`}>
-                      Open ticket &rarr;
+                    <Link className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-blue-700 transition hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to={`/account/support/${encodeURIComponent(ticket.id)}`}>
+                      Open ticket <ArrowRight aria-hidden="true" size={16} />
                     </Link>
                   </div>
                 </article>
@@ -478,7 +472,7 @@ export function SupportTicketDetailsPage({ ticketId }: { ticketId: string }) {
   if (ticket === null) {
     return (
       <EmptyState
-        action={<Link className="font-semibold text-blue-600 hover:text-blue-500" to="/account/support">&larr; Back to support</Link>}
+        action={<Link className={buttonClassName({ variant: 'secondary' })} to="/account/support">&larr; Back to support</Link>}
         description="This ticket does not exist or is not available to your account."
         title="Ticket not found"
       />
@@ -487,14 +481,15 @@ export function SupportTicketDetailsPage({ ticketId }: { ticketId: string }) {
 
   return (
     <section className="w-full max-w-3xl">
-      <Link className="text-sm font-semibold text-blue-600 hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/support">
+      <Link className="mb-5 inline-flex min-h-11 items-center text-sm font-semibold text-slate-600 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" to="/account/support">
         &larr; Back to support
       </Link>
-      <article className="mt-6 rounded-[18px] border border-slate-900/10 bg-white/85 p-6 shadow-[0_16px_45px_rgba(15,23,42,0.07)] sm:p-8">
+      <CustomerPageHeader description={`Support ticket #${ticket.id.slice(0, 8).toUpperCase()}`} eyebrow="Customer support" title={ticket.subject} />
+      <article className="mt-8 rounded-[18px] border border-slate-900/10 bg-white/85 p-6 shadow-[0_16px_45px_rgba(15,23,42,0.07)] sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold tracking-[0.14em] text-blue-600 uppercase">Support ticket #{ticket.id.slice(0, 8).toUpperCase()}</p>
-            <h1 className="mt-3 break-words text-3xl font-bold tracking-[-0.03em] text-slate-950">{ticket.subject}</h1>
+            <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">Ticket status</p>
+            <p className="mt-2 text-sm text-slate-600">Updates and replies from your conversation</p>
           </div>
           <StatusBadge status={ticket.status} />
         </div>
@@ -562,13 +557,12 @@ export function SupportTicketDetailsPage({ ticketId }: { ticketId: string }) {
                 <div>
                   {replyError ? <p className="text-sm font-medium text-red-700" id="support-reply-error" role="alert">{replyError}</p> : null}
                 </div>
-                <button
-                  className="min-h-11 rounded-[12px] bg-[linear-gradient(135deg,#0f172a_0%,#172554_65%,#4f46e5_100%)] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(30,41,59,0.18)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                <Button
                   disabled={isReplying}
                   type="submit"
                 >
                   {isReplying ? 'Sending...' : 'Send reply'}
-                </button>
+                </Button>
               </div>
             </form>
           ) : (
