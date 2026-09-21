@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Search } from 'lucide-react'
 
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
@@ -8,6 +8,7 @@ import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { moneyFormatter as currencyFormatter } from '../../lib/money'
 import { useAuth } from '../auth/auth-context'
+import { AdminPageHeader } from './AdminPageHeader'
 
 interface AdminCustomerSummary {
   id: string
@@ -165,6 +166,7 @@ export function AdminCustomersPage() {
   const { session } = useAuth()
   const [customers, setCustomers] = useState<AdminCustomerSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     if (!session) return
@@ -202,9 +204,23 @@ export function AdminCustomersPage() {
     return () => controller.abort()
   }, [session])
 
+  const normalizedSearch = searchQuery.trim().toLowerCase()
+  const filteredCustomers = customers?.filter((customer) =>
+    normalizedSearch.length === 0 ||
+    customer.full_name?.toLowerCase().includes(normalizedSearch) ||
+    customer.customer_profile?.phone?.toLowerCase().includes(normalizedSearch),
+  ) ?? []
+
   return (
     <section className="w-full max-w-6xl">
-      <PageHeader
+      <AdminPageHeader
+        actions={customers && customers.length > 0 ? (
+          <div className="relative w-full lg:w-80">
+            <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-slate-500" size={18} />
+            <label className="sr-only" htmlFor="customer-search">Search customers</label>
+            <input className="min-h-12 w-full rounded-[10px] border border-white/10 bg-[#0d121a] py-3 pr-4 pl-11 text-sm text-white outline-none transition placeholder:text-slate-500 hover:border-white/15 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20" id="customer-search" onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search name or phone..." type="search" value={searchQuery} />
+          </div>
+        ) : null}
         description="View customer contact and account information."
         title="Customers"
       />
@@ -224,8 +240,8 @@ export function AdminCustomersPage() {
             <div className="hidden grid-cols-[1.4fr_1fr_auto] gap-4 border-b border-white/8 px-5 py-3 text-[10px] font-semibold tracking-[0.12em] text-slate-500 uppercase sm:grid">
               <span>Customer</span><span>Phone</span><span>Account</span>
             </div>
-            <ul className="divide-y divide-white/8" role="list">
-              {customers.map((customer) => (
+            {filteredCustomers.length === 0 ? <div className="px-5 py-14 text-center"><p className="text-sm font-medium text-slate-200">No matching customers</p><p className="mt-1 text-sm text-slate-500">Try another name or phone number.</p></div> : <ul className="divide-y divide-white/8" role="list">
+              {filteredCustomers.map((customer) => (
                 <li className="grid gap-3 px-5 py-4 sm:grid-cols-[1.4fr_1fr_auto] sm:items-center" key={customer.id}>
                   <div>
                     <p className="font-semibold text-white">{customer.full_name ?? 'Name unavailable'}</p>
@@ -240,7 +256,7 @@ export function AdminCustomersPage() {
                   </Link>
                 </li>
               ))}
-            </ul>
+            </ul>}
           </div>
         )}
       </div>
@@ -304,8 +320,8 @@ export function AdminCustomerDetailsPage({ customerId }: { customerId: string })
   return (
     <section className="w-full max-w-6xl">
       <Link className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-300 hover:text-blue-200" to="/admin/customers"><ArrowLeft aria-hidden="true" size={16} /> Back to customers</Link>
-      <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
-        <PageHeader
+      <div className="mt-5">
+        <AdminPageHeader
           description={customer.email ?? 'No email address available'}
           title={customer.full_name ?? 'Unnamed customer'}
         />
@@ -379,16 +395,6 @@ export function AdminCustomerDetailsPage({ customerId }: { customerId: string })
         </div>
       </div>
     </section>
-  )
-}
-
-function PageHeader({ description, title }: { description: string; title: string }) {
-  return (
-    <header>
-      <p className="text-xs font-semibold tracking-[0.18em] text-blue-400 uppercase">Admin portal</p>
-      <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-white">{title}</h1>
-      <p className="mt-2 text-sm text-slate-400">{description}</p>
-    </header>
   )
 }
 

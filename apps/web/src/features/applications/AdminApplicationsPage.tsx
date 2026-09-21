@@ -7,6 +7,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { AdminPageHeader } from '../admin/AdminPageHeader'
 
 interface AdminApplication {
   id: string
@@ -146,20 +147,8 @@ export function AdminApplicationsPage() {
 
   return (
     <section className="w-full max-w-7xl">
-      <header className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-400">
-            Admin
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-white sm:text-4xl">
-            Service applications
-          </h1>
-          <p className="mt-2 text-sm text-slate-400 sm:text-base">
-            Review and manage customer service applications.
-          </p>
-        </div>
-
-        {applications && applications.length > 0 ? (
+      <AdminPageHeader
+        actions={applications && applications.length > 0 ? (
           <div className="relative w-full lg:max-w-sm">
             <label className="sr-only" htmlFor="applicationSearch">
               Search applications
@@ -175,7 +164,10 @@ export function AdminApplicationsPage() {
             />
           </div>
         ) : null}
-      </header>
+        description="Review and manage customer service applications."
+        eyebrow="Admin"
+        title="Service applications"
+      />
 
       <div className="mt-7">
         {error ? (

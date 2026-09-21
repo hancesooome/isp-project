@@ -7,6 +7,7 @@ import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { AdminPageHeader } from '../admin/AdminPageHeader'
 
 interface AdminApplicationDetail {
   id: string
@@ -298,22 +299,14 @@ export function AdminApplicationReviewPage({
   return (
     <section className="w-full max-w-6xl">
       <BackLink />
-      <header className="mt-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-400">
-          Application review
-        </p>
-        <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-[-0.02em] text-white sm:text-4xl">
-              Service application
-            </h1>
-            <p className="mt-2 text-sm text-slate-400 sm:text-base">
-              Submitted {dateFormatter.format(new Date(application.submitted_at))}
-            </p>
-          </div>
-          <StatusBadge className="mt-1" status={application.status} />
-        </div>
-      </header>
+      <div className="mt-5">
+        <AdminPageHeader
+          actions={<StatusBadge status={application.status} />}
+          description={`Submitted ${dateFormatter.format(new Date(application.submitted_at))}`}
+          eyebrow="Application review"
+          title="Service application"
+        />
+      </div>
 
       <div className="mt-7 overflow-hidden rounded-[14px] border border-white/8 bg-[#11161f] shadow-[0_12px_35px_rgba(0,0,0,0.16)]">
         <div className="grid lg:grid-cols-2">
