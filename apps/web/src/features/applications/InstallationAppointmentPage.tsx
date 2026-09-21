@@ -4,7 +4,10 @@ import { Link } from 'react-router-dom'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
+import { buttonClassName } from '../../components/ui/button-styles'
 import { useAuth } from '../auth/auth-context'
+import { CustomerPageHeader } from '../account/CustomerPageHeader'
+import { CustomerServiceProgress } from './CustomerServiceProgress'
 
 type InstallationStatus =
   | 'pending_scheduling'
@@ -141,20 +144,20 @@ export function InstallationAppointmentPage() {
 
   if (error) return <ErrorPanel message={error} title="Installation unavailable" />
   if (installation === undefined) return <PageSkeleton type="detail" />
-  if (installation === null) return <EmptyState action={<Link className="inline-flex min-h-11 items-center rounded-[10px] bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800" to="/account/application">View application status</Link>} description="An installation order will appear after your service application is approved." title="No installation appointment yet" />
+  if (installation === null) return <EmptyState action={<Link className={buttonClassName()} to="/account/application">View application status</Link>} description="An installation order will appear after your service application is approved." title="No installation appointment yet" />
 
   const content = statusContent[installation.status]
   const hasAppointment = installation.scheduled_start_at && installation.scheduled_end_at
 
   return (
     <section className="w-full max-w-4xl">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">My internet</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-slate-950 sm:text-4xl">Installation appointment</h1>
-        <p className="mt-2 text-sm text-slate-600 sm:text-base">Follow the progress of your new service installation.</p>
-      </header>
+      <CustomerPageHeader description="Follow the progress of your new service installation." eyebrow="My internet" title="Installation appointment" />
 
-      <div className="mt-7 overflow-hidden rounded-[18px] border border-slate-900/10 bg-white shadow-[0_18px_50px_rgba(18,25,38,0.08)]">
+      <div className="mt-8 rounded-[18px] border border-slate-900/8 bg-white p-5 shadow-[0_18px_50px_rgba(18,25,38,0.06)] sm:p-7">
+        <CustomerServiceProgress current={installation.status === 'completed' ? 'activation' : 'installation'} />
+      </div>
+
+      <div className="mt-6 overflow-hidden rounded-[18px] border border-slate-900/10 bg-white shadow-[0_18px_50px_rgba(18,25,38,0.08)]">
         <div className="border-b border-slate-900/8 p-6 sm:p-8">
           <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${content.tone}`}>{content.label}</span>
           <h2 className="mt-4 text-xl font-semibold tracking-[-0.02em] text-slate-950 sm:text-2xl">{content.title}</h2>

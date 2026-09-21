@@ -5,6 +5,8 @@ import type { ZodError } from 'zod'
 
 import { useAuth } from '../auth/auth-context'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { Button } from '../../components/ui/Button'
+import { buttonClassName } from '../../components/ui/button-styles'
 import {
   applicationSchema,
   type ApplicationFormValues,
@@ -12,6 +14,8 @@ import {
 import { PhilippineLocationFields } from './PhilippineLocationFields'
 import { InstallationLocationMap } from './InstallationLocationMap'
 import { loadAvailabilityContext } from '../availability/availability-context'
+import { CustomerPageHeader } from '../account/CustomerPageHeader'
+import { CustomerServiceProgress } from './CustomerServiceProgress'
 
 interface PlanOption {
   id: string
@@ -235,16 +239,14 @@ export function ServiceApplicationForm({ customerView = false }: { customerView?
 
   if (isSubmitted) {
     return (
-      <section className="w-full max-w-xl rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
-          Application received
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Thank you</h1>
-        <p className="mt-4 text-slate-600" role="status">
-          Your service application was submitted for review.
-        </p>
+      <section className="w-full max-w-2xl">
+        <CustomerPageHeader description="Your service application was submitted for review." eyebrow="Application received" title="Thank you" />
+        <div className="mt-8 rounded-[18px] border border-slate-900/8 bg-white p-5 shadow-[0_18px_50px_rgba(18,25,38,0.06)] sm:p-7" role="status">
+          <CustomerServiceProgress current="application" />
+          <p className="mt-6 border-t border-slate-900/8 pt-5 text-sm leading-6 text-slate-600">We’ll update your application status after it has been reviewed.</p>
+        </div>
         <Link
-          className="mt-6 inline-flex min-h-11 items-center font-semibold text-blue-700 transition hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className={buttonClassName({ className: 'mt-6' })}
           to="/account/application"
         >
           View application status
@@ -254,28 +256,26 @@ export function ServiceApplicationForm({ customerView = false }: { customerView?
   }
 
   return (
-    <section className="w-full max-w-2xl rounded-[18px] border border-slate-900/8 bg-white p-7 text-slate-950 shadow-[0_18px_50px_rgba(18,25,38,0.1)] sm:p-9">
+    <section className="w-full max-w-3xl">
       <Link
         className="mb-7 inline-flex min-h-11 items-center text-sm font-medium text-slate-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         to={customerView ? '/account' : '/'}
       >
         <ArrowLeft aria-hidden="true" size={16} /> {customerView ? 'Back to overview' : 'Back to home'}
       </Link>
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">
-        Service application
-      </p>
-      <h1
-        className="mt-3 scroll-mt-24 text-3xl font-semibold tracking-[-0.035em] text-slate-950 outline-none"
-        ref={applicationHeadingRef}
-        tabIndex={-1}
-      >
-        Apply for internet service
-      </h1>
-      <p className="mt-3 leading-7 text-slate-600">
-        Confirm your plan and provide the addresses needed for installation.
-      </p>
+      <CustomerPageHeader
+        description="Confirm your plan and provide the addresses needed for installation."
+        eyebrow="Service application"
+        title="Apply for internet service"
+        titleRef={applicationHeadingRef}
+        titleTabIndex={-1}
+      />
 
-      <form className="mt-8 space-y-5" noValidate onSubmit={handleSubmit}>
+      <div className="mt-8 rounded-[18px] border border-slate-900/8 bg-white p-5 shadow-[0_18px_50px_rgba(18,25,38,0.06)] sm:p-7">
+        <CustomerServiceProgress current="application" />
+      </div>
+
+      <form className="mt-6 space-y-5 rounded-[18px] border border-slate-900/8 bg-white p-6 shadow-[0_18px_50px_rgba(18,25,38,0.06)] sm:p-8" noValidate onSubmit={handleSubmit}>
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="planId">
             Internet plan
@@ -439,9 +439,10 @@ export function ServiceApplicationForm({ customerView = false }: { customerView?
           </p>
         ) : null}
 
-        <button
-          className="public-primary-button flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 font-semibold text-white shadow-lg shadow-blue-950/15 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        <Button
+          className="w-full"
           disabled={isSubmitting || plans === null || plansError !== null}
+          size="lg"
           type="submit"
         >
           {isSubmitting ? (
@@ -452,7 +453,7 @@ export function ServiceApplicationForm({ customerView = false }: { customerView?
           ) : (
             <span>Submit application</span>
           )}
-        </button>
+        </Button>
       </form>
     </section>
   )

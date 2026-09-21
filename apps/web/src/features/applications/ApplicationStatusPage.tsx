@@ -6,6 +6,9 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { buttonClassName } from '../../components/ui/button-styles'
+import { CustomerPageHeader } from '../account/CustomerPageHeader'
+import { CustomerServiceProgress } from './CustomerServiceProgress'
 
 interface CustomerApplication {
   id: string
@@ -108,7 +111,7 @@ export function ApplicationStatusPage() {
       <EmptyState
         action={
           <Link
-            className="inline-block rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+            className={buttonClassName()}
             to="/plans"
           >
             View plans
@@ -121,39 +124,35 @@ export function ApplicationStatusPage() {
   }
 
   return (
-    <section className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
-      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
-        Service application
-      </p>
-      <h1 className="mt-3 text-3xl font-bold text-white">
-        Application status
-      </h1>
+    <section className="w-full max-w-4xl">
+      <CustomerPageHeader
+        description="Track your application review and see what happens next."
+        eyebrow="Service application"
+        title="Application status"
+      />
 
-      <div className="mt-8 space-y-5">
-        <div>
-          <p className="text-sm text-slate-400">Status</p>
-          <div className="mt-2">
-            <StatusBadge status={application.status} />
+      <div className="mt-8 rounded-[18px] border border-slate-900/8 bg-white p-5 shadow-[0_18px_50px_rgba(18,25,38,0.06)] sm:p-7">
+        <CustomerServiceProgress current={application.status === 'approved' ? 'installation' : 'application'} />
+      </div>
+
+      <div className="mt-6 overflow-hidden rounded-[18px] border border-slate-900/8 bg-white shadow-[0_18px_50px_rgba(18,25,38,0.06)]">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-900/8 p-6 sm:p-7">
+          <div>
+            <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">Selected plan</p>
+            <h2 className="mt-2 text-xl font-semibold text-slate-950">{application.plan?.name ?? 'Plan unavailable'}</h2>
           </div>
+          <StatusBadge status={application.status} />
         </div>
-        <div>
-          <p className="text-sm text-slate-400">Selected plan</p>
-          <p className="mt-1 font-semibold text-white">
-            {application.plan?.name ?? 'Plan unavailable'}
-          </p>
-        </div>
-        <div>
-          <p className="text-sm text-slate-400">Submitted</p>
-          <p className="mt-1 text-white">
-            {dateFormatter.format(new Date(application.submitted_at))}
-          </p>
-        </div>
+        <dl className="p-6 sm:p-7">
+          <dt className="text-xs text-slate-500">Submitted</dt>
+          <dd className="mt-1 font-medium text-slate-900">{dateFormatter.format(new Date(application.submitted_at))}</dd>
+        </dl>
         {application.status === 'rejected' && application.rejection_reason ? (
-          <div className="rounded-xl border border-red-900 bg-red-950/40 p-4">
-            <p className="text-sm font-semibold text-red-200">
+          <div className="border-t border-red-200 bg-red-50 p-6 sm:p-7">
+            <p className="text-sm font-semibold text-red-900">
               Rejection reason
             </p>
-            <p className="mt-2 text-red-100">{application.rejection_reason}</p>
+            <p className="mt-2 text-sm leading-6 text-red-800">{application.rejection_reason}</p>
           </div>
         ) : null}
       </div>
