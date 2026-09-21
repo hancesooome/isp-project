@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
+import { lightUtilityButtonClass } from '../../components/ui/utility-button-styles'
 import { useAuth } from '../auth/auth-context'
 
 interface Notification {
@@ -124,7 +125,7 @@ export function CustomerNotificationBell({ refreshKey }: { refreshKey: string })
 
   return (
     <details className="group relative">
-      <summary className="relative grid size-11 cursor-pointer list-none place-items-center rounded-full border border-slate-900/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(238,241,247,0.76))] text-slate-700 shadow-[0_4px_14px_rgba(16,24,40,0.06)] transition hover:border-slate-900/15 hover:bg-white hover:text-blue-700 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" title="Notifications">
+      <summary className={`${lightUtilityButtonClass} relative cursor-pointer list-none`} title="Notifications">
         <Bell aria-hidden="true" size={18} strokeWidth={1.8} />
         <span className="sr-only">Open notifications{feed?.unread_count ? `, ${feed.unread_count} unread` : ''}</span>
         {feed?.unread_count ? <span className="absolute -top-0.5 -right-0.5 grid min-h-4 min-w-4 place-items-center rounded-full border border-white bg-blue-600 px-1 text-[9px] font-bold text-white">{feed.unread_count > 99 ? '99+' : feed.unread_count}</span> : null}

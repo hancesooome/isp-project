@@ -3,6 +3,9 @@ import { CircleHelp, ClipboardList, FileText, History, House, LogOut, MessageCir
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { BrandLogo } from '../../components/ui/BrandLogo'
+import { buttonClassName } from '../../components/ui/button-styles'
+import { PageSkeleton } from '../../components/ui/PageSkeleton'
+import { lightUtilityButtonClass } from '../../components/ui/utility-button-styles'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/auth-context'
 import { CustomerNotificationBell } from '../notifications/CustomerNotifications'
@@ -16,13 +19,13 @@ interface CustomerEntitlements { accessLevel: CustomerAccessLevel; capabilities:
 const navItems = [
   { label: 'Overview', shortLabel: 'Overview', to: '/account', end: true, icon: 'overview', capability: 'overview' },
   { label: 'Get connected', shortLabel: 'Apply', to: '/account/apply', end: false, icon: 'apply', capability: 'apply' },
-  { label: 'Application Status', shortLabel: 'Application', to: '/account/application', end: false, icon: 'application', capability: 'application' },
+  { label: 'Application status', shortLabel: 'Application', to: '/account/application', end: false, icon: 'application', capability: 'application' },
   { label: 'Installation', shortLabel: 'Install', to: '/account/installation', end: false, icon: 'installation', capability: 'installation' },
   { label: 'Invoices', shortLabel: 'Invoices', to: '/account/invoices', end: false, icon: 'invoices', capability: 'invoices' },
   { label: 'Statements', shortLabel: 'Statements', to: '/account/statements', end: false, icon: 'statements', capability: 'statements' },
-  { label: 'Service History', shortLabel: 'History', to: '/account/service-history', end: false, icon: 'history', capability: 'serviceHistory' },
+  { label: 'Service history', shortLabel: 'History', to: '/account/service-history', end: false, icon: 'history', capability: 'serviceHistory' },
   { label: 'Support', shortLabel: 'Support', to: '/account/support', end: false, icon: 'support', capability: 'support' },
-  { label: 'Help Center', shortLabel: 'Help', to: '/account/help', end: false, icon: 'help', capability: 'support' },
+  { label: 'Help center', shortLabel: 'Help', to: '/account/help', end: false, icon: 'help', capability: 'support' },
 ] as const
 
 const mobileNavPriority: readonly string[] = [
@@ -97,6 +100,7 @@ export function CustomerLayout() {
 
   return (
     <div className="min-h-screen bg-[#f7f8fb] text-[#111318]">
+      <a className="sr-only focus:fixed focus:left-4 focus:top-3 focus:z-[60] focus:rounded-[10px] focus:bg-white focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-slate-950 focus:shadow-lg" href="#customer-content">Skip to account content</a>
       {signOutError ? (
         <p role="alert" className="fixed inset-x-4 top-4 z-50 mx-auto max-w-md rounded-xl border border-red-300 p-4 shadow-lg bg-white text-red-700">
           {signOutError}
@@ -104,11 +108,11 @@ export function CustomerLayout() {
       ) : null}
       <aside
         aria-label="Customer portal navigation"
-        className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-900/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(238,241,247,0.94))] px-3 py-4 text-slate-950 shadow-[8px_0_30px_rgba(2,6,23,0.12)] md:flex"
+        className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-900/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(238,241,247,0.94))] px-3 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-slate-950 shadow-[8px_0_30px_rgba(2,6,23,0.06)] md:flex"
       >
         <div className="flex items-center justify-between gap-2">
           <PortalBrand />
-          <CustomerNotificationBell refreshKey={pathname} />
+          <CustomerNotificationBell key={pathname} refreshKey={pathname} />
         </div>
         <p className="px-3 pt-8 pb-3 text-[11px] font-semibold tracking-[0.14em] text-slate-500 uppercase">
           Customer portal
@@ -122,12 +126,12 @@ export function CustomerLayout() {
       </aside>
 
       <div className="min-h-screen md:pl-64">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-900/8 bg-[rgba(255,255,255,0.82)] px-4 backdrop-blur-xl md:hidden">
+        <header className="sticky top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] items-center justify-between border-b border-slate-900/8 bg-[rgba(255,255,255,0.82)] px-4 pt-[env(safe-area-inset-top)] backdrop-blur-xl md:hidden">
           <PortalBrand compact />
           <div className="flex items-center gap-3">
-            <CustomerNotificationBell refreshKey={pathname} />
+            <CustomerNotificationBell key={pathname} refreshKey={pathname} />
           <details className="group relative">
-            <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-full border border-slate-900/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(238,241,247,0.76))] text-slate-700 shadow-[0_4px_14px_rgba(16,24,40,0.06)] transition hover:border-slate-900/15 hover:bg-white hover:text-slate-950 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" title="Account menu">
+            <summary className={`${lightUtilityButtonClass} cursor-pointer list-none`} title="Account menu">
               <span className="sr-only">Open account menu</span>
               <UserRound aria-hidden="true" size={18} strokeWidth={1.8} />
             </summary>
@@ -151,6 +155,8 @@ export function CustomerLayout() {
         </header>
 
         <main
+          id="customer-content"
+          tabIndex={-1}
           className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(71,118,255,0.07),transparent_28%),linear-gradient(145deg,#ffffff_0%,#f7f8fb_48%,#edf0f5_100%)] px-4 pt-8 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:px-6 md:px-8 md:py-10 lg:px-12"
           onBlurCapture={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsEditingForm(false)
@@ -213,7 +219,7 @@ function PortalNavigation({ items, loading }: { items: typeof navItems[number][]
   return (
     <nav aria-label="Customer portal" className="flex-1">
       <ul className="space-y-1" role="list">
-        {loading ? <li className="px-3 py-4 text-sm text-slate-500" role="status">Loading navigation...</li> : items.map((item) => (
+        {loading ? <li aria-label="Loading customer navigation" className="space-y-2 px-2 py-2" role="status"><span className="sr-only">Loading navigation...</span>{[0, 1, 2, 3].map((item) => <span className="block h-11 animate-pulse rounded-[10px] bg-white/65 motion-reduce:animate-none" key={item} />)}</li> : items.map((item) => (
           <li key={item.to}>
             <NavLink
               className={({ isActive }) =>
@@ -276,11 +282,11 @@ function getRouteCapability(pathname: string): CustomerCapability | null {
 }
 
 function PortalLoading() {
-  return <div className="space-y-4" aria-label="Loading customer access" role="status"><div className="h-10 w-64 animate-pulse rounded-lg bg-slate-200" /><div className="h-48 animate-pulse rounded-[18px] bg-white" /><span className="sr-only">Loading customer access...</span></div>
+  return <PageSkeleton type="detail" />
 }
 
 function UnavailablePage() {
-  return <section className="mx-auto max-w-xl rounded-[18px] border border-slate-900/8 bg-white p-8 text-center shadow-sm"><h1 className="text-2xl font-semibold text-slate-950">This option is not available for your account</h1><p className="mt-3 leading-7 text-slate-600">The available portal sections depend on your current application and internet service status.</p><Link className="mt-6 inline-flex min-h-11 items-center rounded-[10px] bg-slate-950 px-5 text-sm font-semibold text-white" to="/account">Return to overview</Link></section>
+  return <section className="mx-auto max-w-xl rounded-[18px] border border-slate-900/8 bg-white p-8 text-center shadow-sm"><h1 className="text-2xl font-semibold text-slate-950">This option is not available for your account</h1><p className="mt-3 leading-7 text-slate-600">The available portal sections depend on your current application and internet service status.</p><Link className={buttonClassName({ className: 'mt-6', variant: 'secondary' })} to="/account">Return to overview</Link></section>
 }
 
 interface AccountPanelProps {

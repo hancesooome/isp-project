@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
+import { Button } from '../../components/ui/Button'
 import { useAuth } from '../auth/auth-context'
+import { CustomerPageHeader } from '../account/CustomerPageHeader'
 import { moneyFormatter as priceFormatter } from '../../lib/money'
 
 interface Plan {
@@ -127,11 +129,11 @@ export function ChangePlanPage() {
 
   return (
     <section className="w-full">
-      <header>
-        <p className="text-xs font-semibold tracking-[0.14em] text-blue-700 uppercase">Subscription</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl">Change your plan</h1>
-        <p className="mt-3 max-w-2xl leading-7 text-slate-600">Compare plans available at your installation location. Your current service stays unchanged until an approved change takes effect.</p>
-      </header>
+      <CustomerPageHeader
+        description="Compare plans available at your installation location. Your current service stays unchanged until an approved change takes effect."
+        eyebrow="Subscription"
+        title="Change your plan"
+      />
 
       <article className="mt-8 rounded-[16px] border border-blue-200 bg-blue-50 p-6">
         <p className="text-xs font-semibold tracking-[0.1em] text-blue-700 uppercase">Current plan</p>
@@ -150,7 +152,7 @@ export function ChangePlanPage() {
                 <div className="flex items-start justify-between gap-3"><div><span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${plan.change_type === 'upgrade' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{plan.change_type}</span><h3 className="mt-4 text-xl font-semibold text-slate-950">{plan.name}</h3></div><Price plan={plan} /></div>
                 <p className="mt-4 font-medium text-slate-800">{speedLabel(plan)}</p>
                 <p className="mt-2 flex-1 text-sm leading-6 text-slate-600">{plan.description ?? 'Reliable internet service for your home.'}</p>
-                <button className="mt-6 min-h-11 rounded-[10px] border border-slate-900 bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800" onClick={() => { setSelectedPlan(plan); setAcknowledged(false); setConfirmedPlan(null); setEffectiveAt(null); setReason(''); setValidationError(null) }} type="button">Review change</button>
+                <Button className="mt-6 w-full" onClick={() => { setSelectedPlan(plan); setAcknowledged(false); setConfirmedPlan(null); setEffectiveAt(null); setReason(''); setValidationError(null) }}>Review change</Button>
               </article>
             ))}
           </div>
@@ -169,7 +171,7 @@ export function ChangePlanPage() {
             <label className="mt-5 block text-sm font-medium text-slate-700">Reason (optional)<textarea className="mt-2 min-h-24 w-full rounded-[10px] border border-slate-900/15 p-3 font-normal outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15" maxLength={1000} onChange={(event) => setReason(event.target.value)} value={reason} /></label>
             <label className="mt-5 flex items-start gap-3 text-sm leading-6 text-slate-700"><input checked={acknowledged} className="mt-1" onChange={(event) => setAcknowledged(event.target.checked)} type="checkbox" /><span>I understand this review does not instantly change my current service.</span></label>
             {validationError ? <p className="mt-4 rounded-[9px] border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{validationError}</p> : null}
-            <div className="mt-6 flex gap-3"><button className="min-h-11 flex-1 rounded-[10px] border border-slate-900/15 font-semibold text-slate-700 hover:bg-slate-50" disabled={isValidating} onClick={() => setSelectedPlan(null)} type="button">Cancel</button><button className="min-h-11 flex-1 rounded-[10px] bg-slate-950 font-semibold text-white capitalize disabled:opacity-40" disabled={!acknowledged || isValidating} onClick={() => void confirmPlanChoice(options.subscription_id)} type="button">{isValidating ? 'Validating…' : `Schedule ${selectedPlan.change_type}`}</button></div>
+            <div className="mt-6 flex gap-3"><Button className="flex-1" disabled={isValidating} onClick={() => setSelectedPlan(null)} variant="secondary">Cancel</Button><Button className="flex-1 capitalize" disabled={!acknowledged || isValidating} onClick={() => void confirmPlanChoice(options.subscription_id)}>{isValidating ? 'Validating…' : `Schedule ${selectedPlan.change_type}`}</Button></div>
           </div>
         </div>
       ) : null}

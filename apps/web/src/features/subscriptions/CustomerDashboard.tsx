@@ -7,9 +7,12 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { Button } from '../../components/ui/Button'
+import { buttonClassName } from '../../components/ui/button-styles'
 import { moneyFormatter as priceFormatter } from '../../lib/money'
 import { philippineMobileSchema } from '../applications/application-schema'
 import { getCustomerPrimaryActionLabel, getCustomerPrimaryDestination, type CustomerPortalOutletContext } from '../account/customer-routing'
+import { CustomerPageHeader } from '../account/CustomerPageHeader'
 
 interface CustomerSubscription {
   id: string
@@ -231,16 +234,12 @@ export function CustomerDashboard() {
 
   return (
     <section className="w-full">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold tracking-[0.14em] text-slate-500 uppercase">Customer portal</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl">
-            {firstName ? `${getGreeting()}, ${firstName}` : 'Welcome back'}
-          </h1>
-          <p className="mt-2 text-sm text-slate-500">Here&apos;s what&apos;s happening with your account.</p>
-        </div>
-        {user?.email ? <p className="hidden text-sm text-slate-500 sm:block">{user.email}</p> : null}
-      </header>
+      <CustomerPageHeader
+        actions={user?.email ? <p className="hidden text-sm text-slate-500 sm:block">{user.email}</p> : null}
+        description="Here’s what’s happening with your account."
+        eyebrow="Customer portal"
+        title={firstName ? `${getGreeting()}, ${firstName}` : 'Welcome back'}
+      />
 
       <form
         className={`mt-8 rounded-[18px] border p-5 shadow-[0_18px_50px_rgba(18,25,38,0.06)] sm:p-6 ${profile.phone ? 'border-slate-900/8 bg-white' : 'border-amber-300 bg-amber-50/80'}`}
@@ -276,9 +275,9 @@ export function CustomerDashboard() {
                 type="tel"
                 value={phone}
               />
-              <button className="min-h-11 rounded-[10px] bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60" disabled={isSavingPhone} type="submit">
+              <Button className="sm:shrink-0" disabled={isSavingPhone} type="submit">
                 {isSavingPhone ? 'Saving…' : profile.phone ? 'Update' : 'Save number'}
-              </button>
+              </Button>
             </div>
             {phoneError ? <p className="mt-2 text-sm font-medium text-red-700" id="customer-phone-error" role="alert">{phoneError}</p> : null}
             {phoneMessage ? <p className="mt-2 text-sm font-medium text-emerald-700" role="status">{phoneMessage}</p> : null}
@@ -398,7 +397,7 @@ function ApplicationSummary({
   if (!application) {
     return (
       <EmptyState
-        action={<Link className="inline-flex min-h-11 items-center rounded-[10px] bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800" to={primaryDestination}>{primaryActionLabel}</Link>}
+        action={<Link className={buttonClassName()} to={primaryDestination}>{primaryActionLabel}</Link>}
         className="mt-8"
         description="Choose a plan and submit an application to get started with internet service."
         title="No internet service yet"
