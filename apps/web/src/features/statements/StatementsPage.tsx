@@ -5,6 +5,8 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
+import { Button } from '../../components/ui/Button'
+import { CustomerPageHeader } from '../account/CustomerPageHeader'
 
 interface Statement {
   id: string
@@ -134,17 +136,7 @@ export function StatementsPage() {
 
   return (
     <section className="w-full max-w-5xl">
-      <header>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
-          Billing
-        </p>
-        <h1 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
-          Statements of Account
-        </h1>
-        <p className="mt-2 text-slate-400">
-          View and download your available monthly statements.
-        </p>
-      </header>
+      <CustomerPageHeader description="View and download your available monthly statements." eyebrow="Billing" title="Statements of Account" />
 
       <div className="mt-8">
         {error ? (
@@ -157,32 +149,32 @@ export function StatementsPage() {
             title="No statements yet"
           />
         ) : (
-          <div className="space-y-4">
+          <div>
             {downloadError ? (
               <ErrorPanel message={downloadError} title="Download failed" />
             ) : null}
 
+            <div className="overflow-hidden rounded-[18px] border border-slate-900/8 bg-white shadow-[0_18px_50px_rgba(18,25,38,0.05)]">
             {statements.map((statement) => (
               <article
-                className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl sm:p-6"
+                className="border-b border-slate-900/8 p-5 last:border-b-0 sm:p-6"
                 key={statement.id}
               >
                 <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-center">
                   <div>
-                    <p className="text-sm text-slate-400">Billing period</p>
-                    <p className="mt-1 font-semibold text-white">
+                    <p className="text-xs text-slate-500">Billing period</p>
+                    <p className="mt-1 font-semibold text-slate-950">
                       {formatDatabaseDate(statement.billing_period_start)} &ndash;{' '}
                       {formatDatabaseDate(statement.billing_period_end)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-400">Generated</p>
-                    <p className="mt-1 text-white">
+                    <p className="text-xs text-slate-500">Generated</p>
+                    <p className="mt-1 text-slate-800">
                       {dateFormatter.format(new Date(statement.created_at))}
                     </p>
                   </div>
-                  <button
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  <Button
                     disabled={downloadingId !== null}
                     onClick={() => void downloadStatement(statement)}
                     type="button"
@@ -195,10 +187,11 @@ export function StatementsPage() {
                     ) : (
                       <span>Download PDF</span>
                     )}
-                  </button>
+                  </Button>
                 </div>
               </article>
             ))}
+            </div>
           </div>
         )}
       </div>

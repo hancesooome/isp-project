@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 
 import { useAuth } from '../auth/auth-context'
 import { moneyFormatter as priceFormatter } from '../../lib/money'
@@ -7,6 +8,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { CustomerPageHeader } from '../account/CustomerPageHeader'
 
 interface Invoice {
   id: string
@@ -95,17 +97,7 @@ export function InvoicesPage() {
 
   return (
     <section className="w-full max-w-5xl">
-      <header>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
-          Billing
-        </p>
-        <h1 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
-          Your invoices
-        </h1>
-        <p className="mt-2 text-slate-400">
-          Review your invoice amounts, due dates, and payment status.
-        </p>
-      </header>
+      <CustomerPageHeader description="Review your invoice amounts, due dates, and payment status." eyebrow="Billing" title="Your invoices" />
 
       <div className="mt-8">
         {error ? (
@@ -118,28 +110,28 @@ export function InvoicesPage() {
             title="No invoices yet"
           />
         ) : (
-          <div className="space-y-4">
+          <div className="overflow-hidden rounded-[18px] border border-slate-900/8 bg-white shadow-[0_18px_50px_rgba(18,25,38,0.05)]">
             {invoices.map((invoice) => (
               <article
-                className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl sm:p-6"
+                className="border-b border-slate-900/8 p-5 last:border-b-0 sm:p-6"
                 key={invoice.id}
               >
                 <div className="grid gap-4 sm:grid-cols-4 sm:items-center">
                   <div>
-                    <p className="text-sm text-slate-400">Invoice</p>
-                    <p className="mt-1 font-mono font-semibold text-white">
+                    <p className="text-xs text-slate-500">Invoice</p>
+                    <p className="mt-1 font-mono font-semibold text-slate-950">
                       #{invoice.id.slice(0, 8).toUpperCase()}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-400">Amount</p>
-                    <p className="mt-1 font-semibold text-white">
+                    <p className="text-xs text-slate-500">Amount</p>
+                    <p className="mt-1 font-semibold text-slate-950">
                       {priceFormatter.format(invoice.amount_cents / 100)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-400">Due date</p>
-                    <p className="mt-1 text-white">
+                    <p className="text-xs text-slate-500">Due date</p>
+                    <p className="mt-1 text-slate-800">
                       {dateFormatter.format(new Date(`${invoice.due_date}T00:00:00`))}
                     </p>
                   </div>
@@ -148,12 +140,12 @@ export function InvoicesPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 border-t border-slate-800 pt-4">
+                <div className="mt-4 border-t border-slate-900/8 pt-4">
                   <Link
-                    className="font-medium text-sky-400 hover:text-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+                    className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     to={`/account/invoices/${encodeURIComponent(invoice.id)}`}
                   >
-                    View details &rarr;
+                    View details <ArrowRight aria-hidden="true" size={16} />
                   </Link>
                 </div>
               </article>

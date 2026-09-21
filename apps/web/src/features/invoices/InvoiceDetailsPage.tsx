@@ -8,6 +8,9 @@ import { ErrorPanel } from '../../components/ui/ErrorPanel'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { Button } from '../../components/ui/Button'
+import { buttonClassName } from '../../components/ui/button-styles'
+import { CustomerPageHeader } from '../account/CustomerPageHeader'
 
 interface Invoice {
   id: string
@@ -494,7 +497,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
       <EmptyState
         action={
           <Link
-            className="inline-block font-medium text-sky-400 hover:text-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+            className={buttonClassName({ variant: 'secondary' })}
             to="/account/invoices"
           >
             &larr; Back to invoices
@@ -507,18 +510,20 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
   }
 
   return (
-    <section className="w-full max-w-2xl">
+    <section className="w-full max-w-4xl">
       <Link
-        className="text-sm font-medium text-sky-400 hover:text-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+        className="mb-5 inline-flex min-h-11 items-center text-sm font-medium text-slate-600 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         to="/account/invoices"
       >
         &larr; Back to invoices
       </Link>
 
-      <article className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
+      <CustomerPageHeader description="Review the amount, due date, billing period, and verified payment status." eyebrow="Invoice details" title={`#${invoice.id.slice(0, 8).toUpperCase()}`} />
+
+      <article className="mt-8 overflow-hidden rounded-[18px] border border-slate-900/8 bg-white shadow-[0_18px_50px_rgba(18,25,38,0.06)]">
         {payMongoReturnStatus === 'expired_canceled_or_failed' && invoice.status !== 'paid' ? (
           <p
-            className="mb-6 rounded-lg border border-amber-800 bg-amber-950/50 p-4 text-sm text-amber-200"
+            className="border-b border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:px-7"
             role="status"
           >
             The {returnedWallet} payment expired, was canceled, or could not be completed. Your
@@ -526,7 +531,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
           </p>
         ) : payMongoReturnStatus && invoice.status !== 'paid' ? (
           <p
-            className="mb-6 rounded-lg border border-sky-800 bg-sky-950/50 p-4 text-sm text-sky-200"
+            className="border-b border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 sm:px-7"
             role="status"
           >
             {payMongoReturnStatus === 'checking'
@@ -537,7 +542,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
           </p>
         ) : checkoutOutcome === 'canceled' ? (
           <p
-            className="mb-6 rounded-lg border border-amber-800 bg-amber-950/50 p-4 text-sm text-amber-200"
+            className="border-b border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:px-7"
             role="status"
           >
             Payment was canceled. Your invoice is still unpaid, and you can try
@@ -545,7 +550,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
           </p>
         ) : checkoutOutcome === 'success' && invoice.status !== 'paid' ? (
           <p
-            className="mb-6 rounded-lg border border-sky-800 bg-sky-950/50 p-4 text-sm text-sky-200"
+            className="border-b border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 sm:px-7"
             role="status"
           >
             Your payment is being confirmed. This invoice will update after
@@ -553,42 +558,37 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
           </p>
         ) : null}
 
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-900/8 p-6 sm:p-7">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
-              Invoice details
-            </p>
-            <h1 className="mt-3 font-mono text-2xl font-bold text-white sm:text-3xl">
-              #{invoice.id.slice(0, 8).toUpperCase()}
-            </h1>
+            <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">Amount due</p>
+            <p className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-slate-950">{priceFormatter.format(invoice.amount_cents / 100)}</p>
           </div>
           <StatusBadge status={invoice.status} />
         </div>
 
-        <dl className="mt-8 grid gap-6 sm:grid-cols-2">
-          <Detail label="Amount" value={priceFormatter.format(invoice.amount_cents / 100)} />
+        <dl className="grid gap-6 p-6 sm:grid-cols-2 sm:p-7">
           <Detail label="Due date" value={formatDatabaseDate(invoice.due_date)} />
           <Detail label="Billing period starts" value={formatDatabaseDate(invoice.billing_period_start)} />
           <Detail label="Billing period ends" value={formatDatabaseDate(invoice.billing_period_end)} />
           <Detail label="Created" value={dateFormatter.format(new Date(invoice.created_at))} />
           <div>
-            <dt className="text-sm text-slate-400">Invoice ID</dt>
-            <dd className="mt-1 break-all font-mono text-sm text-white">{invoice.id}</dd>
+            <dt className="text-xs text-slate-500">Invoice ID</dt>
+            <dd className="mt-1 break-all font-mono text-sm text-slate-800">{invoice.id}</dd>
           </div>
         </dl>
 
         {(invoice.status === 'open' || invoice.status === 'overdue') &&
         invoice.amount_cents > 0 ? (
-          <div className="mt-8 border-t border-slate-800 pt-6">
+          <div className="border-t border-slate-900/8 bg-slate-50/70 p-6 sm:p-7">
             {checkoutError ? (
-              <p className="mb-4 text-sm text-red-300" role="alert">
+              <p className="mb-4 rounded-[10px] border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">
                 {checkoutError}
               </p>
             ) : null}
             <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-white">Choose payment method</h2>
-                <p className="mt-1 text-sm text-slate-400">Available methods for this account</p>
+                <h2 className="text-lg font-semibold text-slate-950">Choose payment method</h2>
+                <p className="mt-1 text-sm text-slate-600">Available methods for this account</p>
               </div>
               <div className="rounded-lg bg-blue-50 px-4 py-3 sm:text-right">
                 <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Amount to pay</p>
@@ -599,12 +599,12 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
             </div>
 
             {paymentMethodsLoading ? (
-              <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-800 p-6 text-sm text-slate-400">
+              <div className="flex items-center justify-center gap-2 rounded-[12px] border border-slate-200 bg-white p-6 text-sm text-slate-600">
                 <LoadingSpinner size="sm" />
                 Loading payment methods...
               </div>
             ) : availablePaymentMethods.length === 0 ? (
-              <p className="rounded-xl border border-amber-800 bg-amber-950/40 p-4 text-sm text-amber-200">
+              <p className="rounded-[12px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                 No payment methods are currently available. Please try again later.
               </p>
             ) : (
@@ -654,11 +654,11 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
             )}
 
             {selectedPaymentMethod ? (
-              <button
-                className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+              <Button
+                className="mt-5 w-full"
                 disabled={isRedirecting}
                 onClick={handleSelectedPayment}
-                type="button"
+                size="lg"
               >
                 {redirectProvider ? (
                   <>
@@ -672,10 +672,10 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                 ) : (
                   <span>Continue with {paymentMethodDetails[selectedPaymentMethod].label}</span>
                 )}
-              </button>
+              </Button>
             ) : null}
             {qrPayment ? (
-              <div className="mt-4 rounded-xl border border-slate-700 bg-white p-5 text-center text-slate-950">
+              <div className="mt-4 rounded-[14px] border border-slate-200 bg-white p-5 text-center text-slate-950">
                 {qrPayment.status === 'expired_canceled_or_failed' ? (
                   <p className="text-sm font-medium text-red-700" role="status">
                     This QR payment expired, was canceled, or failed. Generate a new QR code to try again.
@@ -694,13 +694,13 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                     </p>
                   </>
                 )}
-                <button
-                  className="mt-4 text-sm font-semibold text-slate-600 hover:text-slate-950"
+                <Button
+                  className="mt-4"
                   onClick={() => setQrPayment(null)}
-                  type="button"
+                  variant="tertiary"
                 >
                   Close QR
-                </button>
+                </Button>
               </div>
             ) : null}
           </div>
@@ -717,8 +717,8 @@ function formatDatabaseDate(value: string): string {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-sm text-slate-400">{label}</dt>
-      <dd className="mt-1 font-semibold text-white">{value}</dd>
+      <dt className="text-xs text-slate-500">{label}</dt>
+      <dd className="mt-1 font-semibold text-slate-950">{value}</dd>
     </div>
   )
 }
