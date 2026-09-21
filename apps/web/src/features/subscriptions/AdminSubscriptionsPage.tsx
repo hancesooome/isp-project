@@ -9,6 +9,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { moneyFormatter as currencyFormatter } from '../../lib/money'
 import { useAuth } from '../auth/auth-context'
 import { AdminServiceHistory } from './AdminServiceHistory'
+import { AdminPageHeader } from '../admin/AdminPageHeader'
 
 type SubscriptionStatus = 'pending_activation' | 'active' | 'past_due' | 'suspended' | 'canceled'
 type StatusFilter = SubscriptionStatus | 'all'
@@ -228,23 +229,16 @@ export function AdminSubscriptionsPage() {
 
   return (
     <section className="w-full max-w-6xl">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold tracking-[0.18em] text-blue-400 uppercase">Admin portal</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-white">Subscriptions</h1>
-          <p className="mt-2 text-sm text-slate-400">Inspect customer services and subscription status.</p>
-        </div>
-        <label className="text-xs font-medium text-slate-400">
+      <AdminPageHeader actions={<label className="block text-xs font-medium text-slate-400">
           Status
-          <select className="ml-2 min-h-10 rounded-[9px] border border-white/10 bg-[#11161f] px-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-400" onChange={(event) => {
+          <select className="mt-2 block min-h-10 w-full rounded-[9px] border border-white/10 bg-[#11161f] px-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-400 lg:w-auto" onChange={(event) => {
             setSubscriptions(null)
             setError(null)
             setFilter(event.target.value as StatusFilter)
           }} value={filter}>
             <option value="all">All</option><option value="pending_activation">Pending activation</option><option value="active">Active</option><option value="past_due">Past due</option><option value="suspended">Suspended</option><option value="canceled">Canceled</option>
           </select>
-        </label>
-      </header>
+        </label>} description="Inspect customer services and subscription status." title="Subscriptions" />
 
       <div className="mt-7">
         {error ? (
@@ -397,14 +391,7 @@ export function AdminSubscriptionDetailsPage({ subscriptionId }: { subscriptionI
   return (
     <section className="w-full max-w-6xl">
       <Link className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-300 hover:text-blue-200" to="/admin/subscriptions"><ArrowLeft aria-hidden="true" size={16} /> Back to subscriptions</Link>
-      <header className="mt-5 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold tracking-[0.18em] text-blue-400 uppercase">Subscription</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-white">{subscription.customer?.full_name ?? 'Unnamed customer'}</h1>
-          <p className="mt-2 text-sm text-slate-400">{subscription.plan?.name ?? 'Plan unavailable'}</p>
-        </div>
-        <StatusBadge status={subscription.status} />
-      </header>
+      <div className="mt-5"><AdminPageHeader actions={<StatusBadge status={subscription.status} />} description={subscription.plan?.name ?? 'Plan unavailable'} eyebrow="Subscription" title={subscription.customer?.full_name ?? 'Unnamed customer'} /></div>
 
       <div className="mt-7 grid gap-5 lg:grid-cols-2">
         <InfoCard title="Service information">

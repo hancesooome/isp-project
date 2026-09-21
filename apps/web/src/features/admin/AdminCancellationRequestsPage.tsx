@@ -6,6 +6,7 @@ import { PageSkeleton } from '../../components/ui/PageSkeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { moneyFormatter } from '../../lib/money'
 import { useAuth } from '../auth/auth-context'
+import { AdminPageHeader } from './AdminPageHeader'
 
 type Decision = 'approved' | 'rejected' | 'scheduled'
 type RequestStatus = 'pending' | 'approved' | 'rejected' | 'scheduled' | 'completed' | 'withdrawn'
@@ -57,7 +58,7 @@ export function AdminCancellationRequestsPage() {
     setItems((current) => current?.map((item) => item.id === updated.id ? { ...item, ...updated } : item) ?? null)
   }
 
-  return <section className="w-full"><header><p className="text-xs font-semibold tracking-[0.18em] text-blue-400 uppercase">Admin portal</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-white">Cancellation requests</h1><p className="mt-2 text-sm text-slate-400">Review customer requests without deleting service or billing history.</p></header><div className="mt-7">{error ? <ErrorPanel message={error} title="Requests unavailable" /> : items === null ? <PageSkeleton count={4} type="list" /> : items.length === 0 ? <EmptyState description="Customer cancellation requests will appear here." title="No cancellation requests" /> : <div className="space-y-4">{items.map((item) => <CancellationCard item={item} key={item.id} onUpdated={updateItem} />)}</div>}</div></section>
+  return <section className="w-full"><AdminPageHeader description="Review customer requests without deleting service or billing history." title="Cancellation requests" /><div className="mt-7">{error ? <ErrorPanel message={error} title="Requests unavailable" /> : items === null ? <PageSkeleton count={4} type="list" /> : items.length === 0 ? <EmptyState description="Customer cancellation requests will appear here." title="No cancellation requests" /> : <div className="space-y-4">{items.map((item) => <CancellationCard item={item} key={item.id} onUpdated={updateItem} />)}</div>}</div></section>
 }
 
 function CancellationCard({ item, onUpdated }: { item: CancellationItem; onUpdated: (item: { id: string; status: RequestStatus; effective_termination_date: string | null; reviewed_at: string | null; review_notes: string | null }) => void }) {

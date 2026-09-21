@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react'
 
 import { useAuth } from '../auth/auth-context'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
+import { AdminPageHeader } from '../admin/AdminPageHeader'
 
 interface AdminSubscription {
   id: string
@@ -195,17 +196,7 @@ export function AdminBillingPage() {
 
   return (
     <section className="w-full max-w-6xl">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-400">
-          Admin / Billing
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-white sm:text-4xl">
-          Create an invoice
-        </h1>
-        <p className="mt-2 text-sm text-slate-400 sm:text-base">
-          Manually create an open invoice for a current customer subscription.
-        </p>
-      </header>
+      <AdminPageHeader description="Manually create an open invoice for a current customer subscription." eyebrow="Admin / Billing" title="Create an invoice" />
 
       <div className="mt-7 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div>
@@ -313,7 +304,7 @@ export function AdminBillingPage() {
         {success ? <p className="text-sm text-emerald-300" role="status">{success}</p> : null}
 
         <button
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] bg-blue-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isSubmitting || subscriptions === null || subscriptions.length === 0 || loadError !== null}
           type="submit"
         >
