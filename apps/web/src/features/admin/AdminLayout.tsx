@@ -3,6 +3,7 @@ import { ChartNoAxesColumn, CircleHelp, ClipboardList, CreditCard, HardHat, Hous
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { BrandLogo } from '../../components/ui/BrandLogo'
+import { darkUtilityButtonClass } from '../../components/ui/utility-button-styles'
 
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/auth-context'
@@ -111,7 +112,9 @@ export function AdminLayout() {
           <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-500 uppercase">Operations</p>
           <span className="rounded-md border border-white/8 bg-white/5 px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.1em] text-slate-400 uppercase">Admin</span>
         </div>
-        <AdminNavigation />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+          <AdminNavigation />
+        </div>
         <AdminAccountPanel
           email={email}
           isSigningOut={isSigningOut}
@@ -128,7 +131,7 @@ export function AdminLayout() {
             aria-controls="admin-mobile-navigation"
             aria-expanded={mobileNavigationOpen}
             aria-label={mobileNavigationOpen ? 'Close admin navigation' : 'Open admin navigation'}
-            className="grid size-11 shrink-0 place-items-center rounded-full border border-white/10 bg-[rgba(22,28,38,0.78)] text-slate-300 shadow-[0_4px_14px_rgba(0,0,0,0.16)] transition duration-200 hover:border-white/15 hover:bg-white/10 hover:text-white active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d12] motion-reduce:transition-none"
+            className={darkUtilityButtonClass}
             onClick={() => mobileNavigationOpen ? closeMobileNavigation(true) : setMobileNavigationPath(pathname)}
             type="button"
           >
@@ -136,7 +139,7 @@ export function AdminLayout() {
           </button>
           <AdminNotificationBell refreshKey={pathname} />
           <details className="relative">
-            <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-full border border-white/10 bg-[rgba(22,28,38,0.78)] text-slate-300 shadow-[0_4px_14px_rgba(0,0,0,0.16)] transition hover:border-white/15 hover:bg-white/10 hover:text-white active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d12]" title="Administrator account menu">
+            <summary className={`${darkUtilityButtonClass} cursor-pointer list-none`} title="Administrator account menu">
               <span className="sr-only">Open administrator account menu</span>
               <UserRound aria-hidden="true" size={18} strokeWidth={1.8} />
             </summary>
@@ -176,20 +179,23 @@ export function AdminLayout() {
             <aside ref={mobileDrawer} aria-label="Admin portal navigation" aria-modal="true" className="absolute inset-y-0 left-0 flex w-[min(20rem,calc(100vw-1rem))] flex-col border-r border-white/10 bg-[rgba(17,22,31,0.97)] p-4 shadow-[16px_0_44px_rgba(0,0,0,0.35)] backdrop-blur-xl" id="admin-mobile-navigation" role="dialog">
               <div className="flex items-center justify-between gap-3 border-b border-white/8 pb-4">
                 <AdminBrand />
-                <button ref={closeButton} aria-label="Close admin navigation" className="grid size-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/6 text-slate-300 transition duration-200 hover:bg-white/10 hover:text-white active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 motion-reduce:transition-none" onClick={() => closeMobileNavigation(true)} type="button"><X aria-hidden="true" size={20} /></button>
+                <button ref={closeButton} aria-label="Close admin navigation" className={darkUtilityButtonClass} onClick={() => closeMobileNavigation(true)} type="button"><X aria-hidden="true" size={20} /></button>
               </div>
               <p className="px-3 pt-5 pb-2 text-[10px] font-semibold tracking-[0.14em] text-slate-500 uppercase">Operations</p>
               <nav aria-label="Admin mobile navigation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <ul className="space-y-1 pb-[max(1rem,env(safe-area-inset-bottom))]" role="list">
                   {adminNavItems.map((item) => (
                     <li key={item.to}>
-                      <NavLink className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-[9px] border px-3 text-sm font-medium transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 motion-reduce:transition-none ${isActive ? 'border-white/10 bg-white/9 text-white' : 'border-transparent text-slate-400 hover:bg-white/6 hover:text-white'}`} end={item.end} onClick={() => closeMobileNavigation()} to={item.to}>
+                      <NavLink className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-[9px] border px-3 text-sm font-medium transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 motion-reduce:transition-none ${isActive ? 'border-blue-400/20 bg-blue-500/10 text-white' : 'border-transparent text-slate-400 hover:bg-white/6 hover:text-white'}`} end={item.end} onClick={() => closeMobileNavigation()} to={item.to}>
                         {({ isActive }) => <><AdminIcon active={isActive} name={item.icon} /><span>{item.label}</span></>}
                       </NavLink>
                     </li>
                   ))}
                 </ul>
               </nav>
+              <div className="border-t border-white/8 pt-4 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+                <AdminAccountPanel email={email} isSigningOut={isSigningOut} onSignOut={() => void handleSignOut()} />
+              </div>
             </aside>
           </div>
         ) : null}
@@ -211,7 +217,7 @@ function AdminBrand({ compact = false }: { compact?: boolean }) {
 
 function AdminNavigation() {
   return (
-    <nav aria-label="Admin portal" className="flex-1">
+    <nav aria-label="Admin portal">
       <ul className="space-y-1" role="list">
         {adminNavItems.map((item) => (
           <li key={item.to}>
@@ -219,7 +225,7 @@ function AdminNavigation() {
               className={({ isActive }) =>
                 `flex min-h-10 items-center gap-3 rounded-[9px] border px-3 text-[13px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
                   isActive
-                    ? 'border-white/8 bg-white/8 text-white shadow-sm'
+                    ? 'border-blue-400/20 bg-blue-500/10 text-white shadow-sm'
                     : 'border-transparent text-slate-400 hover:bg-white/5 hover:text-slate-100'
                 }`
               }
@@ -243,7 +249,7 @@ interface AdminAccountPanelProps {
 
 function AdminAccountPanel({ email, isSigningOut, onSignOut }: AdminAccountPanelProps) {
   return (
-    <div className="rounded-[12px] border border-white/8 bg-white/4 p-3">
+    <div className="mt-3 shrink-0 rounded-[12px] border border-white/8 bg-white/4 p-3">
       <div className="flex items-center gap-3 pb-3">
         <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-slate-700 text-xs font-semibold text-slate-100">{getInitial(email)}</span>
         <div className="min-w-0">
